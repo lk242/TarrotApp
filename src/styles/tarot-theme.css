@@ -1,0 +1,26 @@
+:root {
+  --color-bg-primary: #0a0a1a;
+  --color-bg-secondary: #12122a;
+  --color-bg-card: #1a1a3e;
+  --color-bg-glass: rgba(255, 255, 255, 0.05);
+
+  --color-text-primary: #e8e0d4;
+  --color-text-secondary: #a89f91;
+  --color-text-muted: #6b6378;
+
+  --color-accent-gold: #c9a84c;
+  --color-accent-gold-light: #e8d48b;
+  --color-accent-purple: #7b5ea7;
+  --color-accent-purple-light: #a78bfa;
+  --color-accent-mystic: #4a90d9;
+
+  --color-border: rgba(201, 168, 76, 0.2);
+  --color-border-hover: rgba(201, 168, 76, 0.5);
+
+  --shadow-glow: 0 0 20px rgba(201, 168, 76, 0.15);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 8px 40px rgba(201, 168, 76, 0.2);
+
+  --radius-card: 12px;
+  --radius-button: 8px;
+}

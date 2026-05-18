@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "project_name": "tarot-app",
+  "project_root": "C:/Users/forst899/tarot-app",
+  "repo_url": "",
+  "tech_stack": [
+    "react-19", "typescript", "vite", "tailwindcss-v4",
+    "framer-motion", "marked",
+    "firebase-hosting", "firestore", "firebase-auth", "firebase-functions",
+    "anthropic-claude-api"
+  ],
+  "tags": ["tarot", "divination", "ai-interpretation", "mystic-ui"],
+  "entry_points": ["src/main.tsx", "src/App.tsx"],
+  "owners": ["lukewolf899@gmail.com"],
+  "notes": "線上塔羅占卜應用，使用 Claude API 進行牌義解讀，支援 Google 登入與匿名使用"
+}

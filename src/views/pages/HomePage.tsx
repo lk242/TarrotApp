@@ -41,7 +41,7 @@ function SpreadCard({ spread, delay }: { spread: (typeof SPREADS)[SpreadType]; d
     >
       <Link
         to={`/reading?spread=${spread.type}`}
-        className="group block rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 text-center no-underline shadow-[var(--shadow-card)] transition-all hover:border-[var(--color-border-hover)] hover:shadow-[var(--shadow-card-hover)]"
+        className="group block h-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 text-center no-underline shadow-[var(--shadow-card)] transition-all hover:border-[var(--color-border-hover)] hover:shadow-[var(--shadow-card-hover)]"
       >
         <div className="mb-3 text-3xl text-[var(--color-accent-gold)] transition-transform group-hover:scale-110">
           {spread.cardCount === 1 ? '🂡' : spread.cardCount === 3 ? '🂡🂡🂡' : '✦'}

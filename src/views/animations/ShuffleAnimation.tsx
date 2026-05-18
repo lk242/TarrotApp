@@ -12,6 +12,8 @@ const RIFFLE_CARDS = Array.from({ length: 18 }, (_, i) => ({
   id: i,
   fromLeft: i % 2 === 0,
   delay: i * 0.09,
+  settleX: [-8, 6, -3, 9, -6, 4, -10, 7, -2, 5, -7, 10, -4, 3, -9, 8, -5, 2][i],
+  settleRotate: [-7, 5, -2, 8, -5, 3, -9, 6, -1, 4, -6, 9, -3, 2, -8, 7, -4, 1][i],
 }));
 
 const PHASE_TEXT: Record<Phase, string> = {
@@ -101,9 +103,9 @@ export default function ShuffleAnimation({ onComplete }: Props) {
               opacity: 0,
             }}
             animate={{
-              x: (Math.random() - 0.5) * 20,
+              x: card.settleX,
               y: card.id * 2.8,
-              rotate: (Math.random() - 0.5) * 18,
+              rotate: card.settleRotate,
               opacity: 0.9,
             }}
             transition={{ delay: card.delay, duration: 0.25, ease: 'easeOut' }}>

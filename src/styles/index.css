@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import './tarot-theme.css';
 @import './animations.css';
+@import './legacy-utilities.css';
 
 body {
   margin: 0;

@@ -882,6 +882,41 @@ export const adminFindCreditUser = onCall({ region: REGION }, async (request) =>
   };
 });
 
+export const adminListUsers = onCall({ region: REGION }, async (request) => {
+  requireAdmin(request.auth?.token.email as string | undefined);
+
+  const maxResults = Math.min(Number(request.data?.maxResults) || 200, 1000);
+  const listResult = await adminAuth.listUsers(maxResults);
+
+  // 批次查詢所有使用者的點數 profile
+  const profiles = await Promise.all(
+    listResult.users.map(async (userRecord) => {
+      const doc = await db.doc(`users/${userRecord.uid}`).get();
+      const data = doc.data();
+      return {
+        uid: userRecord.uid,
+        email: userRecord.email ?? '',
+        displayName: userRecord.displayName ?? '',
+        photoURL: userRecord.photoURL ?? '',
+        disabled: userRecord.disabled,
+        providerId: userRecord.providerData.map((p) => p.providerId).join(', ') || 'custom',
+        creationTime: userRecord.metadata.creationTime ?? '',
+        lastSignInTime: userRecord.metadata.lastSignInTime ?? '',
+        balance: Number(data?.balance ?? 0),
+      };
+    }),
+  );
+
+  // 依最後登入時間倒序
+  profiles.sort((a, b) => {
+    const ta = a.lastSignInTime ? new Date(a.lastSignInTime).getTime() : 0;
+    const tb = b.lastSignInTime ? new Date(b.lastSignInTime).getTime() : 0;
+    return tb - ta;
+  });
+
+  return { users: profiles, total: listResult.users.length };
+});
+
 export const adminAdjustCredits = onCall({ region: REGION }, async (request) => {
   const adminEmail = requireAdmin(request.auth?.token.email as string | undefined);
   const userId = String(request.data?.userId ?? '').trim();

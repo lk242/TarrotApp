@@ -13,6 +13,8 @@ https://mystic-tarot-2026.web.app
 - OpenAI `gpt-4.1-mini` AI 解讀
 - AI 追問功能，保留原始牌陣上下文
 - Firebase Auth：Google 登入、Email 註冊/登入
+- 點數制度：新會員贈送 100 點，每次全新占卜或追問扣 5 點
+- 點數包與月訂閱方案頁，金流 checkout/webhook 保留串接點
 - 已登入使用者使用 Firestore 同步占卜紀錄
 - 匿名使用者使用 localStorage 保存本機紀錄
 
@@ -34,6 +36,7 @@ src/
   models/                 純型別定義，不能 import React/Firebase
   services/               業務邏輯與外部服務封裝
     ai/                   AI provider 抽象與實作
+    credits/              點數 callable 與 Firestore 訂閱封裝
     firebase/             Firebase SDK 初始化與 Auth service
     storage/              Firestore/localStorage provider
   controllers/            React hooks，銜接 Service 與 View
@@ -69,6 +72,33 @@ OPENAI_API_KEY
 ```
 
 因此公開 bundle 不包含 `sk-` key。
+
+## 點數與付費設計
+
+點數帳戶由 Firebase Functions 建立與扣款，前端只負責顯示餘額與方案。
+
+- 新會員首次登入建立 `users/{uid}`，贈送 `100` 點
+- 每次 `generateTarotReading` 或 `followUpReading` 先扣 `5` 點
+- OpenAI 呼叫失敗會自動退還該次 `5` 點
+- 交易紀錄寫入 `users/{uid}/creditTransactions/{transactionId}`
+- 前端不可直接寫入餘額或交易紀錄
+
+目前方案定義在 `src/models/credits.ts`：
+
+- 入門補充包：500 點 / NT$99
+- 標準靈感包：1200 點 / NT$199
+- 深度探索包：3000 點 / NT$399
+- 月光方案：每月 1000 點 / NT$149
+- 星辰方案：每月 2500 點 / NT$299
+- 神諭方案：每月 6000 點 / NT$599
+
+定價基準：
+
+- OpenAI `gpt-4.1-mini` 官方價格：input US$0.40 / 1M tokens、output US$1.60 / 1M tokens
+- 以 1 USD 約 NT$32 估算，一次占卜或追問 AI 成本約 NT$0.15 至 NT$0.25
+- 推薦主力方案為 NT$199 點數包與 NT$299 月訂閱，能保留毛利吸收 Firebase、付款手續費與客服成本
+
+金流尚未正式串接。`createCreditPurchase` 與 `createSubscription` 目前只回傳提示訊息，不會發放付費點數；正式接 Stripe、綠界或其他金流後，必須由 webhook 驗證付款成功再入點。
 
 ## 環境變數
 
@@ -107,7 +137,7 @@ npm --prefix functions run build
 部署：
 
 ```bash
-firebase deploy --only functions,hosting --project mystic-tarot-2026 --force
+firebase deploy --only firestore:rules,functions,hosting --project mystic-tarot-2026 --force
 ```
 
 ## Firebase 設定
@@ -122,8 +152,18 @@ firebase deploy --only functions,hosting --project mystic-tarot-2026 --force
 Firestore 規則採使用者隔離：
 
 ```js
-match /users/{userId}/readings/{readingId} {
-  allow read, write: if request.auth != null && request.auth.uid == userId;
+match /users/{userId} {
+  allow read: if request.auth != null && request.auth.uid == userId;
+  allow create, update, delete: if false;
+
+  match /readings/{readingId} {
+    allow read, write: if request.auth != null && request.auth.uid == userId;
+  }
+
+  match /creditTransactions/{transactionId} {
+    allow read: if request.auth != null && request.auth.uid == userId;
+    allow write: if false;
+  }
 }
 ```
 

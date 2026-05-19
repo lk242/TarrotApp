@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
+import { FieldValue, Timestamp, getFirestore, type DocumentData } from 'firebase-admin/firestore';
 
 initializeApp();
 
@@ -13,9 +14,41 @@ const openAIKey = defineSecret('OPENAI_API_KEY');
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const OPENAI_MODEL = 'gpt-4.1-mini';
 const REGION = 'asia-east1';
+const WELCOME_CREDITS = 100;
+const QUESTION_CREDIT_COST = 5;
+
+const db = getFirestore();
 
 type SpreadType = 'single' | 'three-card' | 'celtic-cross';
 type Locale = 'zh-TW' | 'en';
+type CreditPackageId = 'starter' | 'standard' | 'deep';
+type SubscriptionTier = 'none' | 'monthly_light' | 'monthly_plus' | 'monthly_pro';
+
+interface CreditProfile {
+  userId: string;
+  balance: number;
+  freeCreditsGranted: boolean;
+  subscriptionTier: SubscriptionTier;
+  subscriptionStatus: 'none' | 'active' | 'past_due' | 'canceled';
+  updatedAt?: number;
+}
+
+interface CreditProduct {
+  credits: number;
+  priceTwd: number;
+}
+
+const CREDIT_PACKAGES: Record<CreditPackageId, CreditProduct> = {
+  starter: { credits: 500, priceTwd: 99 },
+  standard: { credits: 1200, priceTwd: 199 },
+  deep: { credits: 3000, priceTwd: 399 },
+};
+
+const SUBSCRIPTION_PLANS: Record<Exclude<SubscriptionTier, 'none'>, CreditProduct> = {
+  monthly_light: { credits: 1000, priceTwd: 149 },
+  monthly_plus: { credits: 2500, priceTwd: 299 },
+  monthly_pro: { credits: 6000, priceTwd: 599 },
+};
 
 interface TarotCard {
   id: string;
@@ -71,6 +104,159 @@ interface ChatResponse {
     };
   }>;
   usage?: ChatUsage;
+}
+
+function requireUid(uid?: string): string {
+  if (!uid) {
+    throw new HttpsError('unauthenticated', '請先登入後再使用 AI 占卜');
+  }
+  return uid;
+}
+
+function toMillis(value: unknown): number | undefined {
+  if (value instanceof Timestamp) return value.toMillis();
+  return typeof value === 'number' ? value : undefined;
+}
+
+function normalizeCreditProfile(userId: string, data: DocumentData): CreditProfile {
+  return {
+    userId,
+    balance: Number(data.balance ?? 0),
+    freeCreditsGranted: Boolean(data.freeCreditsGranted),
+    subscriptionTier: (data.subscriptionTier ?? 'none') as SubscriptionTier,
+    subscriptionStatus: data.subscriptionStatus ?? 'none',
+    updatedAt: toMillis(data.updatedAt),
+  };
+}
+
+async function ensureCreditAccount(uid: string): Promise<CreditProfile> {
+  const userRef = db.doc(`users/${uid}`);
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(userRef);
+    const current = snapshot.data();
+
+    if (!snapshot.exists || !current) {
+      const profile = {
+        userId: uid,
+        balance: WELCOME_CREDITS,
+        freeCreditsGranted: true,
+        subscriptionTier: 'none',
+        subscriptionStatus: 'none',
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      transaction.set(userRef, profile);
+      transaction.create(userRef.collection('creditTransactions').doc(), {
+        amount: WELCOME_CREDITS,
+        type: 'welcome',
+        reason: '新會員登入贈送點數',
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      return {
+        userId: uid,
+        balance: WELCOME_CREDITS,
+        freeCreditsGranted: true,
+        subscriptionTier: 'none',
+        subscriptionStatus: 'none',
+      };
+    }
+
+    if (!current.freeCreditsGranted) {
+      transaction.update(userRef, {
+        balance: FieldValue.increment(WELCOME_CREDITS),
+        freeCreditsGranted: true,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.create(userRef.collection('creditTransactions').doc(), {
+        amount: WELCOME_CREDITS,
+        type: 'welcome',
+        reason: '補發新會員贈送點數',
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      return normalizeCreditProfile(uid, {
+        ...current,
+        balance: Number(current.balance ?? 0) + WELCOME_CREDITS,
+        freeCreditsGranted: true,
+      });
+    }
+
+    return normalizeCreditProfile(uid, current);
+  });
+}
+
+async function chargeQuestionCredits(uid: string, reason: string): Promise<void> {
+  const userRef = db.doc(`users/${uid}`);
+
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(userRef);
+    const current = snapshot.data();
+    let balance = Number(current?.balance ?? 0);
+    let freeCreditsGranted = Boolean(current?.freeCreditsGranted);
+
+    if (!snapshot.exists || !current) {
+      balance = WELCOME_CREDITS;
+      freeCreditsGranted = true;
+      transaction.set(userRef, {
+        userId: uid,
+        balance,
+        freeCreditsGranted,
+        subscriptionTier: 'none',
+        subscriptionStatus: 'none',
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.create(userRef.collection('creditTransactions').doc(), {
+        amount: WELCOME_CREDITS,
+        type: 'welcome',
+        reason: '新會員登入贈送點數',
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    } else if (!freeCreditsGranted) {
+      balance += WELCOME_CREDITS;
+      freeCreditsGranted = true;
+      transaction.update(userRef, {
+        balance,
+        freeCreditsGranted,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.create(userRef.collection('creditTransactions').doc(), {
+        amount: WELCOME_CREDITS,
+        type: 'welcome',
+        reason: '補發新會員贈送點數',
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    if (balance < QUESTION_CREDIT_COST) {
+      throw new HttpsError('failed-precondition', '點數不足，請購買點數或訂閱方案。');
+    }
+
+    transaction.update(userRef, {
+      balance: FieldValue.increment(-QUESTION_CREDIT_COST),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(userRef.collection('creditTransactions').doc(), {
+      amount: -QUESTION_CREDIT_COST,
+      type: 'usage',
+      reason,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  });
+}
+
+async function refundQuestionCredits(uid: string, reason: string): Promise<void> {
+  const userRef = db.doc(`users/${uid}`);
+  await userRef.update({
+    balance: FieldValue.increment(QUESTION_CREDIT_COST),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  await userRef.collection('creditTransactions').add({
+    amount: QUESTION_CREDIT_COST,
+    type: 'refund',
+    reason,
+    createdAt: FieldValue.serverTimestamp(),
+  });
 }
 
 function assertInterpretationRequest(data: unknown): AIInterpretationRequest {
@@ -258,6 +444,7 @@ export const generateTarotReading = onCall(
   { region: REGION, secrets: [openAIKey], timeoutSeconds: 120 },
   async (request) => {
     // Callable Function 會自動處理 Firebase Web SDK 的 envelope 格式與 CORS。
+    const uid = requireUid(request.auth?.uid);
     const data = assertInterpretationRequest(request.data);
     const systemPrompt =
       buildSystemPrompt(data.locale) +
@@ -268,15 +455,22 @@ export const generateTarotReading = onCall(
 - 問題三
 -->`;
     const userPrompt = buildUserPrompt(data);
-    const result = await chat(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      3000,
-    );
+    await chargeQuestionCredits(uid, `全新占卜：${data.spreadType}`);
 
-    return toResponse(result.text, result.usage);
+    try {
+      const result = await chat(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        3000,
+      );
+
+      return toResponse(result.text, result.usage);
+    } catch (error) {
+      await refundQuestionCredits(uid, 'AI 解讀失敗退還點數');
+      throw error;
+    }
   },
 );
 
@@ -284,6 +478,7 @@ export const followUpReading = onCall(
   { region: REGION, secrets: [openAIKey], timeoutSeconds: 120 },
   async (request) => {
     // 追問沿用原始牌陣與前次解讀摘要，避免 AI 忘記上下文。
+    const uid = requireUid(request.auth?.uid);
     const data = assertFollowUpRequest(request.data);
     const cardsDescription = data.originalRequest.drawnCards
       .map(
@@ -323,14 +518,56 @@ ${data.originalInterpretation.slice(0, 1500)}
 
 請針對這個追問提供深入解讀。`;
 
-    const result = await chat(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      2000,
-    );
+    await chargeQuestionCredits(uid, '占卜追問');
 
-    return toResponse(result.text, result.usage);
+    try {
+      const result = await chat(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        2000,
+      );
+
+      return toResponse(result.text, result.usage);
+    } catch (error) {
+      await refundQuestionCredits(uid, 'AI 追問失敗退還點數');
+      throw error;
+    }
   },
 );
+
+export const getCreditBalance = onCall({ region: REGION }, async (request) => {
+  const uid = requireUid(request.auth?.uid);
+  return ensureCreditAccount(uid);
+});
+
+export const createCreditPurchase = onCall({ region: REGION }, async (request) => {
+  const uid = requireUid(request.auth?.uid);
+  await ensureCreditAccount(uid);
+
+  const packageId = request.data?.packageId as CreditPackageId | undefined;
+  if (!packageId || !CREDIT_PACKAGES[packageId]) {
+    throw new HttpsError('invalid-argument', '點數包不存在');
+  }
+
+  const product = CREDIT_PACKAGES[packageId];
+  return {
+    message: `已選擇 ${product.credits} 點 / NT$${product.priceTwd}。金流尚未串接，接上 Stripe 或綠界 checkout 後會在 webhook 驗證付款再入點。`,
+  };
+});
+
+export const createSubscription = onCall({ region: REGION }, async (request) => {
+  const uid = requireUid(request.auth?.uid);
+  await ensureCreditAccount(uid);
+
+  const planId = request.data?.planId as Exclude<SubscriptionTier, 'none'> | undefined;
+  if (!planId || !SUBSCRIPTION_PLANS[planId]) {
+    throw new HttpsError('invalid-argument', '訂閱方案不存在');
+  }
+
+  const product = SUBSCRIPTION_PLANS[planId];
+  return {
+    message: `已選擇每月 ${product.credits} 點 / NT$${product.priceTwd}。金流尚未串接，接上訂閱 webhook 後才會啟用方案並發放每月點數。`,
+  };
+});

@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../../../controllers/useAuth';
+import { useCredits } from '../../../controllers/useCredits';
 import AuthModal from '../auth/AuthModal';
 
 const NAV_ITEMS = [
   { path: '/', label: '開始占卜' },
   { path: '/history', label: '占卜紀錄' },
+  { path: '/billing', label: '點數方案' },
   { path: '/about', label: '關於' },
 ];
 
 export default function Navbar() {
   const location = useLocation();
   const { user, loading, logout } = useAuth();
+  const { balance } = useCredits();
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -60,6 +63,12 @@ export default function Navbar() {
                 <span className="text-xs text-[var(--color-text-muted)]">...</span>
               ) : user ? (
                 <div className="flex items-center gap-2">
+                  <Link
+                    to="/billing"
+                    className="rounded border border-[var(--color-accent-gold)]/30 px-2 py-1 text-[10px] font-bold text-[var(--color-accent-gold)] no-underline"
+                  >
+                    點數 {balance}
+                  </Link>
                   {user.photoURL ? (
                     <img src={user.photoURL} alt="" className="h-7 w-7 rounded-full" />
                   ) : (
@@ -109,13 +118,22 @@ export default function Navbar() {
             {/* 手機端登入 */}
             <div className="mt-2 border-t border-[var(--color-border)] pt-3">
               {user ? (
-                <div className="flex items-center justify-between px-4">
-                  <span className="text-xs text-[var(--color-text-secondary)]">
-                    {user.displayName || user.email}
-                  </span>
+                <div className="px-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-xs text-[var(--color-text-secondary)]">
+                      {user.displayName || user.email}
+                    </span>
+                    <Link
+                      to="/billing"
+                      onClick={() => setOpen(false)}
+                      className="rounded border border-[var(--color-accent-gold)]/30 px-2 py-1 text-xs font-bold text-[var(--color-accent-gold)] no-underline"
+                    >
+                      點數 {balance}
+                    </Link>
+                  </div>
                   <button
                     onClick={() => { logout(); setOpen(false); }}
-                    className="cursor-pointer rounded border border-[var(--color-border)] bg-transparent px-3 py-1 text-xs text-[var(--color-text-muted)] hover:text-red-400"
+                    className="w-full cursor-pointer rounded border border-[var(--color-border)] bg-transparent px-3 py-2 text-xs text-[var(--color-text-muted)] hover:text-red-400"
                   >
                     登出
                   </button>

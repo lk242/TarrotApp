@@ -4,7 +4,10 @@ import { motion } from 'framer-motion';
 import { marked } from 'marked';
 import type { SpreadType } from '../../models/spread';
 import { SPREADS } from '../../models/spread';
+import { QUESTION_CREDIT_COST } from '../../models/credits';
 import { useTarotSession } from '../../controllers/useTarotSession';
+import { useAuth } from '../../controllers/useAuth';
+import { useCredits } from '../../controllers/useCredits';
 import CardFace from '../components/tarot/CardFace';
 import ShuffleAnimation from '../animations/ShuffleAnimation';
 import CutAnimation from '../animations/CutAnimation';
@@ -73,16 +76,25 @@ export default function ReadingPage() {
   const [searchParams] = useSearchParams();
   const spreadType = (searchParams.get('spread') || 'single') as SpreadType;
   const spread = SPREADS[spreadType] || SPREADS.single;
+  const { user } = useAuth();
+  const { balance, loading: creditLoading } = useCredits();
 
   const {
     phase, question, setQuestion,
     startReading, onShuffleComplete, onCutComplete, onDrawComplete,
     reset, drawnCards, interpretation,
     suggestedQuestions, followUps, isFollowingUp, askFollowUp,
+    error,
   } = useTarotSession(spreadType);
 
   const [followUpInput, setFollowUpInput] = useState('');
   const followUpEndRef = useRef<HTMLDivElement>(null);
+  const canAsk = Boolean(user) && balance >= QUESTION_CREDIT_COST;
+  const blockedReason = !user
+    ? '請先登入，註冊或 Google 登入會贈送 100 點。'
+    : balance < QUESTION_CREDIT_COST
+      ? '點數不足，請先購買點數或訂閱方案。'
+      : '';
 
   const interpretationHtml = useMemo(
     // marked.parse 只在 interpretation 改變時執行，避免每次輸入追問都重算整篇解讀。
@@ -112,6 +124,29 @@ export default function ReadingPage() {
         {spread.name}
       </h1>
       <p className="mb-10 text-sm text-[var(--color-text-muted)]">{spread.description}</p>
+      <div className="mb-6 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-xs text-[var(--color-text-secondary)]">
+        {user ? (
+          <>
+            目前 {creditLoading ? '讀取點數中...' : `${balance} 點`}，每次占卜或追問消耗 {QUESTION_CREDIT_COST} 點
+          </>
+        ) : (
+          <>登入後可取得 100 點，每次占卜或追問消耗 {QUESTION_CREDIT_COST} 點</>
+        )}
+      </div>
+
+      {(blockedReason || error) && (
+        <div className="mb-6 w-full max-w-xl rounded-lg border border-[var(--color-accent-gold)]/30 bg-[var(--color-accent-gold)]/10 p-4 text-center text-sm text-[var(--color-text-secondary)]">
+          <p>{error || blockedReason}</p>
+          {!user || balance < QUESTION_CREDIT_COST ? (
+            <Link
+              to="/billing"
+              className="mt-2 inline-block font-bold text-[var(--color-accent-gold)] no-underline"
+            >
+              查看點數方案
+            </Link>
+          ) : null}
+        </div>
+      )}
 
       {/* === idle：選擇主題 + 輸入問題。此階段尚未抽牌，可自由改問題。 === */}
       {phase === 'idle' && (
@@ -156,9 +191,10 @@ export default function ReadingPage() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             onClick={startReading}
-            className="w-full cursor-pointer rounded-lg bg-gradient-to-r from-[var(--color-accent-purple)] to-[var(--color-accent-mystic)] px-6 py-3 text-lg font-bold text-white shadow-[var(--shadow-glow)] transition-shadow hover:shadow-[var(--shadow-card-hover)]"
+            disabled={!canAsk || creditLoading}
+            className="w-full cursor-pointer rounded-lg bg-gradient-to-r from-[var(--color-accent-purple)] to-[var(--color-accent-mystic)] px-6 py-3 text-lg font-bold text-white shadow-[var(--shadow-glow)] transition-all hover:shadow-[var(--shadow-card-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            ✦ 開始洗牌
+            ✦ 消耗 {QUESTION_CREDIT_COST} 點開始洗牌
           </motion.button>
         </div>
       )}
@@ -320,7 +356,8 @@ export default function ReadingPage() {
                       setFollowUpInput('');
                       askFollowUp(sq);
                     }}
-                    className="cursor-pointer rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2 text-xs text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)]"
+                    disabled={!canAsk}
+                    className="cursor-pointer rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2 text-xs text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {sq}
                   </button>
@@ -337,7 +374,7 @@ export default function ReadingPage() {
                 value={followUpInput}
                 onChange={(e) => setFollowUpInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && followUpInput.trim()) {
+                  if (e.key === 'Enter' && followUpInput.trim() && canAsk) {
                     askFollowUp(followUpInput.trim());
                     setFollowUpInput('');
                   }
@@ -347,12 +384,12 @@ export default function ReadingPage() {
               />
               <button
                 onClick={() => {
-                  if (followUpInput.trim()) {
+                  if (followUpInput.trim() && canAsk) {
                     askFollowUp(followUpInput.trim());
                     setFollowUpInput('');
                   }
                 }}
-                disabled={!followUpInput.trim()}
+                disabled={!followUpInput.trim() || !canAsk}
                 className="cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-4 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
               >
                 追問

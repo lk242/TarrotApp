@@ -36,6 +36,7 @@ export function useTarotSession(spreadType: SpreadType) {
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [followUps, setFollowUps] = useState<FollowUpEntry[]>([]);
   const [isFollowingUp, setIsFollowingUp] = useState(false);
+  const [error, setError] = useState('');
 
   const drawnCardsRef = useRef<DrawnCard[]>([]);
   const questionRef = useRef('');
@@ -43,6 +44,7 @@ export function useTarotSession(spreadType: SpreadType) {
   const originalRequestRef = useRef<AIInterpretationRequest | null>(null);
 
   const startReading = useCallback(() => {
+    setError('');
     // 抽牌結果在動畫開始前就固定，後續只是逐步揭示，不會因 re-render 改變。
     const cards = performReading(spreadType);
     drawnCardsRef.current = cards;
@@ -66,32 +68,40 @@ export function useTarotSession(spreadType: SpreadType) {
     };
     originalRequestRef.current = request;
 
-    const result = await provider.interpret(request);
-    setInterpretation(result.interpretation);
-    interpretationRef.current = result.interpretation;
-    setSuggestedQuestions(result.suggestedQuestions || []);
+    try {
+      const result = await provider.interpret(request);
+      setInterpretation(result.interpretation);
+      interpretationRef.current = result.interpretation;
+      setSuggestedQuestions(result.suggestedQuestions || []);
 
-    // 自動存入占卜紀錄：storage-factory 依登入狀態切換 Firestore/localStorage。
-    const storage = getStorageProvider(user?.uid);
-    const reading: Reading = {
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
-      spreadType,
-      question: questionRef.current || '給我一個整體的生活指引',
-      drawnCards: drawnCardsRef.current,
-      interpretation: result.interpretation,
-      summary: result.summary,
-    };
-    storage.saveReading(reading).catch(console.error);
+      // 自動存入占卜紀錄：storage-factory 依登入狀態切換 Firestore/localStorage。
+      const storage = getStorageProvider(user?.uid);
+      const reading: Reading = {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        spreadType,
+        question: questionRef.current || '給我一個整體的生活指引',
+        drawnCards: drawnCardsRef.current,
+        interpretation: result.interpretation,
+        summary: result.summary,
+      };
+      storage.saveReading(reading).catch(console.error);
 
-    setPhase('complete');
-  }, [spreadType, user?.uid]);
+      setPhase('complete');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'AI 解讀失敗，請稍後再試';
+      console.error('占卜解讀失敗:', err);
+      setError(message);
+      setPhase('idle');
+    }
+  }, [spreadType, user]);
 
   /** 追問 — 基於當前牌陣繼續深入 */
   const askFollowUp = useCallback(
     async (followUpQuestion: string) => {
       if (!originalRequestRef.current || isFollowingUp) return;
       setIsFollowingUp(true);
+      setError('');
 
       try {
         const provider = getConfiguredProvider();
@@ -114,6 +124,7 @@ export function useTarotSession(spreadType: SpreadType) {
         setSuggestedQuestions(result.suggestedQuestions || []);
       } catch (err) {
         console.error('追問失敗:', err);
+        setError(err instanceof Error ? err.message : '追問失敗，請稍後再試');
       } finally {
         setIsFollowingUp(false);
       }
@@ -129,6 +140,7 @@ export function useTarotSession(spreadType: SpreadType) {
     setSuggestedQuestions([]);
     setFollowUps([]);
     setIsFollowingUp(false);
+    setError('');
     drawnCardsRef.current = [];
     questionRef.current = '';
     interpretationRef.current = '';
@@ -155,5 +167,7 @@ export function useTarotSession(spreadType: SpreadType) {
     followUps,
     isFollowingUp,
     askFollowUp,
+    error,
+    clearError: () => setError(''),
   };
 }

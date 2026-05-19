@@ -12,6 +12,7 @@
 - `spread.ts`：牌陣定義
 - `reading.ts`：占卜紀錄
 - `user.ts`：使用者型別
+- `credits.ts`：點數常數、點數包、訂閱方案與交易型別
 
 規則：Model 不 import React、Firebase、browser API。
 
@@ -33,6 +34,12 @@ Firebase：
 - `config.ts`：初始化 app、auth、db、functions、googleProvider
 - `auth-service.ts`：Google / Email 登入登出函式
 
+Credits：
+
+- `credits/credit-service.ts`：點數 callable function 與 Firestore user document 即時訂閱
+- 只呼叫 Functions 或訂閱 Firestore，不在前端計算可信任餘額
+- 購買與訂閱目前只建立 checkout 串接點，不在付款前發放點數
+
 Storage：
 
 - `storage-provider.ts`：儲存 provider 介面
@@ -45,6 +52,7 @@ Storage：
 把 Service 包裝成 React hook。
 
 - `useAuth.ts`：全站登入狀態、登入登出 callback、錯誤狀態
+- `useCredits.ts`：登入使用者點數狀態、餘額即時更新、手動 refresh
 - `useTarotSession.ts`：占卜流程狀態機、AI 解讀、追問、紀錄儲存
 
 Controller 可以使用 React hooks，但不回傳 JSX。
@@ -73,9 +81,11 @@ View 不直接 import Firebase SDK、OpenAI SDK、localStorage provider。
 5. `onDrawComplete()` 建立 `AIInterpretationRequest`
 6. `getConfiguredProvider()` 建立 AI provider
 7. 正式環境呼叫 `FunctionsProvider`
-8. Firebase Function 呼叫 OpenAI
-9. 前端顯示 Markdown 解讀
-10. `getStorageProvider(user?.uid)` 儲存紀錄
+8. Firebase Function 驗證登入並扣 5 點
+9. Firebase Function 呼叫 OpenAI
+10. OpenAI 成功後前端顯示 Markdown 解讀
+11. OpenAI 失敗時 Function 自動退還 5 點
+12. `getStorageProvider(user?.uid)` 儲存紀錄
 
 ## AI Provider 分工
 
@@ -113,6 +123,9 @@ Functions：
 
 - `generateTarotReading`
 - `followUpReading`
+- `getCreditBalance`
+- `createCreditPurchase`
+- `createSubscription`
 
 Secret：
 
@@ -127,7 +140,7 @@ firebase functions:secrets:set OPENAI_API_KEY --project mystic-tarot-2026
 部署：
 
 ```bash
-firebase deploy --only functions,hosting --project mystic-tarot-2026 --force
+firebase deploy --only firestore:rules,functions,hosting --project mystic-tarot-2026 --force
 ```
 
 `firebase.json` 有 predeploy：
@@ -138,7 +151,7 @@ npm --prefix "$RESOURCE_DIR" run build
 
 所以部署前會自動編譯 `functions/src` 到 `functions/lib`。
 
-## Auth 與 Storage
+## Auth、Storage 與 Credits
 
 登入狀態由 `useAuthState()` 訂閱 Firebase Auth。
 
@@ -154,6 +167,46 @@ users/{userId}/readings/{readingId}
 ```
 
 這個路徑與 Firestore rules 對齊，避免使用者讀寫別人的紀錄。
+
+點數路徑：
+
+```text
+users/{userId}
+users/{userId}/creditTransactions/{transactionId}
+```
+
+點數規則：
+
+- `users/{userId}` 可由本人讀取，但不能由前端建立、修改或刪除
+- `creditTransactions` 可由本人讀取，不能由前端寫入
+- 100 點新會員贈點、每次扣 5 點、失敗退款都在 Functions transaction 內完成
+- 任何真實付費點數都必須等金流 webhook 驗證成功後，由 Admin SDK 寫入
+
+## 付費方案與定價
+
+每次全新占卜或追問都扣 `QUESTION_CREDIT_COST = 5` 點。
+
+點數包：
+
+- 入門補充包：500 點 / NT$99，約 100 次提問
+- 標準靈感包：1200 點 / NT$199，約 240 次提問
+- 深度探索包：3000 點 / NT$399，約 600 次提問
+
+月訂閱：
+
+- 月光方案：1000 點 / NT$149，約 200 次提問
+- 星辰方案：2500 點 / NT$299，約 500 次提問
+- 神諭方案：6000 點 / NT$599，約 1200 次提問
+
+以 OpenAI `gpt-4.1-mini` 官方價格 input US$0.40 / 1M tokens、output US$1.60 / 1M tokens 估算，1 USD 約 NT$32 時，單次 AI 成本約 NT$0.15 至 NT$0.25。主推 NT$199 點數包與 NT$299 月訂閱，可保留較穩定毛利來覆蓋 Firebase、付款手續費與客服成本。
+
+金流接法：
+
+1. `createCreditPurchase` 或 `createSubscription` 建立付款 session，回傳 `checkoutUrl`
+2. 使用者前往 Stripe、綠界或其他金流完成付款
+3. 金流 webhook 驗證簽章與付款狀態
+4. Admin SDK 在 transaction 中增加點數、寫入 `creditTransactions`
+5. 訂閱方案另需記錄 `subscriptionTier`、`subscriptionStatus` 與下次發點時間
 
 ## UI 與動畫注意事項
 

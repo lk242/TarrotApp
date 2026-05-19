@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { AuthContext, useAuthState } from './controllers/useAuth';
+import { CreditsContext, useCreditState } from './controllers/useCredits';
 import Navbar from './views/components/layout/Navbar';
 import Footer from './views/components/layout/Footer';
 import MysticBackground from './views/components/layout/MysticBackground';
@@ -7,6 +8,7 @@ import HomePage from './views/pages/HomePage';
 import ReadingPage from './views/pages/ReadingPage';
 import HistoryPage from './views/pages/HistoryPage';
 import AboutPage from './views/pages/AboutPage';
+import BillingPage from './views/pages/BillingPage';
 
 /**
  * AppContent 只負責畫面骨架與路由。
@@ -25,6 +27,7 @@ function AppContent() {
             <Route path="/" element={<HomePage />} />
             <Route path="/reading" element={<ReadingPage />} />
             <Route path="/history" element={<HistoryPage />} />
+            <Route path="/billing" element={<BillingPage />} />
             <Route path="/about" element={<AboutPage />} />
           </Routes>
         </main>
@@ -36,11 +39,14 @@ function AppContent() {
 
 export default function App() {
   const authState = useAuthState();
+  const creditState = useCreditState(authState.user);
 
   return (
     /* 全站唯一 Auth provider：避免各頁重複訂閱 Firebase Auth 狀態 */
     <AuthContext.Provider value={authState}>
-      <AppContent />
+      <CreditsContext.Provider value={creditState}>
+        <AppContent />
+      </CreditsContext.Provider>
     </AuthContext.Provider>
   );
 }

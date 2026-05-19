@@ -45,7 +45,7 @@ export class OpenAIProvider implements IAIProvider {
 
   private async chat(
     messages: { role: string; content: string }[],
-    maxTokens = 3000,
+    maxTokens = 1800,
   ): Promise<{ text: string; usage?: { prompt_tokens: number; completion_tokens: number } }> {
     const res = await fetch(API_URL, {
       method: 'POST',
@@ -109,7 +109,7 @@ export class OpenAIProvider implements IAIProvider {
 
 問卜者剛才做了一次塔羅占卜，你已經給出了初步解讀。現在他們想更深入了解某個面向。
 
-請根據原始牌陣和你之前的解讀，針對追問提供更深入、更具體的分析與建議。回應長度至少 400 字，使用 Markdown 格式。
+請根據原始牌陣和你之前的解讀，針對追問提供具體的分析與建議。回應長度約 250 到 350 字，使用 Markdown 格式。
 
 結構：
 ## 🔍 深入解析
@@ -153,7 +153,7 @@ ${request.originalInterpretation.slice(0, 1500)}
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      2000,
+      1000,
     );
 
     const suggestedQuestions = parseSuggestedQuestions(text);

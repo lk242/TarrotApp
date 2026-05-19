@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../../controllers/useAuth';
+import { getLineToken, isLineLoginConfigured } from '../../../services/line/liff-service';
+import {
+  copyCurrentUrl,
+  isGoogleAuthBlockedBrowser,
+  isLineInAppBrowser,
+} from '../../../utils/in-app-browser';
 
 interface Props {
   open: boolean;
@@ -8,7 +14,15 @@ interface Props {
 }
 
 export default function AuthModal({ open, onClose }: Props) {
-  const { user, loginWithGoogle, loginWithEmail, registerWithEmail, error, clearError } = useAuth();
+  const {
+    user,
+    loginWithGoogle,
+    loginWithLine,
+    loginWithEmail,
+    registerWithEmail,
+    error,
+    clearError,
+  } = useAuth();
 
   // 登入成功後自動關閉
   const wasOpen = useRef(false);
@@ -20,6 +34,10 @@ export default function AuthModal({ open, onClose }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [browserNotice, setBrowserNotice] = useState('');
+  const googleAuthBlocked = isGoogleAuthBlockedBrowser();
+  const lineBrowser = isLineInAppBrowser();
+  const lineConfigured = isLineLoginConfigured();
 
   if (!open) return null;
 
@@ -27,20 +45,52 @@ export default function AuthModal({ open, onClose }: Props) {
     e.preventDefault();
     if (!email || !password) return;
     setSubmitting(true);
-    if (mode === 'login') {
-      await loginWithEmail(email, password);
-    } else {
-      await registerWithEmail(email, password);
+    try {
+      if (mode === 'login') {
+        await loginWithEmail(email, password);
+      } else {
+        await registerWithEmail(email, password);
+      }
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
     // 如果成功（user 會更新），關閉 modal
     // error 會由 useAuth 設置
   };
 
   const handleGoogle = async () => {
+    if (googleAuthBlocked) {
+      setBrowserNotice('LINE 內建瀏覽器無法使用 Google 登入。請用右上角選單選擇「以瀏覽器開啟」，或先複製網址到 Chrome / Safari。');
+      return;
+    }
+
     setSubmitting(true);
-    await loginWithGoogle();
-    setSubmitting(false);
+    try {
+      await loginWithGoogle();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLine = async () => {
+    if (!lineConfigured) {
+      setBrowserNotice('LINE 登入尚未設定，請先填入 LIFF ID。');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const tokenInfo = await getLineToken();
+      if (!tokenInfo) return;
+      await loginWithLine(tokenInfo);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    await copyCurrentUrl();
+    setBrowserNotice('網址已複製，請貼到 Chrome 或 Safari 後再使用 Google 登入。');
   };
 
   return (
@@ -69,10 +119,42 @@ export default function AuthModal({ open, onClose }: Props) {
           {mode === 'login' ? '登入以同步你的占卜紀錄' : '創建帳號開始你的占卜之旅'}
         </p>
 
+        {lineConfigured && (
+          <button
+            onClick={handleLine}
+            disabled={submitting}
+            className="mb-4 flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-[#06C755]/60 bg-[#06C755] px-4 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <span className="text-base font-black">LINE</span>
+            {lineBrowser ? '使用 LINE 快速登入' : '使用 LINE 登入'}
+          </button>
+        )}
+
+        {googleAuthBlocked && (
+          <div className="mb-4 rounded-lg border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/10 p-3 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+            <p>
+              LINE 內建瀏覽器會被 Google 阻擋登入。請用右上角選單選擇「以瀏覽器開啟」，或複製網址到 Chrome / Safari。
+            </p>
+            <button
+              type="button"
+              onClick={handleCopyUrl}
+              className="mt-2 cursor-pointer rounded border border-[var(--color-accent-gold)]/50 bg-transparent px-3 py-1.5 text-xs font-bold text-[var(--color-accent-gold)]"
+            >
+              複製目前網址
+            </button>
+          </div>
+        )}
+
+        {browserNotice && (
+          <p className="mb-3 text-xs leading-relaxed text-[var(--color-accent-gold)]">
+            {browserNotice}
+          </p>
+        )}
+
         {/* Google 登入 */}
         <button
           onClick={handleGoogle}
-          disabled={submitting}
+          disabled={submitting || googleAuthBlocked}
           className="mb-4 flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-hover)] disabled:opacity-50"
         >
           <svg width="18" height="18" viewBox="0 0 48 48">

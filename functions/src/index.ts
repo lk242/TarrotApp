@@ -119,6 +119,19 @@ interface AIInterpretationResponse {
   };
 }
 
+interface LineIdTokenPayload {
+  sub?: string;
+  name?: string;
+  picture?: string;
+  aud?: string;
+}
+
+interface LineProfileResponse {
+  userId?: string;
+  displayName?: string;
+  pictureUrl?: string;
+}
+
 interface ChatUsage {
   prompt_tokens: number;
   completion_tokens: number;
@@ -146,6 +159,106 @@ function requireAdmin(email?: string): string {
     throw new HttpsError('permission-denied', '你沒有管理點數的權限');
   }
   return normalizedEmail;
+}
+
+function requireLineChannelId(): string {
+  const channelId = process.env.LINE_LOGIN_CHANNEL_ID ?? '';
+  if (!channelId) {
+    throw new HttpsError('failed-precondition', 'LINE_LOGIN_CHANNEL_ID 尚未設定');
+  }
+  return channelId;
+}
+
+async function verifyLineIdToken(idToken: string): Promise<LineIdTokenPayload> {
+  const channelId = requireLineChannelId();
+  const params = new URLSearchParams();
+  params.set('id_token', idToken);
+  params.set('client_id', channelId);
+
+  const response = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`LINE verify failed (${response.status}):`, errorBody);
+    throw new HttpsError('unauthenticated', `LINE 登入驗證失敗: ${errorBody}`);
+  }
+
+  const payload = (await response.json()) as LineIdTokenPayload;
+  if (!payload.sub) {
+    throw new HttpsError('unauthenticated', 'LINE 登入資料無效：缺少 user id');
+  }
+  if (payload.aud !== channelId) {
+    console.error(`LINE aud mismatch: expected=${channelId}, got=${payload.aud}`);
+    throw new HttpsError('unauthenticated', 'LINE 登入資料無效：channel 不符');
+  }
+
+  return payload;
+}
+
+async function getLineProfileByAccessToken(accessToken: string): Promise<LineIdTokenPayload> {
+  const response = await fetch('https://api.line.me/v2/profile', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`LINE profile API failed (${response.status}):`, errorBody);
+    throw new HttpsError('unauthenticated', 'LINE access token 驗證失敗');
+  }
+
+  const profile = (await response.json()) as LineProfileResponse;
+  if (!profile.userId) {
+    throw new HttpsError('unauthenticated', 'LINE 使用者資料無效');
+  }
+
+  return {
+    sub: profile.userId,
+    name: profile.displayName,
+    picture: profile.pictureUrl,
+  };
+}
+
+async function ensureLineFirebaseUser(payload: LineIdTokenPayload): Promise<string> {
+  if (!payload.sub) {
+    throw new HttpsError('unauthenticated', 'LINE 使用者資料缺少 user id');
+  }
+
+  const uid = `line:${payload.sub}`;
+
+  try {
+    const user = await adminAuth.getUser(uid);
+    const needsUpdate =
+      (payload.name && user.displayName !== payload.name) ||
+      (payload.picture && user.photoURL !== payload.picture);
+
+    if (needsUpdate) {
+      await adminAuth.updateUser(uid, {
+        displayName: payload.name,
+        photoURL: payload.picture,
+      });
+    }
+  } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'auth/user-not-found'
+    ) {
+      await adminAuth.createUser({
+        uid,
+        displayName: payload.name,
+        photoURL: payload.picture,
+      });
+    } else {
+      throw error;
+    }
+  }
+
+  return uid;
 }
 
 function toMillis(value: unknown): number | undefined {
@@ -474,7 +587,7 @@ function buildSystemPrompt(locale: Locale): string {
   if (locale === 'zh-TW') {
     return `你是一位擁有深厚塔羅知識、擅長心靈引導的資深占卜師。你的解讀風格兼具神秘感與實用性，讓問卜者感到被理解並獲得清晰的方向。
 
-你必須提供深度且完整的解讀，回應長度至少 800 字。請嚴格依照以下 Markdown 格式結構回應：
+你必須提供清楚且有深度的解讀，回應長度約 450 到 650 字。請嚴格依照以下 Markdown 格式結構回應：
 
 ## 牌陣總覽
 用 2-3 句話概述這次牌陣傳達的核心能量與整體氛圍。
@@ -635,7 +748,7 @@ export const generateTarotReading = onCall(
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        3000,
+        1800,
       );
 
       return toResponse(result.text, result.usage);
@@ -663,7 +776,7 @@ export const followUpReading = onCall(
 
     const systemPrompt = `你是一位資深塔羅占卜師，正在為問卜者進行深入的追問解讀。
 
-請根據原始牌陣和之前解讀，針對追問提供更深入、更具體的分析與建議。回應長度至少 400 字，使用 Markdown 格式。
+請根據原始牌陣和之前解讀，針對追問提供具體的分析與建議。回應長度約 250 到 350 字，使用 Markdown 格式。
 
 結構：
 ## 深入解析
@@ -698,7 +811,7 @@ ${data.originalInterpretation.slice(0, 1500)}
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        2000,
+        1000,
       );
 
       return toResponse(result.text, result.usage);
@@ -708,6 +821,29 @@ ${data.originalInterpretation.slice(0, 1500)}
     }
   },
 );
+
+export const signInWithLine = onCall({ region: REGION }, async (request) => {
+  const idToken = String(request.data?.idToken ?? '').trim();
+  const accessToken = String(request.data?.accessToken ?? '').trim();
+
+  if (!idToken && !accessToken) {
+    throw new HttpsError('invalid-argument', '缺少 LINE 登入憑證');
+  }
+
+  // 優先用 ID token 驗證；若沒有則用 access token 取 profile
+  const payload = idToken
+    ? await verifyLineIdToken(idToken)
+    : await getLineProfileByAccessToken(accessToken);
+
+  const uid = await ensureLineFirebaseUser(payload);
+  const customToken = await adminAuth.createCustomToken(uid, {
+    provider: 'line',
+    lineSub: payload.sub,
+  });
+
+  await ensureCreditAccount(uid);
+  return { customToken };
+});
 
 export const getCreditBalance = onCall({ region: REGION }, async (request) => {
   const uid = requireUid(request.auth?.uid);

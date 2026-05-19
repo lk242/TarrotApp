@@ -34,6 +34,6 @@ export function createAIProvider(type: AIProviderType): IAIProvider {
 
 export function getConfiguredProvider(): IAIProvider {
   // Vite 會在 build 時替換 import.meta.env；部署正式站時請使用 VITE_AI_PROVIDER=functions。
-  const type = (import.meta.env.VITE_AI_PROVIDER as AIProviderType) || 'mock';
+  const type = (import.meta.env.VITE_AI_PROVIDER as AIProviderType | undefined) || 'functions';
   return createAIProvider(type);
 }

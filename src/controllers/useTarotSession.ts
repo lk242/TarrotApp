@@ -7,6 +7,7 @@ import { performReading } from '../services/tarot-engine';
 import { getConfiguredProvider } from '../services/ai/ai-factory';
 import { getStorageProvider } from '../services/storage/storage-factory';
 import { useAuth } from './useAuth';
+import { useCredits } from './useCredits';
 
 export type ReadingPhase =
   | 'idle'
@@ -29,6 +30,7 @@ export interface FollowUpEntry {
  */
 export function useTarotSession(spreadType: SpreadType) {
   const { user } = useAuth();
+  const { refresh: refreshCredits } = useCredits();
   const [phase, setPhase] = useState<ReadingPhase>('idle');
   const [question, setQuestion] = useState('');
   const [drawnCards, setDrawnCards] = useState<DrawnCard[]>([]);
@@ -86,6 +88,7 @@ export function useTarotSession(spreadType: SpreadType) {
         summary: result.summary,
       };
       storage.saveReading(reading).catch(console.error);
+      refreshCredits().catch(console.error);
 
       setPhase('complete');
     } catch (err) {
@@ -94,7 +97,7 @@ export function useTarotSession(spreadType: SpreadType) {
       setError(message);
       setPhase('idle');
     }
-  }, [spreadType, user]);
+  }, [refreshCredits, spreadType, user]);
 
   /** 追問 — 基於當前牌陣繼續深入 */
   const askFollowUp = useCallback(
@@ -122,6 +125,7 @@ export function useTarotSession(spreadType: SpreadType) {
           { question: followUpQuestion, answer: result.interpretation },
         ]);
         setSuggestedQuestions(result.suggestedQuestions || []);
+        refreshCredits().catch(console.error);
       } catch (err) {
         console.error('追問失敗:', err);
         setError(err instanceof Error ? err.message : '追問失敗，請稍後再試');
@@ -129,7 +133,7 @@ export function useTarotSession(spreadType: SpreadType) {
         setIsFollowingUp(false);
       }
     },
-    [isFollowingUp],
+    [isFollowingUp, refreshCredits],
   );
 
   const reset = useCallback(() => {

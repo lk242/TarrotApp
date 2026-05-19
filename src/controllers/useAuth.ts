@@ -2,17 +2,20 @@ import { useState, useEffect, useCallback, createContext, useContext } from 'rea
 import type { User } from 'firebase/auth';
 import {
   signInWithGoogle,
+  signInWithLine,
   signInWithEmail,
   signUpWithEmail,
   signOut,
   onAuthChanged,
 } from '../services/firebase/auth-service';
+import { tryAutoLineLogin } from '../services/line/liff-service';
 
 interface AuthState {
   user: User | null;
   loading: boolean;
   error: string | null;
   loginWithGoogle: () => Promise<void>;
+  loginWithLine: (tokenInfo: { type: 'id_token' | 'access_token'; token: string }) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -42,12 +45,24 @@ export function useAuthState(): AuthState {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Firebase Auth 狀態是非同步恢復的；loading 會在第一次回報後關閉。
     const unsub = onAuthChanged((u) => {
       setUser(u);
       setLoading(false);
     });
     return unsub;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    tryAutoLineLogin().then(async (tokenInfo) => {
+      if (cancelled || !tokenInfo) return;
+      try {
+        await signInWithLine(tokenInfo);
+      } catch {
+        // LINE auto-login failed silently; user can retry manually
+      }
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
@@ -57,6 +72,15 @@ export function useAuthState(): AuthState {
     } catch (e: unknown) {
       // 保留 Firebase 原始訊息，方便部署後快速定位 OAuth / 網域 / popup 問題。
       setError(e instanceof Error ? e.message : '登入失敗');
+    }
+  }, []);
+
+  const loginWithLine = useCallback(async (tokenInfo: { type: 'id_token' | 'access_token'; token: string }) => {
+    setError(null);
+    try {
+      await signInWithLine(tokenInfo);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'LINE 登入失敗');
     }
   }, []);
 
@@ -85,5 +109,15 @@ export function useAuthState(): AuthState {
 
   const clearError = useCallback(() => setError(null), []);
 
-  return { user, loading, error, loginWithGoogle, loginWithEmail, registerWithEmail, logout, clearError };
+  return {
+    user,
+    loading,
+    error,
+    loginWithGoogle,
+    loginWithLine,
+    loginWithEmail,
+    registerWithEmail,
+    logout,
+    clearError,
+  };
 }

@@ -120,6 +120,29 @@ export default function ReadingPage() {
 
   return (
     <div className="flex flex-1 flex-col items-center px-6 py-20">
+      {(phase === 'interpreting' || isFollowingUp) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 text-center shadow-[var(--shadow-card)]">
+            <div className="mb-4 flex justify-center gap-2">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="h-2.5 w-2.5 rounded-full bg-[var(--color-accent-gold)]"
+                  animate={{ opacity: [0.25, 1, 0.25], scale: [0.85, 1.25, 0.85] }}
+                  transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.25 }}
+                />
+              ))}
+            </div>
+            <p className="text-sm font-bold text-[var(--color-text-primary)]">
+              {isFollowingUp ? '正在解析追問' : '正在產生塔羅解讀'}
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+              請稍候，結果完成後會自動顯示。
+            </p>
+          </div>
+        </div>
+      )}
+
       <h1 className="mb-2 text-2xl font-bold text-[var(--color-accent-gold)] animate-fade-in">
         {spread.name}
       </h1>

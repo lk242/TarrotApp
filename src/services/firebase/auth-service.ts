@@ -1,12 +1,24 @@
 import {
   signInWithPopup,
+  signInWithCustomToken,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User,
 } from 'firebase/auth';
-import { auth, googleProvider } from './config';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions, googleProvider } from './config';
+
+interface LineSignInRequest {
+  idToken?: string;
+  accessToken?: string;
+}
+
+const signInWithLineCallable = httpsCallable<LineSignInRequest, { customToken: string }>(
+  functions,
+  'signInWithLine',
+);
 
 /**
  * Firebase Auth service。
@@ -19,6 +31,17 @@ import { auth, googleProvider } from './config';
 export async function signInWithGoogle(): Promise<User> {
   const result = await signInWithPopup(auth, googleProvider);
   return result.user;
+}
+
+/** LINE 登入 — 支援 ID token 或 access token */
+export async function signInWithLine(tokenInfo: { type: 'id_token' | 'access_token'; token: string }): Promise<User> {
+  const payload: LineSignInRequest =
+    tokenInfo.type === 'id_token'
+      ? { idToken: tokenInfo.token }
+      : { accessToken: tokenInfo.token };
+  const result = await signInWithLineCallable(payload);
+  const credential = await signInWithCustomToken(auth, result.data.customToken);
+  return credential.user;
 }
 
 /** Email 註冊 */

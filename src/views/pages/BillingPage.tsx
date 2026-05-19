@@ -18,6 +18,24 @@ type PurchaseTarget =
   | { type: 'package'; id: CreditPackageId }
   | { type: 'subscription'; id: Exclude<SubscriptionTier, 'none'> };
 
+function submitCheckoutForm(action: string, fields: Array<{ name: string; value: string }>) {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = action;
+  form.style.display = 'none';
+
+  fields.forEach((field) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = field.name;
+    input.value = field.value;
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
 export default function BillingPage() {
   const { user } = useAuth();
   const { balance, loading, error } = useCredits();
@@ -29,6 +47,10 @@ export default function BillingPage() {
     setMessage('');
     try {
       const result = await createCreditPurchaseCallable({ packageId });
+      if (result.data.checkout) {
+        submitCheckoutForm(result.data.checkout.action, result.data.checkout.fields);
+        return;
+      }
       if (result.data.checkoutUrl) {
         window.location.assign(result.data.checkoutUrl);
         return;

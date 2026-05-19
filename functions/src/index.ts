@@ -1,4 +1,5 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { createHash, randomBytes } from 'node:crypto';
+import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
 import { FieldValue, Timestamp, getFirestore, type DocumentData } from 'firebase-admin/firestore';
@@ -16,6 +17,11 @@ const OPENAI_MODEL = 'gpt-4.1-mini';
 const REGION = 'asia-east1';
 const WELCOME_CREDITS = 100;
 const QUESTION_CREDIT_COST = 5;
+const APP_BASE_URL = 'https://mystic-tarot-2026.web.app';
+const ECPAY_CHECKOUT_URL = 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5';
+const ECPAY_MERCHANT_ID = '3002607';
+const ECPAY_HASH_KEY = 'pwFHCqoQZGmho4w6';
+const ECPAY_HASH_IV = 'EkRm7iFT261dpevs';
 
 const db = getFirestore();
 
@@ -36,6 +42,21 @@ interface CreditProfile {
 interface CreditProduct {
   credits: number;
   priceTwd: number;
+}
+
+interface EcpayCheckoutField {
+  name: string;
+  value: string;
+}
+
+interface PaymentOrder {
+  userId: string;
+  type: 'credit_package';
+  packageId: CreditPackageId;
+  credits: number;
+  amountTwd: number;
+  status: 'pending' | 'paid' | 'failed' | 'expired';
+  provider: 'ecpay';
 }
 
 const CREDIT_PACKAGES: Record<CreditPackageId, CreditProduct> = {
@@ -127,6 +148,124 @@ function normalizeCreditProfile(userId: string, data: DocumentData): CreditProfi
     subscriptionStatus: data.subscriptionStatus ?? 'none',
     updatedAt: toMillis(data.updatedAt),
   };
+}
+
+function formatTaipeiDate(date = new Date()): Record<string, string> {
+  return new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  })
+    .formatToParts(date)
+    .reduce<Record<string, string>>((parts, part) => {
+      parts[part.type] = part.value;
+      return parts;
+    }, {});
+}
+
+function toEcpayDate(date = new Date()): string {
+  const parts = formatTaipeiDate(date);
+  return `${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+}
+
+function createMerchantTradeNo(): string {
+  // 綠界 MerchantTradeNo 限 20 碼英數字且不可重複。
+  return `T${Date.now().toString(36).toUpperCase()}${randomBytes(3).toString('hex').toUpperCase()}`.slice(
+    0,
+    20,
+  );
+}
+
+function ecpayEncode(value: string): string {
+  return encodeURIComponent(value)
+    .toLowerCase()
+    .replace(/%20/g, '+')
+    .replace(/%21/g, '!')
+    .replace(/%28/g, '(')
+    .replace(/%29/g, ')')
+    .replace(/%2a/g, '*')
+    .replace(/%2d/g, '-')
+    .replace(/%2e/g, '.')
+    .replace(/%5f/g, '_');
+}
+
+function createEcpayCheckMacValue(params: Record<string, string | number>): string {
+  const serialized = Object.entries(params)
+    .filter(([key]) => key !== 'CheckMacValue')
+    .sort(([a], [b]) => a.localeCompare(b, 'en'))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+  const raw = `HashKey=${ECPAY_HASH_KEY}&${serialized}&HashIV=${ECPAY_HASH_IV}`;
+  return createHash('sha256').update(ecpayEncode(raw)).digest('hex').toUpperCase();
+}
+
+function createEcpayCheckoutFields(params: Record<string, string | number>): EcpayCheckoutField[] {
+  const signedParams = {
+    ...params,
+    CheckMacValue: createEcpayCheckMacValue(params),
+  };
+  return Object.entries(signedParams).map(([name, value]) => ({ name, value: String(value) }));
+}
+
+function getRequestBody(request: { body?: unknown; rawBody?: Buffer }): Record<string, string> {
+  if (request.body && typeof request.body === 'object') {
+    return Object.fromEntries(
+      Object.entries(request.body).map(([key, value]) => [key, String(value)]),
+    );
+  }
+
+  const raw = request.rawBody?.toString('utf8') ?? '';
+  return Object.fromEntries(new URLSearchParams(raw).entries());
+}
+
+async function grantPurchasedCredits(orderId: string, body: Record<string, string>): Promise<void> {
+  const orderRef = db.doc(`paymentOrders/${orderId}`);
+
+  await db.runTransaction(async (transaction) => {
+    const orderSnapshot = await transaction.get(orderRef);
+    const order = orderSnapshot.data() as PaymentOrder | undefined;
+
+    if (!orderSnapshot.exists || !order) {
+      throw new Error('payment order not found');
+    }
+
+    if (order.status === 'paid') {
+      return;
+    }
+
+    if (order.status !== 'pending') {
+      throw new Error(`payment order is ${order.status}`);
+    }
+
+    if (Number(body.TradeAmt) !== order.amountTwd) {
+      throw new Error('trade amount mismatch');
+    }
+
+    const userRef = db.doc(`users/${order.userId}`);
+    transaction.update(orderRef, {
+      status: 'paid',
+      providerTradeNo: body.TradeNo ?? '',
+      paidAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      notifyPayload: body,
+    });
+    transaction.update(userRef, {
+      balance: FieldValue.increment(order.credits),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(userRef.collection('creditTransactions').doc(), {
+      amount: order.credits,
+      type: 'purchase',
+      reason: `綠界點數包付款：${order.packageId}`,
+      paymentOrderId: orderId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  });
 }
 
 async function ensureCreditAccount(uid: string): Promise<CreditProfile> {
@@ -552,9 +691,104 @@ export const createCreditPurchase = onCall({ region: REGION }, async (request) =
   }
 
   const product = CREDIT_PACKAGES[packageId];
-  return {
-    message: `已選擇 ${product.credits} 點 / NT$${product.priceTwd}。金流尚未串接，接上 Stripe 或綠界 checkout 後會在 webhook 驗證付款再入點。`,
+  const orderId = createMerchantTradeNo();
+  const orderRef = db.doc(`paymentOrders/${orderId}`);
+  await orderRef.create({
+    userId: uid,
+    type: 'credit_package',
+    packageId,
+    credits: product.credits,
+    amountTwd: product.priceTwd,
+    status: 'pending',
+    provider: 'ecpay',
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  const params = {
+    MerchantID: ECPAY_MERCHANT_ID,
+    MerchantTradeNo: orderId,
+    MerchantTradeDate: toEcpayDate(),
+    PaymentType: 'aio',
+    TotalAmount: product.priceTwd,
+    TradeDesc: 'MysticTarotCredits',
+    ItemName: `神秘塔羅${product.credits}點`,
+    ReturnURL: `https://${REGION}-mystic-tarot-2026.cloudfunctions.net/ecpayNotify`,
+    ChoosePayment: 'ALL',
+    EncryptType: 1,
+    ClientBackURL: `${APP_BASE_URL}/billing?payment=pending&orderId=${orderId}`,
+    CustomField1: uid.slice(0, 50),
+    CustomField2: packageId,
   };
+
+  return {
+    orderId,
+    checkout: {
+      action: ECPAY_CHECKOUT_URL,
+      fields: createEcpayCheckoutFields(params),
+    },
+    message: `已建立綠界測試訂單 ${orderId}，付款成功並收到綠界 ReturnURL 通知後會自動入點。`,
+  };
+});
+
+export const ecpayNotify = onRequest({ region: REGION }, async (request, response) => {
+  if (request.method !== 'POST') {
+    response.status(405).send('0|Method Not Allowed');
+    return;
+  }
+
+  const body = getRequestBody(request);
+  const receivedCheckMacValue = body.CheckMacValue;
+  const expectedCheckMacValue = createEcpayCheckMacValue(body);
+
+  if (!receivedCheckMacValue || receivedCheckMacValue !== expectedCheckMacValue) {
+    response.status(400).send('0|CheckMacValueError');
+    return;
+  }
+
+  const orderId = body.MerchantTradeNo;
+  if (!orderId) {
+    response.status(400).send('0|Missing MerchantTradeNo');
+    return;
+  }
+
+  const orderRef = db.doc(`paymentOrders/${orderId}`);
+
+  try {
+    if (body.SimulatePaid === '1') {
+      await orderRef.set(
+        {
+          status: 'pending',
+          lastSimulatedNotifyAt: FieldValue.serverTimestamp(),
+          notifyPayload: body,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      response.status(200).send('1|OK');
+      return;
+    }
+
+    if (body.RtnCode === '1') {
+      await grantPurchasedCredits(orderId, body);
+      response.status(200).send('1|OK');
+      return;
+    }
+
+    await orderRef.set(
+      {
+        status: 'failed',
+        failedAt: FieldValue.serverTimestamp(),
+        notifyPayload: body,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+    response.status(200).send('1|OK');
+  } catch (error) {
+    console.error('ECPay notify failed:', error);
+    response.status(500).send('0|ServerError');
+  }
 });
 
 export const createSubscription = onCall({ region: REGION }, async (request) => {

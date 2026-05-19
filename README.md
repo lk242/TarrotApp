@@ -14,7 +14,8 @@ https://mystic-tarot-2026.web.app
 - AI 追問功能，保留原始牌陣上下文
 - Firebase Auth：Google 登入、Email 註冊/登入
 - 點數制度：新會員贈送 100 點，每次全新占卜或追問扣 5 點
-- 點數包與月訂閱方案頁，金流 checkout/webhook 保留串接點
+- 綠界 ECPay 測試環境點數包 checkout 與付款通知入點
+- 月訂閱方案頁，定期定額金流保留後續串接點
 - 已登入使用者使用 Firestore 同步占卜紀錄
 - 匿名使用者使用 localStorage 保存本機紀錄
 
@@ -64,6 +65,9 @@ VITE_AI_PROVIDER=functions
 
 - `generateTarotReading`
 - `followUpReading`
+- `getCreditBalance`
+- `createCreditPurchase`
+- `createSubscription`
 
 Functions 端透過 Firebase Secret Manager 讀取：
 
@@ -72,6 +76,8 @@ OPENAI_API_KEY
 ```
 
 因此公開 bundle 不包含 `sk-` key。
+
+綠界正式金鑰同樣不能放前端。目前程式只內建綠界官方公開 sandbox 測試資料；正式收款前需改為 Firebase Secret 注入正式 MerchantID / HashKey / HashIV。
 
 ## 點數與付費設計
 
@@ -98,7 +104,15 @@ OPENAI_API_KEY
 - 以 1 USD 約 NT$32 估算，一次占卜或追問 AI 成本約 NT$0.15 至 NT$0.25
 - 推薦主力方案為 NT$199 點數包與 NT$299 月訂閱，能保留毛利吸收 Firebase、付款手續費與客服成本
 
-金流尚未正式串接。`createCreditPurchase` 與 `createSubscription` 目前只回傳提示訊息，不會發放付費點數；正式接 Stripe、綠界或其他金流後，必須由 webhook 驗證付款成功再入點。
+綠界一次性點數包已接測試環境：
+
+- `createCreditPurchase` 會建立 `paymentOrders/{orderId}` pending 訂單
+- 前端收到綠界 checkout 表單欄位後，以 POST 導轉到綠界付款頁
+- `ecpayNotify` 接收綠界 `ReturnURL` server-to-server 通知
+- webhook 驗證 `CheckMacValue`、訂單金額與處理狀態後才入點
+- 綠界測試後台的「模擬付款」通知含 `SimulatePaid=1`，系統只記錄通知，不會入點
+
+訂閱尚未正式串接。`createSubscription` 目前仍只回傳提示訊息；等一次性點數包流程穩定後，再接綠界定期定額。
 
 ## 環境變數
 
@@ -164,6 +178,11 @@ match /users/{userId} {
     allow read: if request.auth != null && request.auth.uid == userId;
     allow write: if false;
   }
+}
+
+match /paymentOrders/{orderId} {
+  allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+  allow create, update, delete: if false;
 }
 ```
 

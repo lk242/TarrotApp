@@ -38,7 +38,8 @@ Credits：
 
 - `credits/credit-service.ts`：點數 callable function 與 Firestore user document 即時訂閱
 - 只呼叫 Functions 或訂閱 Firestore，不在前端計算可信任餘額
-- 購買與訂閱目前只建立 checkout 串接點，不在付款前發放點數
+- 購買點數包會取得綠界 checkout 表單欄位，前端用 POST 導轉付款頁
+- 訂閱目前只保留 checkout 串接點，不在付款前發放點數
 
 Storage：
 
@@ -126,6 +127,7 @@ Functions：
 - `getCreditBalance`
 - `createCreditPurchase`
 - `createSubscription`
+- `ecpayNotify`
 
 Secret：
 
@@ -151,6 +153,29 @@ npm --prefix "$RESOURCE_DIR" run build
 
 所以部署前會自動編譯 `functions/src` 到 `functions/lib`。
 
+### 綠界 ECPay
+
+目前一次性點數包已接綠界測試環境。
+
+```text
+BillingPage
+  -> createCreditPurchase callable
+  -> paymentOrders/{orderId} pending
+  -> 前端 POST 表單導轉綠界測試付款頁
+  -> 綠界 ReturnURL 呼叫 ecpayNotify
+  -> 驗證 CheckMacValue / 金額 / 訂單狀態
+  -> transaction 入點並寫 creditTransactions
+```
+
+重要規則：
+
+- `ReturnURL` 是後端 webhook，收到付款結果後必須回覆 `1|OK`
+- `ClientBackURL` 只負責讓使用者回到網站，不可用來入點
+- `OrderResultURL` 是前端付款結果，不可作為付款成功依據
+- 綠界測試後台「模擬付款」會帶 `SimulatePaid=1`，目前只記錄通知，不會入點
+- webhook 重送時若訂單已是 `paid`，transaction 會直接跳過，避免重複入點
+- 正式上線前需將官方測試 MerchantID / HashKey / HashIV 改為正式資料，並改用 Firebase Secret
+
 ## Auth、Storage 與 Credits
 
 登入狀態由 `useAuthState()` 訂閱 Firebase Auth。
@@ -173,12 +198,14 @@ users/{userId}/readings/{readingId}
 ```text
 users/{userId}
 users/{userId}/creditTransactions/{transactionId}
+paymentOrders/{orderId}
 ```
 
 點數規則：
 
 - `users/{userId}` 可由本人讀取，但不能由前端建立、修改或刪除
 - `creditTransactions` 可由本人讀取，不能由前端寫入
+- `paymentOrders` 可由本人讀取，不能由前端寫入
 - 100 點新會員贈點、每次扣 5 點、失敗退款都在 Functions transaction 內完成
 - 任何真實付費點數都必須等金流 webhook 驗證成功後，由 Admin SDK 寫入
 
@@ -200,11 +227,19 @@ users/{userId}/creditTransactions/{transactionId}
 
 以 OpenAI `gpt-4.1-mini` 官方價格 input US$0.40 / 1M tokens、output US$1.60 / 1M tokens 估算，1 USD 約 NT$32 時，單次 AI 成本約 NT$0.15 至 NT$0.25。主推 NT$199 點數包與 NT$299 月訂閱，可保留較穩定毛利來覆蓋 Firebase、付款手續費與客服成本。
 
-金流接法：
+一次性點數包金流接法：
 
-1. `createCreditPurchase` 或 `createSubscription` 建立付款 session，回傳 `checkoutUrl`
-2. 使用者前往 Stripe、綠界或其他金流完成付款
-3. 金流 webhook 驗證簽章與付款狀態
+1. `createCreditPurchase` 建立 pending order，回傳綠界 checkout action 與 hidden fields
+2. 前端動態建立 form，以 POST 導轉到綠界
+3. 綠界 `ReturnURL` 呼叫 `ecpayNotify`
+4. `ecpayNotify` 驗證 CheckMacValue、金額與付款狀態
+5. Admin SDK 在 transaction 中增加點數、寫入 `creditTransactions`
+
+訂閱金流接法：
+
+1. `createSubscription` 建立定期定額付款 session
+2. 綠界定期定額付款結果通知 webhook 驗證簽章與付款狀態
+3. 記錄訂閱方案、狀態與續扣週期
 4. Admin SDK 在 transaction 中增加點數、寫入 `creditTransactions`
 5. 訂閱方案另需記錄 `subscriptionTier`、`subscriptionStatus` 與下次發點時間
 

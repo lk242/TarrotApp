@@ -10,7 +10,15 @@ export const getCreditBalanceCallable = httpsCallable<void, CreditProfile>(
 
 export const createCreditPurchaseCallable = httpsCallable<
   { packageId: CreditPackageId },
-  { checkoutUrl?: string; message: string }
+  {
+    orderId?: string;
+    checkout?: {
+      action: string;
+      fields: Array<{ name: string; value: string }>;
+    };
+    checkoutUrl?: string;
+    message: string;
+  }
 >(functions, 'createCreditPurchase');
 
 export const createSubscriptionCallable = httpsCallable<

@@ -102,10 +102,17 @@ interface AIInterpretationRequest {
   locale: Locale;
 }
 
+interface FollowUpCard {
+  card: { name: string; nameEn: string; keywords: string[]; reversedKeywords: string[] };
+  isReversed: boolean;
+  position: string;
+}
+
 interface AIFollowUpRequest {
   originalRequest: AIInterpretationRequest;
   originalInterpretation: string;
   followUpQuestion: string;
+  followUpCard?: FollowUpCard;
   locale: Locale;
 }
 
@@ -774,12 +781,24 @@ export const followUpReading = onCall(
       )
       .join('\n');
 
+    // 追問新牌描述
+    const followUpCard = data.followUpCard;
+    const newCardDescription = followUpCard
+      ? `\n**追問指引牌：** ${followUpCard.card.name}（${followUpCard.card.nameEn}）— ${followUpCard.isReversed ? '逆位' : '正位'}\n關鍵字：${followUpCard.isReversed ? followUpCard.card.reversedKeywords.join('、') : followUpCard.card.keywords.join('、')}`
+      : '';
+
     const systemPrompt = `你是一位資深塔羅占卜師，正在為問卜者進行深入的追問解讀。
 
-請根據原始牌陣和之前解讀，針對追問提供具體的分析與建議。回應長度約 250 到 350 字，使用 Markdown 格式。
+問卜者針對原始牌陣提出了追問，你為他額外抽了一張「追問指引牌」來回應。
+請根據原始牌陣背景、之前的解讀，以及這張新抽的追問指引牌，針對追問提供具體的分析與建議。
+
+重點：解讀應以追問指引牌為核心，結合原始牌陣的脈絡來回答問卜者的追問。
+
+回應長度約 300 到 400 字，使用 Markdown 格式。
 
 結構：
-## 深入解析
+## 追問指引牌：{牌名}（{正/逆位}）
+## 延伸解析
 ## 具體行動方案
 ## 寄語
 
@@ -791,7 +810,7 @@ export const followUpReading = onCall(
 -->`;
 
     const userPrompt = `**原始問題：** ${data.originalRequest.question}
-**牌陣中的牌：**
+**原始牌陣：**
 ${cardsDescription}
 
 **之前的解讀摘要：**
@@ -800,8 +819,9 @@ ${data.originalInterpretation.slice(0, 1500)}
 ---
 
 **問卜者的追問：** ${data.followUpQuestion}
+${newCardDescription}
 
-請針對這個追問提供深入解讀。`;
+請以這張追問指引牌為核心，結合原始牌陣脈絡，針對追問提供深入解讀。`;
 
     await chargeQuestionCredits(uid, '占卜追問');
 

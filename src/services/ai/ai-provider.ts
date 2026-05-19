@@ -22,6 +22,11 @@ export interface AIFollowUpRequest {
   originalRequest: AIInterpretationRequest;
   originalInterpretation: string;
   followUpQuestion: string;
+  followUpCard: {
+    card: { name: string; nameEn: string; keywords: string[]; reversedKeywords: string[] };
+    isReversed: boolean;
+    position: string;
+  };
   locale: 'zh-TW' | 'en';
 }
 

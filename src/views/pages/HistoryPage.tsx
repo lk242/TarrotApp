@@ -104,13 +104,24 @@ function HistoryCard({
   });
 
   const interpretationHtml = useMemo(
-    // 只在展開時轉 Markdown，避免列表初始渲染時解析所有歷史紀錄。
     () =>
       isExpanded && reading.interpretation
         ? (marked.parse(reading.interpretation, { async: false }) as string)
         : '',
     [isExpanded, reading.interpretation],
   );
+
+  const followUpHtmls = useMemo(
+    () =>
+      isExpanded && reading.followUps?.length
+        ? reading.followUps.map((fu) =>
+            marked.parse(fu.answer, { async: false }) as string,
+          )
+        : [],
+    [isExpanded, reading.followUps],
+  );
+
+  const followUpCount = reading.followUps?.length || 0;
 
   return (
     <motion.div
@@ -126,10 +137,15 @@ function HistoryCard({
           className="flex flex-1 cursor-pointer items-center gap-4 bg-transparent text-left transition-colors"
         >
           <div className="flex-1 min-w-0">
-            <div className="mb-1 flex items-center gap-2">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
               <span className="rounded bg-[var(--color-accent-purple)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent-purple-light)]">
                 {spread?.name || reading.spreadType}
               </span>
+              {followUpCount > 0 && (
+                <span className="rounded bg-[var(--color-accent-gold)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent-gold)]">
+                  +{followUpCount} 追問
+                </span>
+              )}
               <span className="text-xs text-[var(--color-text-muted)]">
                 {dateStr} {timeStr}
               </span>
@@ -169,19 +185,61 @@ function HistoryCard({
       {/* 展開內容 */}
       {isExpanded && (
         <div className="border-t border-[var(--color-border)] px-5 pt-4 pb-5 animate-fade-in">
-          {/* 牌面 */}
+          {/* 原始牌面 */}
           <div className="mb-5 flex flex-wrap justify-center gap-3">
             {reading.drawnCards.map((dc) => (
               <CardFace key={dc.card.id} drawnCard={dc} className="!w-28" />
             ))}
           </div>
 
-          {/* 解讀 */}
+          {/* 原始解讀 */}
           <div
             className="interpretation-panel rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-5"
             dangerouslySetInnerHTML={{ __html: interpretationHtml }}
           />
 
+          {/* 追問紀錄 */}
+          {reading.followUps && reading.followUps.length > 0 && (
+            <div className="mt-6 space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-[var(--color-border)]" />
+                <span className="text-xs font-medium text-[var(--color-accent-gold)]">
+                  追問紀錄
+                </span>
+                <div className="h-px flex-1 bg-[var(--color-border)]" />
+              </div>
+
+              {reading.followUps.map((fu, fuIdx) => (
+                <div key={fuIdx} className="space-y-3">
+                  {/* 追問問題 */}
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 text-xs text-[var(--color-accent-gold)]">Q{fuIdx + 1}</span>
+                    <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                      {fu.question}
+                    </p>
+                  </div>
+
+                  {/* 追問指引牌 */}
+                  {fu.drawnCard && (
+                    <div className="flex justify-center">
+                      <div className="text-center">
+                        <p className="mb-2 text-xs text-[var(--color-text-muted)]">追問指引牌</p>
+                        <CardFace drawnCard={fu.drawnCard} className="!w-24" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 追問解讀 */}
+                  {followUpHtmls[fuIdx] && (
+                    <div
+                      className="interpretation-panel rounded-lg border border-[var(--color-accent-gold)]/20 bg-[var(--color-bg-secondary)] p-5"
+                      dangerouslySetInnerHTML={{ __html: followUpHtmls[fuIdx] }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </motion.div>

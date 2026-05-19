@@ -107,6 +107,7 @@ export default function ReadingPage() {
       followUps.map((f) => ({
         question: f.question,
         html: marked.parse(f.answer, { async: false }) as string,
+        drawnCard: f.drawnCard,
       })),
     [followUps],
   );
@@ -327,7 +328,14 @@ export default function ReadingPage() {
 
           {/* === 追問對話區 === */}
           {followUpHtmls.length > 0 && (
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-6">
+              {/* 追問分隔線 */}
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-[var(--color-border)]" />
+                <span className="text-xs font-medium text-[var(--color-accent-gold)]">追問延伸</span>
+                <div className="h-px flex-1 bg-[var(--color-border)]" />
+              </div>
+
               {followUpHtmls.map((f, i) => (
                 <div key={i} className="animate-fade-in-up">
                   {/* 使用者追問 */}
@@ -336,9 +344,23 @@ export default function ReadingPage() {
                       {f.question}
                     </div>
                   </div>
+
+                  {/* 追問指引牌 */}
+                  {f.drawnCard && (
+                    <div className="mb-4 flex justify-center animate-fade-in">
+                      <div className="text-center">
+                        <p className="mb-2 text-xs text-[var(--color-accent-gold)]">✦ 追問指引牌 ✦</p>
+                        <CardFace drawnCard={f.drawnCard} className="!w-32" />
+                        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                          {f.drawnCard.card.name} — {f.drawnCard.isReversed ? '逆位' : '正位'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* AI 回覆 */}
                   <div
-                    className="interpretation-panel rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 md:p-6 shadow-[var(--shadow-card)]"
+                    className="interpretation-panel rounded-xl border border-[var(--color-accent-gold)]/20 bg-[var(--color-bg-card)] p-5 md:p-6 shadow-[var(--shadow-card)]"
                   >
                     <div
                       className="max-w-none text-[var(--color-text-primary)] leading-relaxed"

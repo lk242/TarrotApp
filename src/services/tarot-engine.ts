@@ -30,3 +30,18 @@ export function performReading(spreadType: SpreadType): DrawnCard[] {
   const cut = cutDeck(shuffled);
   return drawCards(cut, spreadType);
 }
+
+/**
+ * 從牌堆中抽一張「追問牌」。
+ * 排除已出現的牌，確保不重複；position 標記為「追問指引」。
+ */
+export function drawExtraCard(excludeCardIds: string[]): DrawnCard {
+  const excluded = new Set(excludeCardIds);
+  const available = ALL_CARDS.filter((c) => !excluded.has(c.id));
+  const deck = fisherYatesShuffle(available);
+  return {
+    card: deck[0],
+    isReversed: Math.random() < 0.3,
+    position: '追問指引',
+  };
+}

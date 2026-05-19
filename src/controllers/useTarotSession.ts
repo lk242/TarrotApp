@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 import type { DrawnCard } from '../models/tarot-card';
-import type { Reading } from '../models/reading';
+import type { Reading, FollowUpEntry } from '../models/reading';
 import type { SpreadType } from '../models/spread';
 import type { AIInterpretationRequest } from '../services/ai/ai-provider';
-import { performReading } from '../services/tarot-engine';
+import { performReading, drawExtraCard } from '../services/tarot-engine';
 import { getConfiguredProvider } from '../services/ai/ai-factory';
 import { getStorageProvider } from '../services/storage/storage-factory';
 import { useAuth } from './useAuth';
@@ -17,10 +17,8 @@ export type ReadingPhase =
   | 'interpreting'
   | 'complete';
 
-export interface FollowUpEntry {
-  question: string;
-  answer: string;
-}
+// Re-export for backward compatibility
+export type { FollowUpEntry } from '../models/reading';
 
 /**
  * useTarotSession 是占卜流程的 Controller。
@@ -44,12 +42,18 @@ export function useTarotSession(spreadType: SpreadType) {
   const questionRef = useRef('');
   const interpretationRef = useRef('');
   const originalRequestRef = useRef<AIInterpretationRequest | null>(null);
+  /** 追問過程中所有已抽的牌 ID（原始 + 追問），用於排除重複 */
+  const allDrawnCardIdsRef = useRef<string[]>([]);
+  /** 儲存後的 reading doc ID，追問時用來更新紀錄 */
+  const savedReadingIdRef = useRef<string | null>(null);
+  const followUpsRef = useRef<FollowUpEntry[]>([]);
 
   const startReading = useCallback(() => {
     setError('');
     // 抽牌結果在動畫開始前就固定，後續只是逐步揭示，不會因 re-render 改變。
     const cards = performReading(spreadType);
     drawnCardsRef.current = cards;
+    allDrawnCardIdsRef.current = cards.map((c) => c.card.id);
     setDrawnCards(cards);
     setPhase('shuffling');
   }, [spreadType]);
@@ -87,7 +91,8 @@ export function useTarotSession(spreadType: SpreadType) {
         interpretation: result.interpretation,
         summary: result.summary,
       };
-      storage.saveReading(reading).catch(console.error);
+      const docId = await storage.saveReading(reading);
+      savedReadingIdRef.current = docId;
       refreshCredits().catch(console.error);
 
       setPhase('complete');
@@ -99,7 +104,7 @@ export function useTarotSession(spreadType: SpreadType) {
     }
   }, [refreshCredits, spreadType, user]);
 
-  /** 追問 — 基於當前牌陣繼續深入 */
+  /** 追問 — 額外抽一張新牌，基於新牌延伸解讀 */
   const askFollowUp = useCallback(
     async (followUpQuestion: string) => {
       if (!originalRequestRef.current || isFollowingUp) return;
@@ -108,23 +113,48 @@ export function useTarotSession(spreadType: SpreadType) {
 
       try {
         const provider = getConfiguredProvider();
-        if (!provider.followUp) {
-          // Mock 或舊 provider 可能不支援追問；直接退出避免 UI 卡住。
-          return;
-        }
+        if (!provider.followUp) return;
+
+        // 抽一張不重複的新牌
+        const extraCard = drawExtraCard(allDrawnCardIdsRef.current);
+        allDrawnCardIdsRef.current.push(extraCard.card.id);
 
         const result = await provider.followUp({
           originalRequest: originalRequestRef.current,
           originalInterpretation: interpretationRef.current,
           followUpQuestion,
+          followUpCard: {
+            card: {
+              name: extraCard.card.name,
+              nameEn: extraCard.card.nameEn,
+              keywords: extraCard.card.keywords,
+              reversedKeywords: extraCard.card.reversedKeywords,
+            },
+            isReversed: extraCard.isReversed,
+            position: extraCard.position,
+          },
           locale: 'zh-TW',
         });
 
-        setFollowUps((prev) => [
-          ...prev,
-          { question: followUpQuestion, answer: result.interpretation },
-        ]);
+        const newEntry: FollowUpEntry = {
+          question: followUpQuestion,
+          answer: result.interpretation,
+          drawnCard: extraCard,
+        };
+
+        const updatedFollowUps = [...followUpsRef.current, newEntry];
+        followUpsRef.current = updatedFollowUps;
+        setFollowUps(updatedFollowUps);
         setSuggestedQuestions(result.suggestedQuestions || []);
+
+        // 將追問紀錄更新到儲存
+        if (savedReadingIdRef.current) {
+          const storage = getStorageProvider(user?.uid);
+          storage
+            .updateReading(savedReadingIdRef.current, { followUps: updatedFollowUps })
+            .catch(console.error);
+        }
+
         refreshCredits().catch(console.error);
       } catch (err) {
         console.error('追問失敗:', err);
@@ -133,7 +163,7 @@ export function useTarotSession(spreadType: SpreadType) {
         setIsFollowingUp(false);
       }
     },
-    [isFollowingUp, refreshCredits],
+    [isFollowingUp, refreshCredits, user],
   );
 
   const reset = useCallback(() => {
@@ -149,6 +179,9 @@ export function useTarotSession(spreadType: SpreadType) {
     questionRef.current = '';
     interpretationRef.current = '';
     originalRequestRef.current = null;
+    allDrawnCardIdsRef.current = [];
+    savedReadingIdRef.current = null;
+    followUpsRef.current = [];
   }, []);
 
   const handleSetQuestion = useCallback((q: string) => {

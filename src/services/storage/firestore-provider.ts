@@ -2,6 +2,7 @@ import {
   collection,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   query,
   orderBy,
@@ -38,11 +39,18 @@ export class FirestoreProvider implements IStorageProvider {
     return snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Reading);
   }
 
-  async saveReading(reading: Reading): Promise<void> {
-    // Firestore 自行產生 document id；前端 reading.id 只作為本機資料模型使用。
+  async saveReading(reading: Reading): Promise<string> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id: _id, ...data } = reading;
-    await addDoc(this.col, { ...data, timestamp: reading.timestamp });
+    const docRef = await addDoc(this.col, { ...data, timestamp: reading.timestamp });
+    return docRef.id;
+  }
+
+  async updateReading(id: string, data: Partial<Reading>): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _discardId, ...updateData } = data;
+    const docRef = doc(db, 'users', this.userId, 'readings', id);
+    await updateDoc(docRef, updateData);
   }
 
   async deleteReading(id: string): Promise<void> {

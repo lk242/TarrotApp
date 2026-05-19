@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router';
+import { AuthContext, useAuthState } from './controllers/useAuth';
 import Navbar from './views/components/layout/Navbar';
 import Footer from './views/components/layout/Footer';
 import MysticBackground from './views/components/layout/MysticBackground';
@@ -7,7 +8,13 @@ import ReadingPage from './views/pages/ReadingPage';
 import HistoryPage from './views/pages/HistoryPage';
 import AboutPage from './views/pages/AboutPage';
 
-export default function App() {
+/**
+ * AppContent 只負責畫面骨架與路由。
+ *
+ * AuthContext 放在外層 App，這裡就能讓 Navbar、HistoryPage、ReadingPage
+ * 透過 useAuth() 共享同一份登入狀態；View 層不需要知道 Firebase 初始化細節。
+ */
+function AppContent() {
   return (
     <BrowserRouter>
       <MysticBackground />
@@ -24,5 +31,16 @@ export default function App() {
         <Footer />
       </div>
     </BrowserRouter>
+  );
+}
+
+export default function App() {
+  const authState = useAuthState();
+
+  return (
+    /* 全站唯一 Auth provider：避免各頁重複訂閱 Firebase Auth 狀態 */
+    <AuthContext.Provider value={authState}>
+      <AppContent />
+    </AuthContext.Provider>
   );
 }

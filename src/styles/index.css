@@ -3,6 +3,10 @@
 @import './animations.css';
 @import './legacy-utilities.css';
 
+/* 隱藏水平滾動條（手機選牌用） */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -21,22 +25,57 @@ body {
 .interpretation-panel h2 {
   color: var(--color-accent-gold);
   font-size: 1.25rem;
-  margin: 1.5rem 0 0.75rem;
+  font-weight: 700;
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+}
+.interpretation-panel h2:first-child {
+  margin-top: 0;
 }
 .interpretation-panel h3 {
   color: var(--color-accent-gold-light);
-  font-size: 1.1rem;
-  margin: 1.25rem 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
 }
 .interpretation-panel p {
-  line-height: 1.8;
-  margin: 0.5rem 0;
+  line-height: 1.9;
+  margin: 0.6rem 0;
+  font-size: 1rem;
+  color: var(--color-text-primary);
 }
 .interpretation-panel strong {
   color: var(--color-accent-gold-light);
 }
+.interpretation-panel em {
+  color: var(--color-accent-purple-light);
+  font-style: italic;
+}
 .interpretation-panel hr {
   border: none;
   border-top: 1px solid var(--color-border);
-  margin: 1.5rem 0;
+  margin: 1.75rem 0;
+}
+.interpretation-panel ul,
+.interpretation-panel ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+.interpretation-panel li {
+  line-height: 1.8;
+  margin: 0.4rem 0;
+  font-size: 1rem;
+}
+.interpretation-panel li::marker {
+  color: var(--color-accent-gold);
+}
+.interpretation-panel blockquote {
+  border-left: 3px solid var(--color-accent-gold);
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(201, 168, 76, 0.05);
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  color: var(--color-accent-gold-light);
 }

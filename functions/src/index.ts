@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, Timestamp, getFirestore, type DocumentData } from 'firebase-admin/firestore';
 
 initializeApp();
@@ -22,8 +23,13 @@ const ECPAY_CHECKOUT_URL = 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckO
 const ECPAY_MERCHANT_ID = '3002607';
 const ECPAY_HASH_KEY = 'pwFHCqoQZGmho4w6';
 const ECPAY_HASH_IV = 'EkRm7iFT261dpevs';
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? 'lukewolf899@gmail.com')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
 
 const db = getFirestore();
+const adminAuth = getAuth();
 
 type SpreadType = 'single' | 'three-card' | 'celtic-cross';
 type Locale = 'zh-TW' | 'en';
@@ -132,6 +138,14 @@ function requireUid(uid?: string): string {
     throw new HttpsError('unauthenticated', '請先登入後再使用 AI 占卜');
   }
   return uid;
+}
+
+function requireAdmin(email?: string): string {
+  const normalizedEmail = email?.toLowerCase();
+  if (!normalizedEmail || !ADMIN_EMAILS.includes(normalizedEmail)) {
+    throw new HttpsError('permission-denied', '你沒有管理點數的權限');
+  }
+  return normalizedEmail;
 }
 
 function toMillis(value: unknown): number | undefined {
@@ -395,6 +409,25 @@ async function refundQuestionCredits(uid: string, reason: string): Promise<void>
     type: 'refund',
     reason,
     createdAt: FieldValue.serverTimestamp(),
+  });
+}
+
+async function getRecentCreditTransactions(uid: string) {
+  const snapshot = await db
+    .collection(`users/${uid}/creditTransactions`)
+    .orderBy('createdAt', 'desc')
+    .limit(10)
+    .get();
+
+  return snapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      amount: Number(data.amount ?? 0),
+      type: String(data.type ?? 'adjustment'),
+      reason: String(data.reason ?? ''),
+      createdAt: toMillis(data.createdAt) ?? 0,
+    };
   });
 }
 
@@ -679,6 +712,84 @@ ${data.originalInterpretation.slice(0, 1500)}
 export const getCreditBalance = onCall({ region: REGION }, async (request) => {
   const uid = requireUid(request.auth?.uid);
   return ensureCreditAccount(uid);
+});
+
+export const adminCheckAccess = onCall({ region: REGION }, async (request) => {
+  const email = requireAdmin(request.auth?.token.email as string | undefined);
+  return { email };
+});
+
+export const adminFindCreditUser = onCall({ region: REGION }, async (request) => {
+  requireAdmin(request.auth?.token.email as string | undefined);
+
+  const query = String(request.data?.query ?? '').trim();
+  if (!query) {
+    throw new HttpsError('invalid-argument', '請輸入使用者 email 或 uid');
+  }
+
+  const authUser = query.includes('@')
+    ? await adminAuth.getUserByEmail(query)
+    : await adminAuth.getUser(query);
+  const profile = await ensureCreditAccount(authUser.uid);
+  const transactions = await getRecentCreditTransactions(authUser.uid);
+
+  return {
+    user: {
+      uid: authUser.uid,
+      email: authUser.email ?? '',
+      displayName: authUser.displayName ?? '',
+      photoURL: authUser.photoURL ?? '',
+      disabled: authUser.disabled,
+    },
+    profile,
+    transactions,
+  };
+});
+
+export const adminAdjustCredits = onCall({ region: REGION }, async (request) => {
+  const adminEmail = requireAdmin(request.auth?.token.email as string | undefined);
+  const userId = String(request.data?.userId ?? '').trim();
+  const amount = Number(request.data?.amount);
+  const reason = String(request.data?.reason ?? '').trim().slice(0, 200);
+
+  if (!userId || !Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 100000) {
+    throw new HttpsError('invalid-argument', '調整點數格式不正確');
+  }
+
+  if (!reason) {
+    throw new HttpsError('invalid-argument', '請填寫調整原因');
+  }
+
+  await adminAuth.getUser(userId);
+  await ensureCreditAccount(userId);
+
+  const userRef = db.doc(`users/${userId}`);
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(userRef);
+    const current = snapshot.data();
+    const balance = Number(current?.balance ?? 0);
+    const nextBalance = balance + amount;
+
+    if (nextBalance < 0) {
+      throw new HttpsError('failed-precondition', '扣點後餘額不能小於 0');
+    }
+
+    transaction.update(userRef, {
+      balance: nextBalance,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(userRef.collection('creditTransactions').doc(), {
+      amount,
+      type: 'adjustment',
+      reason,
+      adminEmail,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  const profile = await ensureCreditAccount(userId);
+  const transactions = await getRecentCreditTransactions(userId);
+  return { profile, transactions };
 });
 
 export const createCreditPurchase = onCall({ region: REGION }, async (request) => {

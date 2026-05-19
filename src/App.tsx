@@ -9,6 +9,7 @@ import ReadingPage from './views/pages/ReadingPage';
 import HistoryPage from './views/pages/HistoryPage';
 import AboutPage from './views/pages/AboutPage';
 import BillingPage from './views/pages/BillingPage';
+import AdminPage from './views/pages/AdminPage';
 
 /**
  * AppContent 只負責畫面骨架與路由。
@@ -28,6 +29,7 @@ function AppContent() {
             <Route path="/reading" element={<ReadingPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/billing" element={<BillingPage />} />
+            <Route path="/admin" element={<AdminPage />} />
             <Route path="/about" element={<AboutPage />} />
           </Routes>
         </main>

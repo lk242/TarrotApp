@@ -1,5 +1,6 @@
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
+import { useRef, useCallback } from 'react';
 import { SPREADS } from '../../models/spread';
 import type { SpreadType } from '../../models/spread';
 
@@ -13,6 +14,21 @@ const SPREAD_CONFIG: Record<number, { image: string; opacity: number; hoverOpaci
 };
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const handleLogoTap = useCallback(() => {
+    tapCountRef.current += 1;
+    clearTimeout(tapTimerRef.current);
+    if (tapCountRef.current >= 5) {
+      tapCountRef.current = 0;
+      navigate('/admin');
+      return;
+    }
+    tapTimerRef.current = setTimeout(() => { tapCountRef.current = 0; }, 1500);
+  }, [navigate]);
+
   return (
     <div className="flex flex-1 flex-col items-center px-6 py-20">
       {/* ===== Hero 區：主視覺大圖 ===== */}
@@ -47,7 +63,9 @@ export default function HomePage() {
         <img
           src="/images/theme/logo.webp"
           alt=""
-          className="mx-auto mb-5 h-16 w-16 animate-candle"
+          className="mx-auto mb-5 h-16 w-16 animate-candle cursor-default select-none"
+          onClick={handleLogoTap}
+          draggable={false}
         />
         <h1 className="mb-3 text-4xl font-bold tracking-[0.15em] text-[var(--color-accent-gold)]" style={{ fontVariant: 'small-caps' }}>
           神秘塔羅

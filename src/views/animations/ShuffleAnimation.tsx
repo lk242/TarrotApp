@@ -24,7 +24,7 @@ const PHASE_TEXT: Record<Phase, string> = {
   withdrawing: '牌充滿了你的能量',
 };
 
-function CardStack({ count = 6, width = 100, height = 156, glowTop = true }: {
+function CardStack({ count = 6, width = 130, height = 204, glowTop = true }: {
   count?: number; width?: number; height?: number; glowTop?: boolean;
 }) {
   return (
@@ -61,7 +61,7 @@ export default function ShuffleAnimation({ onComplete }: Props) {
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="relative flex items-center justify-center overflow-hidden"
-        style={{ width: 420, height: 380 }}>
+        style={{ width: 500, height: 440 }}>
 
         {/* 初始牌堆 */}
         {showDeck && (
@@ -75,18 +75,18 @@ export default function ShuffleAnimation({ onComplete }: Props) {
         {showSplit && (
           <>
             <motion.div className="absolute z-10"
-              style={{ top: '50%', marginTop: -69 }}
-              initial={{ x: 0, left: '50%', marginLeft: -44 }}
-              animate={{ x: showRiffle ? -60 : -76, opacity: showRiffle ? 0.5 : 1 }}
+              style={{ top: '50%', marginTop: -86 }}
+              initial={{ x: 0, left: '50%', marginLeft: -55 }}
+              animate={{ x: showRiffle ? -70 : -90, opacity: showRiffle ? 0.5 : 1 }}
               transition={{ type: 'spring', stiffness: 80, damping: 14 }}>
-              <CardStack count={4} width={88} height={138} />
+              <CardStack count={4} width={110} height={172} />
             </motion.div>
             <motion.div className="absolute z-10"
-              style={{ top: '50%', marginTop: -69 }}
-              initial={{ x: 0, left: '50%', marginLeft: -44 }}
-              animate={{ x: showRiffle ? 60 : 76, opacity: showRiffle ? 0.5 : 1 }}
+              style={{ top: '50%', marginTop: -86 }}
+              initial={{ x: 0, left: '50%', marginLeft: -55 }}
+              animate={{ x: showRiffle ? 70 : 90, opacity: showRiffle ? 0.5 : 1 }}
               transition={{ type: 'spring', stiffness: 80, damping: 14 }}>
-              <CardStack count={4} width={88} height={138} />
+              <CardStack count={4} width={110} height={172} />
             </motion.div>
           </>
         )}
@@ -95,7 +95,7 @@ export default function ShuffleAnimation({ onComplete }: Props) {
         {showRiffle && RIFFLE_CARDS.map(card => (
           <motion.div key={`rf-${card.id}`}
             className="absolute z-20"
-            style={{ left: '50%', top: '42%', marginLeft: -42 }}
+            style={{ left: '50%', top: '38%', marginLeft: -50 }}
             initial={{
               x: card.fromLeft ? -58 : 58,
               y: -16,
@@ -109,7 +109,7 @@ export default function ShuffleAnimation({ onComplete }: Props) {
               opacity: 0.9,
             }}
             transition={{ delay: card.delay, duration: 0.25, ease: 'easeOut' }}>
-            <CardBack width={84} height={132} />
+            <CardBack width={100} height={156} />
           </motion.div>
         ))}
 

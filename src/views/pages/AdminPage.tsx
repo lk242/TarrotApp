@@ -275,7 +275,7 @@ export default function AdminPage() {
                   value={filterText}
                   onChange={(e) => setFilterText(e.target.value)}
                   placeholder="搜尋 email、名稱、UID 或登入方式..."
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 pl-10 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-gold)]"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] py-2.5 pr-4 pl-11 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-gold)]"
                 />
                 <svg
                   className="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"

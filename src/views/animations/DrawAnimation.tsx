@@ -86,8 +86,8 @@ function DesktopFan({
   }, []);
 
   // 卡牌 & 弧形參數
-  const cardW = 168;
-  const cardH = 269;
+  const cardW = 120;
+  const cardH = 192;
   const fanAngle = 180; // 半圓
   const radius = containerWidth * 0.45;
   const areaHeight = radius + cardH * 0.6;

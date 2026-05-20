@@ -140,6 +140,14 @@ export default function ReadingPage() {
             <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
               請稍候，結果完成後會自動顯示。
             </p>
+            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-purple)] via-[var(--color-accent-gold)] to-[var(--color-accent-mystic)]"
+                initial={{ x: '-100%' }}
+                animate={{ x: ['-100%', '120%'] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </div>
           </div>
         </div>
       )}

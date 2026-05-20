@@ -1,23 +1,26 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import { marked } from 'marked';
 import type { Reading } from '../../models/reading';
+import { QUESTION_CREDIT_COST } from '../../models/credits';
 import { SPREADS } from '../../models/spread';
-import { getStorageProvider } from '../../services/storage/storage-factory';
-import { useAuth } from '../../controllers/useAuth';
+import { useHistoryReadings } from '../../controllers/useHistoryReadings';
+import { useCredits } from '../../controllers/useCredits';
 import CardFace from '../components/tarot/CardFace';
 
 export default function HistoryPage() {
-  const { user } = useAuth();
-  const [readings, setReadings] = useState<Reading[]>([]);
+  const { readings, loading, followingUpId, error, deleteReading, askFollowUp } = useHistoryReadings();
+  const { balance } = useCredits();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    // 使用者登入狀態改變時切換 storage 來源：匿名 localStorage，登入 Firestore。
-    const storage = getStorageProvider(user?.uid);
-    storage.getReadings().then(setReadings);
-  }, [user?.uid]);
+  if (loading) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-20">
+        <MysticProgress title="正在讀取占卜紀錄" />
+      </div>
+    );
+  }
 
   if (readings.length === 0) {
     return (
@@ -54,6 +57,11 @@ export default function HistoryPage() {
       >
         占卜紀錄
       </motion.h1>
+      {error && (
+        <div className="mb-6 w-full max-w-2xl rounded-lg border border-red-900/50 bg-red-950/30 p-4 text-sm text-red-200">
+          {error}
+        </div>
+      )}
 
       <div className="w-full max-w-2xl space-y-4">
         {readings.map((reading, i) => (
@@ -65,12 +73,10 @@ export default function HistoryPage() {
             onToggle={() =>
               setExpandedId(expandedId === reading.id ? null : reading.id)
             }
-            onDelete={() => {
-              const storage = getStorageProvider(user?.uid);
-              storage.deleteReading(reading.id).then(() => {
-                setReadings((prev) => prev.filter((r) => r.id !== reading.id));
-              });
-            }}
+            onDelete={() => deleteReading(reading.id)}
+            onFollowUp={(question) => askFollowUp(reading, question)}
+            isFollowingUp={followingUpId === reading.id}
+            canFollowUp={balance >= QUESTION_CREDIT_COST}
           />
         ))}
       </div>
@@ -84,13 +90,20 @@ function HistoryCard({
   isExpanded,
   onToggle,
   onDelete,
+  onFollowUp,
+  isFollowingUp,
+  canFollowUp,
 }: {
   reading: Reading;
   index: number;
   isExpanded: boolean;
   onToggle: () => void;
   onDelete: () => void;
+  onFollowUp: (question: string) => void;
+  isFollowingUp: boolean;
+  canFollowUp: boolean;
 }) {
+  const [followUpInput, setFollowUpInput] = useState('');
   const spread = SPREADS[reading.spreadType];
   const date = new Date(reading.timestamp);
   const dateStr = date.toLocaleDateString('zh-TW', {
@@ -131,10 +144,10 @@ function HistoryCard({
       className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-[var(--shadow-card)]"
     >
       {/* 摘要列 */}
-      <div className="flex w-full items-center gap-2 p-5">
+      <div className="flex w-full items-start gap-3 p-4 sm:items-center sm:p-5">
         <button
           onClick={onToggle}
-          className="flex flex-1 cursor-pointer items-center gap-4 bg-transparent text-left transition-colors"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 bg-transparent text-left transition-colors sm:gap-4"
         >
           <div className="flex-1 min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -172,8 +185,9 @@ function HistoryCard({
             e.stopPropagation();
             onDelete();
           }}
-          className="cursor-pointer rounded-lg border border-transparent p-2 text-[var(--color-text-muted)] opacity-40 transition-all hover:border-red-800/50 hover:bg-red-950/30 hover:text-red-400 hover:opacity-100"
+          className="flex h-10 w-10 flex-none cursor-pointer items-center justify-center rounded-lg border border-red-900/30 bg-red-950/20 text-red-300 opacity-90 transition-all hover:border-red-700/60 hover:bg-red-950/40 hover:text-red-200"
           title="刪除紀錄"
+          aria-label="刪除紀錄"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6" />
@@ -240,8 +254,71 @@ function HistoryCard({
               ))}
             </div>
           )}
+
+          <div className="mt-6 border-t border-[var(--color-border)] pt-5">
+            <p className="mb-3 text-center text-xs text-[var(--color-text-muted)]">
+              針對這輪占卜繼續追問，每次消耗 {QUESTION_CREDIT_COST} 點
+            </p>
+            {isFollowingUp ? (
+              <MysticProgress title="正在解析這輪追問" />
+            ) : (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  value={followUpInput}
+                  onChange={(event) => setFollowUpInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && followUpInput.trim() && canFollowUp) {
+                      onFollowUp(followUpInput.trim());
+                      setFollowUpInput('');
+                    }
+                  }}
+                  placeholder="針對這次紀錄追問..."
+                  className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
+                />
+                <button
+                  onClick={() => {
+                    if (followUpInput.trim() && canFollowUp) {
+                      onFollowUp(followUpInput.trim());
+                      setFollowUpInput('');
+                    }
+                  }}
+                  disabled={!followUpInput.trim() || !canFollowUp}
+                  className="cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-4 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  追問
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </motion.div>
+  );
+}
+
+function MysticProgress({ title }: { title: string }) {
+  return (
+    <div className="mx-auto w-full max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 text-center shadow-[var(--shadow-card)]">
+      <div className="mb-4 flex items-center justify-center gap-2">
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="h-2.5 w-2.5 rounded-full bg-[var(--color-accent-gold)]"
+            animate={{ opacity: [0.25, 1, 0.25], scale: [0.85, 1.25, 0.85] }}
+            transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.25 }}
+          />
+        ))}
+      </div>
+      <p className="text-sm font-bold text-[var(--color-text-primary)]">{title}</p>
+      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-purple)] via-[var(--color-accent-gold)] to-[var(--color-accent-mystic)]"
+          initial={{ x: '-100%' }}
+          animate={{ x: ['-100%', '120%'] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+    </div>
   );
 }

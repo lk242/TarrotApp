@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../controllers/useAuth';
 import {
   adminAdjustCreditsCallable,
@@ -86,7 +86,7 @@ export default function AdminPage() {
   }, [user]);
 
   // 載入使用者名單
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setUserListLoading(true);
     setError('');
     try {
@@ -98,14 +98,16 @@ export default function AdminPage() {
     } finally {
       setUserListLoading(false);
     }
-  };
+  }, []);
 
   // 切到 users tab 時自動載入
   useEffect(() => {
     if (activeTab === 'users' && adminEmail && !userListLoaded && !userListLoading) {
-      loadUsers();
+      queueMicrotask(() => {
+        loadUsers();
+      });
     }
-  }, [activeTab, adminEmail]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, adminEmail, loadUsers, userListLoaded, userListLoading]);
 
   // 搜尋過濾
   const filteredUsers = useMemo(() => {

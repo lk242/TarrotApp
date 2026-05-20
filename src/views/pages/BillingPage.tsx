@@ -84,7 +84,8 @@ export default function BillingPage() {
     <div className="flex flex-1 flex-col items-center px-6 py-20">
       <div className="w-full max-w-5xl animate-fade-in-up">
         <div className="mb-8 text-center">
-          <h1 className="mb-3 text-2xl font-bold text-[var(--color-accent-gold)]">
+          <div className="animate-rune-pulse mb-3 text-3xl text-[var(--color-accent-gold)]">⊛</div>
+          <h1 className="mb-3 text-2xl font-bold tracking-[0.15em] text-[var(--color-accent-gold)]" style={{ fontVariant: 'small-caps' }}>
             點數與訂閱
           </h1>
           <p className="text-sm text-[var(--color-text-secondary)]">
@@ -92,20 +93,39 @@ export default function BillingPage() {
           </p>
         </div>
 
-        <section className="mb-8 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-[var(--shadow-card)]">
+        <section className="ornate-card mb-8 rounded-xl p-6">
           {user ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              {/* 左側：裝飾符號 + 歡迎語 */}
+              <div className="flex items-center gap-4">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="h-14 w-14 flex-shrink-0 rounded-full border-2 border-[var(--color-accent-gold)]/30 object-cover" />
+                ) : (
+                  <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)]/30 bg-[var(--color-accent-purple)]/20 text-lg font-bold text-[var(--color-accent-gold)]">
+                    {(user.displayName || user.email || '?')[0].toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                    {user.displayName || '探索者'}，歡迎回來
+                  </p>
+                  <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+                    願星辰指引你的每一次占卜
+                  </p>
+                </div>
+              </div>
+              {/* 右側：點數資訊 */}
+              <div className="text-right">
                 <p className="text-xs tracking-wider text-[var(--color-text-muted)] uppercase">
                   目前可用點數
                 </p>
                 <p className="mt-1 text-4xl font-bold text-[var(--color-accent-gold)]">
                   {loading ? '...' : balance}
                 </p>
+                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  約可再提問 {Math.floor(balance / QUESTION_CREDIT_COST)} 次
+                </p>
               </div>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                約可再提問 {Math.floor(balance / QUESTION_CREDIT_COST)} 次
-              </p>
             </div>
           ) : (
             <div className="text-center">
@@ -135,10 +155,10 @@ export default function BillingPage() {
             {CREDIT_PACKAGES.map((item) => (
               <div
                 key={item.id}
-                className={`rounded-xl border bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-card)] ${
+                className={`ornate-card rounded-xl p-5 ${
                   item.featured
-                    ? 'border-[var(--color-accent-gold)]'
-                    : 'border-[var(--color-border)]'
+                    ? 'border-[var(--color-accent-gold)] animate-border-glow'
+                    : ''
                 }`}
               >
                 <div className="mb-4">
@@ -154,7 +174,7 @@ export default function BillingPage() {
                 <button
                   onClick={() => handlePackage(item.id)}
                   disabled={!user || Boolean(pending)}
-                  className="w-full cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-4 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                  className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/15 px-4 py-2.5 text-sm font-bold tracking-wider text-[var(--color-accent-gold)] transition-all hover:bg-[var(--color-accent-gold)]/25 hover:border-[var(--color-accent-gold)]/60 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {pending?.type === 'package' && pending.id === item.id ? '建立中...' : '購買'}
                 </button>
@@ -169,10 +189,10 @@ export default function BillingPage() {
             {SUBSCRIPTION_PLANS.map((item) => (
               <div
                 key={item.id}
-                className={`rounded-xl border bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-card)] ${
+                className={`ornate-card rounded-xl p-5 ${
                   item.featured
-                    ? 'border-[var(--color-accent-gold)]'
-                    : 'border-[var(--color-border)]'
+                    ? 'border-[var(--color-accent-gold)] animate-border-glow'
+                    : ''
                 }`}
               >
                 <div className="mb-4">
@@ -189,25 +209,13 @@ export default function BillingPage() {
                 <button
                   onClick={() => handleSubscription(item.id)}
                   disabled={!user || Boolean(pending)}
-                  className="w-full cursor-pointer rounded-lg bg-gradient-to-r from-[var(--color-accent-purple)] to-[var(--color-accent-mystic)] px-4 py-2.5 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                  className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-purple)]/40 bg-gradient-to-r from-[var(--color-accent-purple)]/20 to-[var(--color-accent-mystic)]/20 px-4 py-2.5 text-sm font-bold tracking-wider text-[var(--color-accent-purple-light)] transition-all hover:border-[var(--color-accent-purple)]/60 hover:from-[var(--color-accent-purple)]/30 hover:to-[var(--color-accent-mystic)]/30 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {pending?.type === 'subscription' && pending.id === item.id ? '建立中...' : '訂閱'}
                 </button>
               </div>
             ))}
           </div>
-        </section>
-
-        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 text-sm leading-relaxed text-[var(--color-text-secondary)] shadow-[var(--shadow-card)]">
-          <h2 className="mb-3 text-lg font-bold text-[var(--color-text-primary)]">定價估算</h2>
-          <p>
-            目前 AI 使用 OpenAI gpt-4.1-mini，官方價格為輸入每 100 萬 tokens US$0.40、輸出每 100 萬 tokens US$1.60。
-            以 1 美元約 NT$32 估算，一次完整占卜或追問的 AI 成本約 NT$0.15 至 NT$0.25。
-          </p>
-          <p className="mt-3">
-            每次提問扣 5 點後，NT$199 / 1200 點等於每次約 NT$0.83；月訂閱 NT$299 / 2500 點等於每次約 NT$0.60。
-            這樣能保留足夠毛利用來吸收 Firebase、付款手續費與後續客服成本，星辰方案可作為主要推薦方案。
-          </p>
         </section>
       </div>
     </div>

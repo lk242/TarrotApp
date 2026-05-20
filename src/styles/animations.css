@@ -58,6 +58,36 @@
 .animate-fade-in    { animation: fade-in 0.35s ease-out both; }
 .animate-mystic-rotate { animation: mystic-rotate 20s linear infinite; }
 
+/* ── 復古神秘學新增動畫 ── */
+
+@keyframes candle-flicker {
+  0%, 100% { opacity: 0.85; filter: brightness(1); }
+  25% { opacity: 0.95; filter: brightness(1.05); }
+  50% { opacity: 0.8; filter: brightness(0.95); }
+  75% { opacity: 1; filter: brightness(1.1); }
+}
+
+@keyframes rune-pulse {
+  0%, 100% {
+    text-shadow: 0 0 4px rgba(201, 168, 76, 0.3),
+                 0 0 12px rgba(201, 168, 76, 0.1);
+  }
+  50% {
+    text-shadow: 0 0 8px rgba(201, 168, 76, 0.6),
+                 0 0 24px rgba(201, 168, 76, 0.2),
+                 0 0 40px rgba(201, 168, 76, 0.1);
+  }
+}
+
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(201, 168, 76, 0.15); }
+  50% { border-color: rgba(201, 168, 76, 0.35); }
+}
+
+.animate-candle { animation: candle-flicker 4s ease-in-out infinite; }
+.animate-rune-pulse { animation: rune-pulse 3s ease-in-out infinite; }
+.animate-border-glow { animation: border-glow 4s ease-in-out infinite; }
+
 /* ===== 凱爾特十字牌陣佈局 ===== */
 .celtic-cross-grid {
   display: grid;

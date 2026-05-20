@@ -30,8 +30,8 @@ export default function HistoryPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <div className="mb-4 text-5xl opacity-50">📜</div>
-          <h1 className="mb-3 text-2xl font-bold text-[var(--color-accent-gold)]">
+          <div className="mb-4 text-4xl text-[var(--color-accent-gold)] opacity-50">☽</div>
+          <h1 className="mb-3 text-2xl font-bold tracking-wider text-[var(--color-accent-gold)]">
             占卜紀錄
           </h1>
           <p className="mb-6 text-[var(--color-text-secondary)]">
@@ -39,9 +39,9 @@ export default function HistoryPage() {
           </p>
           <Link
             to="/"
-            className="inline-block rounded-lg bg-gradient-to-r from-[var(--color-accent-purple)] to-[var(--color-accent-mystic)] px-6 py-2.5 font-bold text-white no-underline shadow-[var(--shadow-glow)]"
+            className="inline-block rounded-lg border border-[var(--color-accent-gold)]/30 bg-[var(--color-accent-gold)]/15 px-6 py-2.5 font-bold tracking-wider text-[var(--color-accent-gold)] no-underline shadow-[var(--shadow-glow)] transition-all hover:bg-[var(--color-accent-gold)]/25"
           >
-            ✦ 開始占卜
+            ☉ 開始占卜
           </Link>
         </motion.div>
       </div>
@@ -53,7 +53,7 @@ export default function HistoryPage() {
       <motion.h1
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="mb-8 text-2xl font-bold text-[var(--color-accent-gold)]"
+        className="mb-8 text-2xl font-bold tracking-wider text-[var(--color-accent-gold)]"
       >
         占卜紀錄
       </motion.h1>

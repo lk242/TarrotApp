@@ -1,26 +1,59 @@
 :root {
-  --color-bg-primary: #0a0a1a;
-  --color-bg-secondary: #12122a;
-  --color-bg-card: #1a1a3e;
-  --color-bg-glass: rgba(255, 255, 255, 0.05);
+  /* ── 背景色：深沉的古書夜色 ── */
+  --color-bg-primary: #080810;
+  --color-bg-secondary: #0e0e1c;
+  --color-bg-card: #13132a;
+  --color-bg-glass: rgba(201, 168, 76, 0.03);
+  --color-bg-parchment: #1a1628;
 
-  --color-text-primary: #e8e0d4;
-  --color-text-secondary: #a89f91;
-  --color-text-muted: #6b6378;
+  /* ── 文字色：羊皮紙上的墨跡 ── */
+  --color-text-primary: #e4dcd0;
+  --color-text-secondary: #b5aa9a;
+  --color-text-muted: #7a7085;
 
+  /* ── 強調色 ── */
   --color-accent-gold: #c9a84c;
   --color-accent-gold-light: #e8d48b;
+  --color-accent-gold-dim: #8b7633;
   --color-accent-purple: #7b5ea7;
   --color-accent-purple-light: #a78bfa;
   --color-accent-mystic: #4a90d9;
+  --color-accent-crimson: #8b3a3a;
 
-  --color-border: rgba(201, 168, 76, 0.2);
-  --color-border-hover: rgba(201, 168, 76, 0.5);
+  /* ── 邊框：煉金術蝕刻線條 ── */
+  --color-border: rgba(201, 168, 76, 0.15);
+  --color-border-hover: rgba(201, 168, 76, 0.45);
+  --color-border-ornate: rgba(201, 168, 76, 0.25);
 
-  --shadow-glow: 0 0 20px rgba(201, 168, 76, 0.15);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-card-hover: 0 8px 40px rgba(201, 168, 76, 0.2);
+  /* ── 陰影：燭光與暮色 ── */
+  --shadow-glow: 0 0 20px rgba(201, 168, 76, 0.12), 0 0 60px rgba(201, 168, 76, 0.05);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 8px 40px rgba(201, 168, 76, 0.15), 0 0 80px rgba(201, 168, 76, 0.06);
+  --shadow-inner-glow: inset 0 1px 0 rgba(201, 168, 76, 0.08);
 
+  /* ── 圓角 ── */
   --radius-card: 12px;
   --radius-button: 8px;
+
+  /* ── 裝飾用漸層 ── */
+  --gradient-card: linear-gradient(
+    160deg,
+    rgba(201, 168, 76, 0.06) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(123, 94, 167, 0.04) 100%
+  );
+  --gradient-vignette: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  --gradient-page: linear-gradient(
+    180deg,
+    #080810 0%,
+    #0c0c1a 30%,
+    #0e0b18 60%,
+    #0a0814 100%
+  );
 }

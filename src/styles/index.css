@@ -10,16 +10,110 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--color-bg-primary);
+  background-color: #080810;
   color: var(--color-text-primary);
-  font-family: 'Noto Serif TC', 'Georgia', serif;
+  font-family: 'Noto Serif TC', 'Georgia', 'Palatino Linotype', serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* 背景紋理獨立層：原圖很暗，用 screen 混合模式提亮符文 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: url('/images/theme/bg-texture.webp') center / 800px repeat;
+  mix-blend-mode: screen;
+  opacity: 0.6;
+}
+
+/* 全頁暗角：營造燭光照射中央的氛圍 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: var(--gradient-vignette);
 }
 
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── 全域卡片裝飾邊角 ── */
+.ornate-card {
+  position: relative;
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card), var(--shadow-inner-glow);
+}
+.ornate-card::before,
+.ornate-card::after {
+  content: '✦';
+  position: absolute;
+  font-size: 8px;
+  color: var(--color-accent-gold-dim);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.ornate-card::before { top: 6px; left: 8px; }
+.ornate-card::after { bottom: 6px; right: 8px; }
+
+/* ── 章節標題裝飾線 ── */
+.section-title {
+  position: relative;
+  display: inline-block;
+  padding: 0 1.5rem;
+}
+.section-title::before,
+.section-title::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 2.5rem;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent-gold-dim),
+    transparent
+  );
+}
+.section-title::before { right: 100%; }
+.section-title::after { left: 100%; }
+
+/* ── 分隔線裝飾 ── */
+.ornate-divider {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent-gold-dim) 20%,
+    var(--color-accent-gold) 50%,
+    var(--color-accent-gold-dim) 80%,
+    transparent
+  );
+  margin: 2rem auto;
+  max-width: 240px;
+  position: relative;
+}
+.ornate-divider::after {
+  content: '◆';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: var(--color-accent-gold);
+  background: var(--color-bg-primary);
+  padding: 0 0.5rem;
 }
 
 .interpretation-panel h2 {

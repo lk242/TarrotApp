@@ -70,14 +70,14 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: '月光方案',
     monthlyCredits: 1000,
     priceTwd: 149,
-    description: '每月約 200 次提問，適合固定使用者。',
+    description: '每月約 200 次提問，輕鬆維持占卜習慣。',
   },
   {
     id: 'monthly_plus',
     name: '星辰方案',
     monthlyCredits: 2500,
     priceTwd: 299,
-    description: '每月約 500 次提問，兼顧用量與毛利。',
+    description: '每月約 500 次提問，最受歡迎的超值選擇。',
     featured: true,
   },
   {
@@ -85,6 +85,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: '神諭方案',
     monthlyCredits: 6000,
     priceTwd: 599,
-    description: '每月約 1200 次提問，給重度使用者。',
+    description: '每月約 1200 次提問，深度探索不設限。',
   },
 ];

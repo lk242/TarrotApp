@@ -16,49 +16,49 @@ import CelticCrossLayout from '../components/tarot/CelticCrossLayout';
 
 const TOPIC_CARDS = [
   {
-    icon: '💕',
+    image: '/images/theme/icons/love.webp',
     label: '愛情',
     hint: '感情運勢與關係',
     prompt: '我想了解我的愛情運勢，目前的感情狀況會如何發展？',
   },
   {
-    icon: '💼',
+    image: '/images/theme/icons/career.webp',
     label: '事業',
     hint: '工作發展與方向',
     prompt: '我想了解我的事業發展，目前的工作方向是否正確？',
   },
   {
-    icon: '💰',
+    image: '/images/theme/icons/wealth.webp',
     label: '財運',
     hint: '財務狀況與投資',
     prompt: '我想了解近期的財務運勢，理財上需要注意什麼？',
   },
   {
-    icon: '🌟',
+    image: '/images/theme/icons/fortune.webp',
     label: '整體運勢',
     hint: '生活全方位指引',
     prompt: '請給我一個整體的生活指引，近期需要注意什麼？',
   },
   {
-    icon: '🧘',
+    image: '/images/theme/icons/spirit.webp',
     label: '身心靈',
     hint: '內在成長與健康',
     prompt: '我想了解自己內在的狀態，身心靈方面有什麼需要調整的？',
   },
   {
-    icon: '👥',
+    image: '/images/theme/icons/social.webp',
     label: '人際關係',
     hint: '社交與人際互動',
     prompt: '我想了解人際關係方面的運勢，如何改善與他人的互動？',
   },
   {
-    icon: '🎓',
+    image: '/images/theme/icons/study.webp',
     label: '學業',
     hint: '學習與考試運',
     prompt: '我想了解學業方面的運勢，目前的學習方向是否正確？',
   },
   {
-    icon: '🔮',
+    image: '/images/theme/icons/free.webp',
     label: '自由提問',
     hint: '自訂你的問題',
     prompt: '',
@@ -194,14 +194,17 @@ export default function ReadingPage() {
                 onClick={() => setQuestion(topic.prompt)}
                 className={`group flex cursor-pointer flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
                   question === topic.prompt
-                    ? 'border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)]/10 shadow-[var(--shadow-glow)]'
-                    : 'border-[var(--color-border)] bg-[var(--color-bg-card)] hover:border-[var(--color-border-hover)] hover:bg-white/[0.03]'
+                    ? 'border-[var(--color-accent-gold)] bg-[var(--color-bg-card)] shadow-[var(--shadow-glow)]'
+                    : 'border-[var(--color-border)] bg-[var(--color-bg-card)] hover:border-[var(--color-border-hover)]'
                 }`}
               >
-                <span className="text-2xl transition-transform group-hover:scale-110">
-                  {topic.icon}
-                </span>
-                <span className="text-xs font-bold text-[var(--color-text-primary)]">
+                <img
+                  src={topic.image}
+                  alt={topic.label}
+                  className="h-14 w-14 object-contain transition-transform group-hover:scale-110"
+                  style={{ mixBlendMode: 'lighten' }}
+                />
+                <span className="text-xs font-bold tracking-wider text-[var(--color-text-primary)]">
                   {topic.label}
                 </span>
                 <span className="text-[10px] leading-tight text-[var(--color-text-muted)]">
@@ -224,9 +227,9 @@ export default function ReadingPage() {
             whileTap={{ scale: 0.97 }}
             onClick={startReading}
             disabled={!canAsk || creditLoading}
-            className="w-full cursor-pointer rounded-lg bg-gradient-to-r from-[var(--color-accent-purple)] to-[var(--color-accent-mystic)] px-6 py-3 text-lg font-bold text-white shadow-[var(--shadow-glow)] transition-all hover:shadow-[var(--shadow-card-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/30 bg-gradient-to-r from-[var(--color-accent-gold)]/20 via-[var(--color-accent-gold)]/10 to-[var(--color-accent-purple)]/20 px-6 py-3.5 text-base font-bold tracking-wider text-[var(--color-accent-gold)] shadow-[var(--shadow-glow)] transition-all hover:border-[var(--color-accent-gold)]/50 hover:shadow-[var(--shadow-card-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            ✦ 消耗 {QUESTION_CREDIT_COST} 點開始洗牌
+            ☉ 消耗 {QUESTION_CREDIT_COST} 點開始洗牌
           </motion.button>
         </div>
       )}

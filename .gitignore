@@ -15,6 +15,7 @@ functions/lib
 *.local
 .env
 .ai/
+theme_pic/
 
 # Editor directories and files
 .vscode/*

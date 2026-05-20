@@ -25,9 +25,9 @@ export default function Navbar() {
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)]/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
-          <Link to="/" className="flex items-center gap-2 text-[var(--color-accent-gold)] no-underline">
-            <span className="text-2xl">✦</span>
-            <span className="text-lg font-bold tracking-wider">神秘塔羅</span>
+          <Link to="/" className="group flex items-center gap-2 text-[var(--color-accent-gold)] no-underline">
+            <img src="/images/theme/logo.webp" alt="" className="h-8 w-8 transition-transform group-hover:scale-110" />
+            <span className="text-lg font-bold tracking-[0.15em]" style={{ fontVariant: 'small-caps' }}>神秘塔羅</span>
           </Link>
 
           {/* 手機端漢堡 */}

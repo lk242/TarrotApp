@@ -85,13 +85,15 @@ function DesktopFan({
     return () => clearTimeout(t);
   }, []);
 
-  // 卡牌 & 弧形參數
-  const cardW = 168;
-  const cardH = 269;
-  const fanAngle = 180; // 半圓
-  const radius = containerWidth * 0.42;
-  const areaHeight = radius + cardH * 0.55;
-  const centerX = containerWidth / 2;
+  // 限制桌機扇形寬度，避免寬螢幕時半徑過大造成牌組被推到畫面下方。
+  const stageWidth = Math.min(containerWidth, 980);
+  const cardW = Math.max(92, Math.min(124, stageWidth * 0.12));
+  const cardH = Math.round(cardW * 1.6);
+  const fanAngle = 112;
+  const radius = Math.max(310, Math.min(460, stageWidth * 0.47, containerWidth * 0.42));
+  const areaHeight = Math.round(cardH + radius * 0.26 + 112);
+  const centerX = stageWidth / 2;
+  const fanTop = 24;
 
   const handlePick = useCallback(
     (fanIndex: number, e: React.MouseEvent) => {
@@ -132,15 +134,17 @@ function DesktopFan({
         </p>
       </div>
 
-      <div className="relative w-full" style={{ height: areaHeight }}>
+      <div className="relative w-full overflow-visible" style={{ maxWidth: stageWidth, height: areaHeight }}>
         {Array.from({ length: FAN_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isHovered = hoveredIndex === i;
           const startAngle = -fanAngle / 2;
           const angle = startAngle + (i / (FAN_TOTAL - 1)) * fanAngle;
           const rad = (angle * Math.PI) / 180;
-          const x = centerX + Math.sin(rad) * radius - cardW / 2;
-          const y = areaHeight - 10 - Math.cos(rad) * radius;
+          const bottomX = centerX + Math.sin(rad) * radius;
+          const bottomY = fanTop + cardH + (1 - Math.cos(rad)) * radius * 0.42;
+          const x = bottomX - cardW / 2;
+          const y = bottomY - cardH;
 
           return (
             <div
@@ -153,8 +157,8 @@ function DesktopFan({
                 cursor: isPicked ? 'default' : 'pointer',
                 // 入場動畫用 CSS transition
                 transform: `rotate(${angle}deg) translateY(${
-                  isPicked ? '-80px' : isHovered ? '-28px' : '0'
-                }) scale(${isPicked ? 0.3 : isHovered ? 1.15 : 1})`,
+                  isPicked ? '-54px' : isHovered ? '-22px' : '0'
+                }) scale(${isPicked ? 0.4 : isHovered ? 1.08 : 1})`,
                 opacity: isPicked ? 0 : entered ? 1 : 0,
                 filter:
                   !isPicked && isHovered

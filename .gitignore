@@ -16,6 +16,7 @@ functions/lib
 .env
 .ai/
 theme_pic/
+ChatGPT Image*.png
 
 # Editor directories and files
 .vscode/*

@@ -1,6 +1,168 @@
 # 神秘塔羅開發指南
 
-這份文件給後續接手者快速理解架構、資料流與部署責任邊界。
+這份文件給你在不同電腦或不同環境繼續開發時快速恢復狀態、理解架構、資料流與部署責任邊界。專案目前是私人案，決策優先順序是：能穩定部署、能快速定位問題、API key 不外洩、不同環境好重建。
+
+最新狀態與風險請看：`docs/PROJECT_STATUS.md`。
+
+## 快速恢復開發環境
+
+### 1. 取得原始碼
+
+```bash
+git clone https://github.com/lk242/TarrotApp.git
+cd TarotApp
+```
+
+### 2. 安裝依賴
+
+```bash
+npm install
+npm install --prefix functions
+```
+
+### 3. 建立前端 `.env`
+
+從 `.env.example` 複製一份：
+
+```bash
+cp .env.example .env
+```
+
+必要設定：
+
+```env
+VITE_AI_PROVIDER=functions
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=mystic-tarot-2026.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=mystic-tarot-2026
+VITE_FIREBASE_STORAGE_BUCKET=mystic-tarot-2026.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_LINE_LIFF_ID=2010137990-R4oOH7sv
+```
+
+正式 build 必須使用 `VITE_AI_PROVIDER=functions`。這是安全設計，避免 OpenAI key 被打包進瀏覽器，也避免繞過扣點。
+
+### 4. 建立 Functions `.env`
+
+檔案位置：`functions/.env`
+
+```env
+LINE_LOGIN_CHANNEL_ID=2010137990
+ADMIN_EMAILS=你的管理者信箱
+```
+
+OpenAI key 不放 `.env`，正式環境使用 Firebase Secret：
+
+```bash
+firebase functions:secrets:set OPENAI_API_KEY --project mystic-tarot-2026
+```
+
+### 5. 啟動本機
+
+```bash
+npm run dev
+```
+
+預設 port 是 `5175`。若 Codex / Claude 使用 `.claude/launch.json`，也會跑同一個 `npm run dev`。
+
+### 6. 部署前檢查
+
+```bash
+npm run lint
+npm run build
+npm --prefix functions run build
+```
+
+### 7. 部署
+
+只改前端：
+
+```bash
+npx firebase-tools deploy --only hosting --project mystic-tarot-2026
+```
+
+只改 Functions：
+
+```bash
+npx firebase-tools deploy --only functions --project mystic-tarot-2026
+```
+
+前後端都改：
+
+```bash
+npx firebase-tools deploy --only functions,hosting --project mystic-tarot-2026
+```
+
+Firestore rules 有改才加：
+
+```bash
+npx firebase-tools deploy --only firestore:rules --project mystic-tarot-2026
+```
+
+## 開發工作流
+
+1. 先 `git pull --rebase` 同步 GitHub。
+2. 開新功能前看 `docs/PROJECT_STATUS.md`，確認目前已知風險。
+3. 改前端時先跑 `npm run lint` 與 `npm run build`。
+4. 改 Functions 時先跑 `npm --prefix functions run build`。
+5. AI、扣點、付款、登入相關改動要部署到測試或正式站後用真實帳號驗證。
+6. commit 使用 Conventional Commits，繁中描述。
+7. push 前確認 `git status` 不含 `.env`、`dist/`、臨時截圖。
+
+常用 commit 格式：
+
+```text
+fix(ai): 修正追問牌名一致性驗證
+docs(project): 更新私人開發手冊與狀態紀錄
+```
+
+## 目前核心運作模式
+
+### 使用者登入
+
+- 外部瀏覽器：Google / Email Firebase Auth。
+- LINE 內建瀏覽器：LIFF 登入，後端 `signInWithLine` 換 Firebase custom token。
+- 避免在 LINE in-app browser 直接使用 Google OAuth，否則會遇到 `disallowed_useragent`。
+
+### 占卜與扣點
+
+```text
+ReadingPage
+  -> useTarotSession
+  -> performReading 固定抽牌結果
+  -> DrawAnimation 顯示抽牌動畫
+  -> FunctionsProvider 呼叫 generateTarotReading
+  -> Firebase Function 驗證登入、扣 5 點
+  -> OpenAI 生成解讀
+  -> 成功：回傳解讀並儲存紀錄
+  -> 失敗：退還 5 點
+```
+
+### 追問
+
+追問不只是單獨問一句。前端會把完整上下文交給 Functions：
+
+- 原始問題
+- 原始牌陣
+- 原始抽牌
+- 原始 AI 解讀
+- 前面所有追問問題
+- 前面所有追問指引牌
+- 前面所有追問回覆
+- 本次新抽出的追問指引牌
+
+後端 `followUpReading` 會：
+
+1. 扣 5 點。
+2. 建立追問 prompt。
+3. 呼叫 OpenAI。
+4. 掃描回覆是否提到不在上下文允許清單內的塔羅牌名。
+5. 若提錯牌，丟棄並重試一次。
+6. 若仍錯，回傳錯誤並退點。
+7. 若正確，清理不必要標題後回傳前端。
+
+前端顯示追問牌時永遠使用實際抽出的 `drawnCard`，不相信 AI 自行宣告的牌名。
 
 ## 分層原則
 

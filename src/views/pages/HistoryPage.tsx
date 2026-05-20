@@ -7,6 +7,7 @@ import { QUESTION_CREDIT_COST } from '../../models/credits';
 import { SPREADS } from '../../models/spread';
 import { useHistoryReadings } from '../../controllers/useHistoryReadings';
 import { useCredits } from '../../controllers/useCredits';
+import { stripFollowUpCardHeading } from '../../utils/follow-up';
 import CardFace from '../components/tarot/CardFace';
 
 export default function HistoryPage() {
@@ -128,7 +129,7 @@ function HistoryCard({
     () =>
       isExpanded && reading.followUps?.length
         ? reading.followUps.map((fu) =>
-            marked.parse(fu.answer, { async: false }) as string,
+            marked.parse(stripFollowUpCardHeading(fu.answer), { async: false }) as string,
           )
         : [],
     [isExpanded, reading.followUps],
@@ -239,6 +240,9 @@ function HistoryCard({
                       <div className="text-center">
                         <p className="mb-2 text-xs text-[var(--color-text-muted)]">追問指引牌</p>
                         <CardFace drawnCard={fu.drawnCard} className="!w-24" />
+                        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                          {fu.drawnCard.card.name} — {fu.drawnCard.isReversed ? '逆位' : '正位'}
+                        </p>
                       </div>
                     </div>
                   )}

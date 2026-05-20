@@ -20,6 +20,22 @@ export type ReadingPhase =
 // Re-export for backward compatibility
 export type { FollowUpEntry } from '../models/reading';
 
+function buildFollowUpContext(originalInterpretation: string, followUps: FollowUpEntry[]): string {
+  const previousFollowUps = followUps
+    .map((entry, index) => {
+      const direction = entry.drawnCard.isReversed ? '逆位' : '正位';
+
+      return [
+        `追問 ${index + 1}：${entry.question}`,
+        `追問指引牌：${entry.drawnCard.card.name}（${entry.drawnCard.card.nameEn}）— ${direction}`,
+        `回覆：${entry.answer}`,
+      ].join('\n');
+    })
+    .join('\n\n');
+
+  return [originalInterpretation, previousFollowUps].filter(Boolean).join('\n\n---\n\n');
+}
+
 /**
  * useTarotSession 是占卜流程的 Controller。
  *
@@ -121,7 +137,10 @@ export function useTarotSession(spreadType: SpreadType) {
 
         const result = await provider.followUp({
           originalRequest: originalRequestRef.current,
-          originalInterpretation: interpretationRef.current,
+          originalInterpretation: buildFollowUpContext(
+            interpretationRef.current,
+            followUpsRef.current,
+          ),
           followUpQuestion,
           followUpCard: {
             card: {

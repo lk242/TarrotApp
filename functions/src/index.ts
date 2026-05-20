@@ -153,6 +153,160 @@ interface ChatResponse {
   usage?: ChatUsage;
 }
 
+const TAROT_CARD_NAMES = [
+  '愚者',
+  '魔術師',
+  '女祭司',
+  '皇后',
+  '皇帝',
+  '教皇',
+  '戀人',
+  '戰車',
+  '力量',
+  '隱者',
+  '命運之輪',
+  '正義',
+  '倒吊人',
+  '死神',
+  '節制',
+  '惡魔',
+  '高塔',
+  '星星',
+  '月亮',
+  '太陽',
+  '審判',
+  '世界',
+  '權杖王牌',
+  '權杖二',
+  '權杖三',
+  '權杖四',
+  '權杖五',
+  '權杖六',
+  '權杖七',
+  '權杖八',
+  '權杖九',
+  '權杖十',
+  '權杖侍者',
+  '權杖騎士',
+  '權杖皇后',
+  '權杖國王',
+  '聖杯王牌',
+  '聖杯二',
+  '聖杯三',
+  '聖杯四',
+  '聖杯五',
+  '聖杯六',
+  '聖杯七',
+  '聖杯八',
+  '聖杯九',
+  '聖杯十',
+  '聖杯侍者',
+  '聖杯騎士',
+  '聖杯皇后',
+  '聖杯國王',
+  '寶劍王牌',
+  '寶劍二',
+  '寶劍三',
+  '寶劍四',
+  '寶劍五',
+  '寶劍六',
+  '寶劍七',
+  '寶劍八',
+  '寶劍九',
+  '寶劍十',
+  '寶劍侍者',
+  '寶劍騎士',
+  '寶劍皇后',
+  '寶劍國王',
+  '錢幣王牌',
+  '錢幣二',
+  '錢幣三',
+  '錢幣四',
+  '錢幣五',
+  '錢幣六',
+  '錢幣七',
+  '錢幣八',
+  '錢幣九',
+  '錢幣十',
+  '錢幣侍者',
+  '錢幣騎士',
+  '錢幣皇后',
+  '錢幣國王',
+];
+
+function getTaipeiNowContext(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  })
+    .formatToParts(date)
+    .reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== 'literal') acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+  return `目前日期是 ${parts.year} 年 ${parts.month} 月 ${parts.day} 日，時區是 Asia/Taipei。目前年份是 ${parts.year}。除非使用者明確指定其他年份，解讀中不可把今年寫成其他年份。`;
+}
+
+function buildFollowUpHeading(followUpCard: FollowUpCard): string {
+  return `## 追問指引牌：${followUpCard.card.name}（${followUpCard.card.nameEn}） - ${
+    followUpCard.isReversed ? '逆位' : '正位'
+  }`;
+}
+
+function normalizeFollowUpText(text: string, followUpCard?: FollowUpCard): string {
+  if (!followUpCard) return text;
+
+  const withoutCardHeading = text
+    .replace(/^#{1,6}\s*追問指引牌[^\n]*(?:\n+)?/gm, '')
+    .replace(/^\*\*追問指引牌[:：]?\*\*[^\n]*(?:\n+)?/gm, '')
+    .replace(/^追問指引牌[:：][^\n]*(?:\n+)?/gm, '')
+    .trim();
+
+  const firstSectionIndex = withoutCardHeading.search(
+    /^#{1,6}\s*(延伸解析|具體行動方案|寄語)\s*$/m,
+  );
+
+  if (firstSectionIndex > 0) {
+    return withoutCardHeading.slice(firstSectionIndex).trim();
+  }
+
+  return withoutCardHeading;
+}
+
+function findConflictingCardNames(text: string, allowedCardNames: Set<string>): string[] {
+  const minorSuitPrefix = /^(權杖|聖杯|寶劍|錢幣)/;
+
+  return TAROT_CARD_NAMES.filter((name) => {
+    if (allowedCardNames.has(name)) return false;
+
+    if (minorSuitPrefix.test(name)) {
+      return text.includes(name);
+    }
+
+    // 大牌名稱常是一般詞彙，只在明顯牌名語境下視為衝突。
+    return new RegExp(`(?:牌|抽出|抽到|指引牌|塔羅)\\s*[「『]?${name}[」』]?|[「『]?${name}[」』]?\\s*(?:牌|正位|逆位)`).test(text);
+  });
+}
+
+function collectAllowedCardNames(request: AIFollowUpRequest): Set<string> {
+  const names = new Set<string>();
+  request.originalRequest.drawnCards.forEach((drawnCard) => names.add(drawnCard.card.name));
+  if (request.followUpCard) names.add(request.followUpCard.card.name);
+
+  const mentionedFollowUpCards = request.originalInterpretation.matchAll(
+    /追問指引牌[:：]\s*([^（\n—-]+)/g,
+  );
+  for (const match of mentionedFollowUpCards) {
+    const name = match[1]?.trim();
+    if (name) names.add(name);
+  }
+
+  return names;
+}
+
 function requireUid(uid?: string): string {
   if (!uid) {
     throw new HttpsError('unauthenticated', '請先登入後再使用 AI 占卜');
@@ -738,15 +892,17 @@ export const generateTarotReading = onCall(
     // Callable Function 會自動處理 Firebase Web SDK 的 envelope 格式與 CORS。
     const uid = requireUid(request.auth?.uid);
     const data = assertInterpretationRequest(request.data);
+    const todayContext = getTaipeiNowContext();
     const systemPrompt =
       buildSystemPrompt(data.locale) +
+      `\n\n${todayContext}` +
       `\n\n在解讀結束後，請額外用以下格式附上 3 個建議追問，用 HTML 註解包起來：
 <!-- SUGGESTED_QUESTIONS:
 - 問題一
 - 問題二
 - 問題三
 -->`;
-    const userPrompt = buildUserPrompt(data);
+    const userPrompt = `${todayContext}\n\n${buildUserPrompt(data)}`;
     await chargeQuestionCredits(uid, `全新占卜：${data.spreadType}`);
 
     try {
@@ -772,6 +928,7 @@ export const followUpReading = onCall(
     // 追問沿用原始牌陣與前次解讀摘要，避免 AI 忘記上下文。
     const uid = requireUid(request.auth?.uid);
     const data = assertFollowUpRequest(request.data);
+    const allowedCardNames = collectAllowedCardNames(data);
     const cardsDescription = data.originalRequest.drawnCards
       .map(
         (dc) =>
@@ -783,9 +940,13 @@ export const followUpReading = onCall(
 
     // 追問新牌描述
     const followUpCard = data.followUpCard;
+    const todayContext = getTaipeiNowContext();
+    const followUpHeading = followUpCard ? buildFollowUpHeading(followUpCard) : '';
     const newCardDescription = followUpCard
       ? `\n**追問指引牌：** ${followUpCard.card.name}（${followUpCard.card.nameEn}）— ${followUpCard.isReversed ? '逆位' : '正位'}\n關鍵字：${followUpCard.isReversed ? followUpCard.card.reversedKeywords.join('、') : followUpCard.card.keywords.join('、')}`
       : '';
+    const systemPromptPrefix = `${todayContext}
+${followUpHeading ? `本次追問指引牌是「${followUpHeading.replace(/^##\s*/, '')}」。前端會另外顯示牌名，正文不要再輸出「追問指引牌」標題，也不要改寫成其他牌名、英文名或正逆位。` : ''}`;
 
     const systemPrompt = `你是一位資深塔羅占卜師，正在為問卜者進行深入的追問解讀。
 
@@ -797,7 +958,6 @@ export const followUpReading = onCall(
 回應長度約 300 到 400 字，使用 Markdown 格式。
 
 結構：
-## 追問指引牌：{牌名}（{正/逆位}）
 ## 延伸解析
 ## 具體行動方案
 ## 寄語
@@ -809,12 +969,15 @@ export const followUpReading = onCall(
 - 問題三
 -->`;
 
-    const userPrompt = `**原始問題：** ${data.originalRequest.question}
+    const userPrompt = `${todayContext}
+${followUpHeading ? `本次追問請以這張牌作為核心：${followUpHeading.replace(/^##\s*/, '')}` : ''}
+
+**原始問題：** ${data.originalRequest.question}
 **原始牌陣：**
 ${cardsDescription}
 
 **之前的解讀摘要：**
-${data.originalInterpretation.slice(0, 1500)}
+${data.originalInterpretation.slice(0, 3000)}
 
 ---
 
@@ -826,15 +989,33 @@ ${newCardDescription}
     await chargeQuestionCredits(uid, '占卜追問');
 
     try {
-      const result = await chat(
-        [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        1000,
-      );
+      let lastConflicts: string[] = [];
 
-      return toResponse(result.text, result.usage);
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const retryInstruction =
+          attempt > 0
+            ? `\n\n上一版回覆提到了不屬於本次上下文的牌名：${lastConflicts.join('、')}。請重新生成，只能依據允許的牌名：${Array.from(allowedCardNames).join('、')}。`
+            : '';
+        const result = await chat(
+          [
+            { role: 'system', content: `${systemPromptPrefix}\n\n${systemPrompt}${retryInstruction}` },
+            { role: 'user', content: userPrompt },
+          ],
+          1000,
+        );
+        const conflicts = findConflictingCardNames(result.text, allowedCardNames);
+
+        if (conflicts.length === 0) {
+          return toResponse(normalizeFollowUpText(result.text, followUpCard), result.usage);
+        }
+
+        lastConflicts = conflicts;
+      }
+
+      throw new HttpsError(
+        'internal',
+        `AI 追問回覆引用了錯誤牌名（${lastConflicts.join('、')}），已退還點數，請再試一次。`,
+      );
     } catch (error) {
       await refundQuestionCredits(uid, 'AI 追問失敗退還點數');
       throw error;

@@ -8,6 +8,7 @@ import { QUESTION_CREDIT_COST } from '../../models/credits';
 import { useTarotSession } from '../../controllers/useTarotSession';
 import { useAuth } from '../../controllers/useAuth';
 import { useCredits } from '../../controllers/useCredits';
+import { stripFollowUpCardHeading } from '../../utils/follow-up';
 import CardFace from '../components/tarot/CardFace';
 import ShuffleAnimation from '../animations/ShuffleAnimation';
 import CutAnimation from '../animations/CutAnimation';
@@ -106,7 +107,7 @@ export default function ReadingPage() {
     () =>
       followUps.map((f) => ({
         question: f.question,
-        html: marked.parse(f.answer, { async: false }) as string,
+        html: marked.parse(stripFollowUpCardHeading(f.answer), { async: false }) as string,
         drawnCard: f.drawnCard,
       })),
     [followUps],

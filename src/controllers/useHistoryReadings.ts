@@ -10,7 +10,15 @@ import { useCredits } from './useCredits';
 
 function buildFollowUpContext(reading: Reading): string {
   const previousFollowUps = reading.followUps
-    ?.map((entry, index) => `追問 ${index + 1}：${entry.question}\n回覆：${entry.answer}`)
+    ?.map((entry, index) => {
+      const direction = entry.drawnCard.isReversed ? '逆位' : '正位';
+
+      return [
+        `追問 ${index + 1}：${entry.question}`,
+        `追問指引牌：${entry.drawnCard.card.name}（${entry.drawnCard.card.nameEn}）— ${direction}`,
+        `回覆：${entry.answer}`,
+      ].join('\n');
+    })
     .join('\n\n');
 
   return [reading.interpretation, previousFollowUps].filter(Boolean).join('\n\n---\n\n');

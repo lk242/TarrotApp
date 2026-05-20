@@ -19,16 +19,16 @@ export default function CutAnimation({ onComplete }: Props) {
     return () => [t1, t2, t3, t4].forEach(clearTimeout);
   }, [onComplete]);
 
-  const topY = phase === 'split' || phase === 'swap' ? -78 : 0;
-  const botY = phase === 'split' || phase === 'swap' ? 78 : 0;
-  const topX = phase === 'swap' ? 70 : 0;
-  const botX = phase === 'swap' ? -70 : 0;
+  const topY = phase === 'split' || phase === 'swap' ? -109 : 0;
+  const botY = phase === 'split' || phase === 'swap' ? 109 : 0;
+  const topX = phase === 'swap' ? 98 : 0;
+  const botX = phase === 'swap' ? -98 : 0;
   const finalTopY = phase === 'merge' ? 0 : topY;
   const finalBotY = phase === 'merge' ? 0 : botY;
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <div className="relative flex items-center justify-center overflow-hidden" style={{ width: 380, height: 440 }}>
+      <div className="relative flex items-center justify-center overflow-hidden" style={{ width: 532, height: 616 }}>
         {/* 下半疊 */}
         {[0, 1, 2, 3, 4].map((i) => (
           <motion.div
@@ -38,7 +38,7 @@ export default function CutAnimation({ onComplete }: Props) {
             transition={{ type: 'spring', stiffness: 140, damping: 20 }}
             style={{ zIndex: i, bottom: i * 0 }}
           >
-            <CardBack width={140} height={220} />
+            <CardBack width={196} height={308} />
           </motion.div>
         ))}
 
@@ -51,7 +51,7 @@ export default function CutAnimation({ onComplete }: Props) {
             transition={{ type: 'spring', stiffness: 140, damping: 20 }}
             style={{ zIndex: 10 + i }}
           >
-            <CardBack width={140} height={220} glowing={phase === 'merge'} />
+            <CardBack width={196} height={308} glowing={phase === 'merge'} />
           </motion.div>
         ))}
       </div>

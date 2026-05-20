@@ -12,8 +12,8 @@ interface Props {
 }
 
 const FAN_TOTAL = 40; // 視覺上夠密，效能 OK
-const FLIP_W = 120;
-const FLIP_H = 192;
+const FLIP_W = 168;
+const FLIP_H = 269;
 const PARTICLE_TOTAL = 16;
 const PARTICLE_PATTERN = Array.from({ length: PARTICLE_TOTAL }, (_, i) => {
   const angle = (i / PARTICLE_TOTAL) * 360;
@@ -86,8 +86,8 @@ function DesktopFan({
   }, []);
 
   // 卡牌 & 弧形參數
-  const cardW = 120;
-  const cardH = 192;
+  const cardW = 168;
+  const cardH = 269;
   const fanAngle = 180; // 半圓
   const radius = containerWidth * 0.45;
   const areaHeight = radius + cardH * 0.6;
@@ -297,11 +297,11 @@ function MobileSwipeDraw({
             >
               {[2, 1, 0].map((offset) => (
                 <div key={offset} className="absolute" style={{ top: -offset * 2, left: offset, zIndex: offset }}>
-                  <CardBack width={100} height={160} />
+                  <CardBack width={140} height={224} />
                 </div>
               ))}
               <div className="relative" style={{ zIndex: 3 }}>
-                <CardBack width={100} height={160} glowing />
+                <CardBack width={140} height={224} glowing />
                 <motion.div
                   className="pointer-events-none absolute inset-0 rounded-xl"
                   animate={{ opacity: swipeProgress > 0 ? swipeProgress * 0.6 : 0 }}
@@ -392,7 +392,7 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
                   <CardBack width={FLIP_W} height={FLIP_H} glowing />
                 </div>
                 <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0, transform: 'rotateY(180deg)' }}>
-                  <CardFace drawnCard={dc} className="h-[192px] w-[120px]" />
+                  <CardFace drawnCard={dc} className="h-[269px] w-[168px]" />
                 </div>
               </motion.div>
             </div>

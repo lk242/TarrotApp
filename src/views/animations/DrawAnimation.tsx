@@ -90,7 +90,7 @@ function DesktopFan({
   const cardH = 269;
   const fanAngle = 180; // 半圓
   const radius = containerWidth * 0.42;
-  const areaHeight = radius + cardH * 0.35;
+  const areaHeight = radius + cardH * 0.55;
   const centerX = containerWidth / 2;
 
   const handlePick = useCallback(
@@ -132,7 +132,7 @@ function DesktopFan({
         </p>
       </div>
 
-      <div className="relative w-full overflow-hidden" style={{ height: areaHeight }}>
+      <div className="relative w-full" style={{ height: areaHeight }}>
         {Array.from({ length: FAN_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isHovered = hoveredIndex === i;
@@ -140,7 +140,7 @@ function DesktopFan({
           const angle = startAngle + (i / (FAN_TOTAL - 1)) * fanAngle;
           const rad = (angle * Math.PI) / 180;
           const x = centerX + Math.sin(rad) * radius - cardW / 2;
-          const y = areaHeight + 40 - Math.cos(rad) * radius;
+          const y = areaHeight - 10 - Math.cos(rad) * radius;
 
           return (
             <div

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import CardBack from '../components/tarot/CardBack';
+import { useI18n } from '../../controllers/useI18n';
 
 interface Props {
   onComplete: () => void;
@@ -16,12 +17,13 @@ const RIFFLE_CARDS = Array.from({ length: 18 }, (_, i) => ({
   settleRotate: [-7, 5, -2, 8, -5, 3, -9, 6, -1, 4, -6, 9, -3, 2, -8, 7, -4, 1][i],
 }));
 
-const PHASE_TEXT: Record<Phase, string> = {
-  entering:    '牌陣正在聚集能量...',
-  splitting:   '將牌分為陰陽兩半...',
-  riffling:    '命運的絲線交織重組...',
-  gathering:   '命運之序已重新編排',
-  withdrawing: '牌充滿了你的能量',
+/** phase → locale key 對照 */
+const PHASE_KEY: Record<Phase, 'shuffleEntering' | 'shuffleSplitting' | 'shuffleRiffling' | 'shuffleGathering' | 'shuffleWithdrawing'> = {
+  entering: 'shuffleEntering',
+  splitting: 'shuffleSplitting',
+  riffling: 'shuffleRiffling',
+  gathering: 'shuffleGathering',
+  withdrawing: 'shuffleWithdrawing',
 };
 
 function CardStack({ count = 6, width = 182, height = 286, glowTop = true }: {
@@ -40,6 +42,7 @@ function CardStack({ count = 6, width = 182, height = 286, glowTop = true }: {
 }
 
 export default function ShuffleAnimation({ onComplete }: Props) {
+  const { t } = useI18n();
   const [phase, setPhase] = useState<Phase>('entering');
 
   useEffect(() => {
@@ -140,7 +143,7 @@ export default function ShuffleAnimation({ onComplete }: Props) {
 
       {/* 說明文字 */}
       <p key={phase} className="text-sm text-[var(--color-text-secondary)] animate-fade-in">
-        {PHASE_TEXT[phase]}
+        {t.reading[PHASE_KEY[phase]]}
       </p>
     </div>
   );

@@ -8,6 +8,7 @@ import {
   type AdminCreditUser,
   type AdminUserListItem,
 } from '../../services/admin/admin-service';
+import AdminDashboard from '../components/admin/AdminDashboard';
 
 /** 登入方式 providerId → 中文顯示 */
 function providerLabel(providerId: string): string {
@@ -34,12 +35,12 @@ function formatTime(iso: string): string {
   }
 }
 
-type Tab = 'users' | 'credits';
+type Tab = 'dashboard' | 'users' | 'credits';
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const [adminEmail, setAdminEmail] = useState('');
-  const [activeTab, setActiveTab] = useState<Tab>('users');
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
 
   // 使用者名單
   const [userList, setUserList] = useState<AdminUserListItem[]>([]);
@@ -100,9 +101,9 @@ export default function AdminPage() {
     }
   }, []);
 
-  // 切到 users tab 時自動載入
+  // 切到 users 或 dashboard tab 時自動載入
   useEffect(() => {
-    if (activeTab === 'users' && adminEmail && !userListLoaded && !userListLoading) {
+    if ((activeTab === 'users' || activeTab === 'dashboard') && adminEmail && !userListLoaded && !userListLoading) {
       queueMicrotask(() => {
         loadUsers();
       });
@@ -232,26 +233,23 @@ export default function AdminPage() {
 
         {/* Tab 切換 */}
         <div className="mb-6 flex gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-1">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`flex-1 cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'users'
-                ? 'bg-[var(--color-accent-gold)] text-[var(--color-bg-primary)]'
-                : 'bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            }`}
-          >
-            成員名單
-          </button>
-          <button
-            onClick={() => setActiveTab('credits')}
-            className={`flex-1 cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'credits'
-                ? 'bg-[var(--color-accent-gold)] text-[var(--color-bg-primary)]'
-                : 'bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            }`}
-          >
-            點數管理
-          </button>
+          {([
+            { key: 'dashboard' as Tab, label: '統計總覽' },
+            { key: 'users' as Tab, label: '成員名單' },
+            { key: 'credits' as Tab, label: '點數管理' },
+          ]).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'bg-[var(--color-accent-gold)] text-[var(--color-bg-primary)]'
+                  : 'bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {error && (
@@ -263,6 +261,17 @@ export default function AdminPage() {
           <div className="mb-6 rounded-lg border border-[var(--color-accent-gold)]/30 bg-[var(--color-accent-gold)]/10 p-4 text-sm text-[var(--color-text-secondary)]">
             {message}
           </div>
+        )}
+
+        {/* ===== 統計總覽 Tab ===== */}
+        {activeTab === 'dashboard' && (
+          userListLoading && !userListLoaded ? (
+            <div className="py-12 text-center text-sm text-[var(--color-text-muted)]">
+              載入統計資料中...
+            </div>
+          ) : (
+            <AdminDashboard users={userList} />
+          )
         )}
 
         {/* ===== 成員名單 Tab ===== */}

@@ -2,8 +2,18 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DrawnCard } from '../../models/tarot-card';
 import type { Spread } from '../../models/spread';
+import type { Locale } from '../../services/i18n/locales/zh-TW';
 import CardBack from '../components/tarot/CardBack';
 import CardFace from '../components/tarot/CardFace';
+import { useI18n } from '../../controllers/useI18n';
+import type { SpreadType } from '../../models/spread';
+
+/** SpreadType → positions locale key */
+const SPREAD_POS_KEY: Record<SpreadType, 'single' | 'threeCard' | 'celticCross'> = {
+  single: 'single',
+  'three-card': 'threeCard',
+  'celtic-cross': 'celticCross',
+};
 
 interface Props {
   spread: Spread;
@@ -57,9 +67,11 @@ function Particles({ x, y }: { x: number; y: number }) {
 function DesktopFan({
   totalNeeded,
   onAllPicked,
+  t,
 }: {
   totalNeeded: number;
   onAllPicked: () => void;
+  t: Locale;
 }) {
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [revealCount, setRevealCount] = useState(0);
@@ -86,12 +98,12 @@ function DesktopFan({
   }, []);
 
   // 限制桌機扇形寬度，避免寬螢幕時半徑過大造成牌組被推到畫面下方。
-  const stageWidth = Math.min(containerWidth, 980);
-  const cardW = Math.max(92, Math.min(124, stageWidth * 0.12));
+  const stageWidth = Math.min(containerWidth, 1100);
+  const cardW = Math.max(105, Math.min(150, stageWidth * 0.14));
   const cardH = Math.round(cardW * 1.6);
-  const fanAngle = 112;
-  const radius = Math.max(310, Math.min(460, stageWidth * 0.47, containerWidth * 0.42));
-  const areaHeight = Math.round(cardH + radius * 0.26 + 112);
+  const fanAngle = 115;
+  const radius = Math.max(340, Math.min(520, stageWidth * 0.48, containerWidth * 0.45));
+  const areaHeight = Math.round(cardH + radius * 0.28 + 120);
   const centerX = stageWidth / 2;
   const fanTop = 24;
 
@@ -126,11 +138,10 @@ function DesktopFan({
     <div ref={containerRef} className="flex w-full flex-col items-center gap-0">
       <div className="mb-1 text-center animate-fade-in">
         <p className="text-base text-[var(--color-text-secondary)]">
-          用直覺從牌陣中選取{' '}
-          <span className="font-bold text-[var(--color-accent-gold)]">{totalNeeded}</span> 張牌
+          {t.reading.drawDesktopHint.replace('{count}', String(totalNeeded))}
         </p>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          已選 {revealCount} / {totalNeeded}
+          {t.reading.drawDesktopProgress.replace('{current}', String(revealCount)).replace('{total}', String(totalNeeded))}
         </p>
       </div>
 
@@ -192,9 +203,11 @@ function DesktopFan({
 function MobileSwipeDraw({
   totalNeeded,
   onAllPicked,
+  t,
 }: {
   totalNeeded: number;
   onAllPicked: () => void;
+  t: Locale;
 }) {
   const [revealCount, setRevealCount] = useState(0);
   const [swiping, setSwiping] = useState(false);
@@ -264,11 +277,10 @@ function MobileSwipeDraw({
     <div className="flex flex-col items-center gap-5">
       <div className="text-center animate-fade-in">
         <p className="text-sm text-[var(--color-text-secondary)]">
-          向上滑動抽取{' '}
-          <span className="font-bold text-[var(--color-accent-gold)]">{totalNeeded}</span> 張牌
+          {t.reading.drawMobileHint.replace('{count}', String(totalNeeded))}
         </p>
         <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-          已抽 {revealCount} / {totalNeeded}
+          {t.reading.drawMobileProgress.replace('{current}', String(revealCount)).replace('{total}', String(totalNeeded))}
         </p>
       </div>
 
@@ -343,10 +355,13 @@ function MobileSwipeDraw({
 // 主元件
 // ========================================================
 export default function DrawAnimation({ spread, drawnCards, onComplete }: Props) {
+  const { t } = useI18n();
   const totalNeeded = drawnCards.length;
   const [phase, setPhase] = useState<'pick' | 'reveal'>('pick');
   const [flipped, setFlipped] = useState<boolean[]>(Array(totalNeeded).fill(false));
   const [isMobile, setIsMobile] = useState(false);
+  const posKey = SPREAD_POS_KEY[spread.type] ?? 'single';
+  const positionNames = (t.positions as Record<string, string[]>)[posKey] ?? [];
 
   useEffect(() => {
     // Tailwind v4 的 responsive utilities 在部分 WebView 不穩，這裡用 JS 判斷手機模式。
@@ -369,8 +384,8 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
 
   if (phase === 'pick') {
     return isMobile
-      ? <MobileSwipeDraw totalNeeded={totalNeeded} onAllPicked={handleAllPicked} />
-      : <DesktopFan totalNeeded={totalNeeded} onAllPicked={handleAllPicked} />;
+      ? <MobileSwipeDraw totalNeeded={totalNeeded} onAllPicked={handleAllPicked} t={t} />
+      : <DesktopFan totalNeeded={totalNeeded} onAllPicked={handleAllPicked} t={t} />;
   }
 
   // === 翻牌揭示 ===
@@ -385,7 +400,7 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
             transition={{ delay: i * 0.15 }}
             className="flex flex-col items-center gap-2"
           >
-            <span className="text-xs text-[var(--color-text-muted)]">{spread.positions[i]?.name}</span>
+            <span className="text-xs text-[var(--color-text-muted)]">{positionNames[i] ?? spread.positions[i]?.name}</span>
             <div style={{ perspective: '800px' }}>
               <motion.div
                 animate={{ rotateY: flipped[i] ? 180 : 0 }}
@@ -411,11 +426,11 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
               animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.2, 0.8] }}
               transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }} />
           ))}
-          <span className="ml-2 text-sm text-[var(--color-text-secondary)]">揭示命運之牌...</span>
+          <span className="ml-2 text-sm text-[var(--color-text-secondary)]">{t.reading.revealingCards}</span>
         </div>
       ) : (
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-[var(--color-accent-gold-light)]">
-          ✦ 所有牌已翻開，靜候神諭...
+          {t.reading.revealComplete}
         </motion.p>
       )}
     </div>

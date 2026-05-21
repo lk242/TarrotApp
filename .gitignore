@@ -12,6 +12,7 @@ dist
 dist-ssr
 .firebase
 functions/lib
+*.tsbuildinfo
 *.local
 .env
 .ai/

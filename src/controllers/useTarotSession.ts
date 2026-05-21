@@ -8,6 +8,8 @@ import { getConfiguredProvider } from '../services/ai/ai-factory';
 import { getStorageProvider } from '../services/storage/storage-factory';
 import { useAuth } from './useAuth';
 import { useCredits } from './useCredits';
+import { useI18n } from './useI18n';
+import { trackEvent } from '../services/firebase/analytics';
 
 export type ReadingPhase =
   | 'idle'
@@ -45,6 +47,7 @@ function buildFollowUpContext(originalInterpretation: string, followUps: FollowU
 export function useTarotSession(spreadType: SpreadType) {
   const { user } = useAuth();
   const { refresh: refreshCredits } = useCredits();
+  const { lang } = useI18n();
   const [phase, setPhase] = useState<ReadingPhase>('idle');
   const [question, setQuestion] = useState('');
   const [drawnCards, setDrawnCards] = useState<DrawnCard[]>([]);
@@ -66,6 +69,7 @@ export function useTarotSession(spreadType: SpreadType) {
 
   const startReading = useCallback(() => {
     setError('');
+    trackEvent('reading_start', { spread_type: spreadType });
     // 抽牌結果在動畫開始前就固定，後續只是逐步揭示，不會因 re-render 改變。
     const cards = performReading(spreadType);
     drawnCardsRef.current = cards;
@@ -77,7 +81,7 @@ export function useTarotSession(spreadType: SpreadType) {
   const onShuffleComplete = useCallback(() => setPhase('cutting'), []);
   const onCutComplete = useCallback(() => setPhase('drawing'), []);
 
-  const onDrawComplete = useCallback(async () => {
+  const onDrawComplete = useCallback(async (ctx?: { topic?: string; querentSummary?: string }) => {
     setPhase('interpreting');
     const provider = getConfiguredProvider();
 
@@ -86,7 +90,9 @@ export function useTarotSession(spreadType: SpreadType) {
       spreadType,
       drawnCards: drawnCardsRef.current,
       question: questionRef.current || '給我一個整體的生活指引',
-      locale: 'zh-TW',
+      locale: lang,
+      topic: ctx?.topic,
+      querentSummary: ctx?.querentSummary,
     };
     originalRequestRef.current = request;
 
@@ -111,14 +117,16 @@ export function useTarotSession(spreadType: SpreadType) {
       savedReadingIdRef.current = docId;
       refreshCredits().catch(console.error);
 
+      trackEvent('reading_complete', { spread_type: spreadType });
       setPhase('complete');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI 解讀失敗，請稍後再試';
       console.error('占卜解讀失敗:', err);
+      trackEvent('reading_error', { spread_type: spreadType, error: message });
       setError(message);
       setPhase('idle');
     }
-  }, [refreshCredits, spreadType, user]);
+  }, [lang, refreshCredits, spreadType, user]);
 
   /** 追問 — 額外抽一張新牌，基於新牌延伸解讀 */
   const askFollowUp = useCallback(
@@ -126,6 +134,7 @@ export function useTarotSession(spreadType: SpreadType) {
       if (!originalRequestRef.current || isFollowingUp) return;
       setIsFollowingUp(true);
       setError('');
+      trackEvent('follow_up_start', { spread_type: spreadType });
 
       try {
         const provider = getConfiguredProvider();
@@ -152,7 +161,7 @@ export function useTarotSession(spreadType: SpreadType) {
             isReversed: extraCard.isReversed,
             position: extraCard.position,
           },
-          locale: 'zh-TW',
+          locale: lang,
         });
 
         const newEntry: FollowUpEntry = {
@@ -182,7 +191,7 @@ export function useTarotSession(spreadType: SpreadType) {
         setIsFollowingUp(false);
       }
     },
-    [isFollowingUp, refreshCredits, user],
+    [isFollowingUp, lang, refreshCredits, spreadType, user],
   );
 
   const reset = useCallback(() => {

@@ -76,6 +76,101 @@ export async function getLineToken(): Promise<{ type: 'id_token' | 'access_token
   return forceReLogin(client);
 }
 
+/**
+ * 透過 LIFF shareTargetPicker 分享 Flex Message 到 LINE 聊天。
+ * 僅在 LINE 內建瀏覽器或已登入 LIFF 時可用。
+ * 回傳 true 表示成功開啟分享介面，false 表示不可用。
+ */
+export async function shareToLine(params: {
+  title: string;
+  description: string;
+  url: string;
+  imageUrl?: string;
+}): Promise<boolean> {
+  if (!liffId) return false;
+
+  try {
+    const client = await initializeLiff();
+
+    if (!client.isApiAvailable('shareTargetPicker')) {
+      return false;
+    }
+
+    await client.shareTargetPicker([
+      {
+        type: 'flex',
+        altText: `${params.title} — 神秘塔羅`,
+        contents: {
+          type: 'bubble',
+          size: 'mega',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              {
+                type: 'text',
+                text: '✦ 神秘塔羅 ✦',
+                color: '#C9A84C',
+                size: 'sm',
+                align: 'center',
+                weight: 'bold',
+              },
+            ],
+            backgroundColor: '#0A0A14',
+            paddingAll: '12px',
+          },
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              {
+                type: 'text',
+                text: params.title,
+                weight: 'bold',
+                size: 'lg',
+                color: '#E8D48B',
+                wrap: true,
+              },
+              {
+                type: 'text',
+                text: params.description,
+                size: 'sm',
+                color: '#B0A8C0',
+                wrap: true,
+                margin: 'md',
+              },
+            ],
+            backgroundColor: '#12121E',
+            paddingAll: '16px',
+          },
+          footer: {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              {
+                type: 'button',
+                action: {
+                  type: 'uri',
+                  label: '來占卜看看',
+                  uri: params.url,
+                },
+                style: 'primary',
+                color: '#7B5EA7',
+              },
+            ],
+            backgroundColor: '#12121E',
+            paddingAll: '12px',
+          },
+        },
+      } as never, // LIFF SDK 型別不完整，用 never 繞過
+    ]);
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function tryAutoLineLogin(): Promise<{ type: 'id_token' | 'access_token'; token: string } | null> {
   if (!liffId) return null;
 

@@ -9,62 +9,39 @@ import { useTarotSession } from '../../controllers/useTarotSession';
 import { useAuth } from '../../controllers/useAuth';
 import { useCredits } from '../../controllers/useCredits';
 import { stripFollowUpCardHeading } from '../../utils/follow-up';
+import { useQuerentSignals } from '../../controllers/useQuerentSignals';
+import { shareReading } from '../../services/share-service';
+import { captureElement, shareScreenshot } from '../../services/screenshot-service';
 import CardFace from '../components/tarot/CardFace';
 import ShuffleAnimation from '../animations/ShuffleAnimation';
 import CutAnimation from '../animations/CutAnimation';
 import DrawAnimation from '../animations/DrawAnimation';
 import CelticCrossLayout from '../components/tarot/CelticCrossLayout';
+import InterpretationSections from '../components/tarot/InterpretationSections';
+import ReadingShareCard from '../components/tarot/ReadingShareCard';
+import PushPrompt from '../components/notification/PushPrompt';
+import { usePushNotification } from '../../controllers/usePushNotification';
+import { useI18n } from '../../controllers/useI18n';
 
-const TOPIC_CARDS = [
-  {
-    image: '/images/theme/icons/love.webp',
-    label: '愛情',
-    hint: '感情運勢與關係',
-    prompt: '我想了解我的愛情運勢，目前的感情狀況會如何發展？',
-  },
-  {
-    image: '/images/theme/icons/career.webp',
-    label: '事業',
-    hint: '工作發展與方向',
-    prompt: '我想了解我的事業發展，目前的工作方向是否正確？',
-  },
-  {
-    image: '/images/theme/icons/wealth.webp',
-    label: '財運',
-    hint: '財務狀況與投資',
-    prompt: '我想了解近期的財務運勢，理財上需要注意什麼？',
-  },
-  {
-    image: '/images/theme/icons/fortune.webp',
-    label: '整體運勢',
-    hint: '生活全方位指引',
-    prompt: '請給我一個整體的生活指引，近期需要注意什麼？',
-  },
-  {
-    image: '/images/theme/icons/spirit.webp',
-    label: '身心靈',
-    hint: '內在成長與健康',
-    prompt: '我想了解自己內在的狀態，身心靈方面有什麼需要調整的？',
-  },
-  {
-    image: '/images/theme/icons/social.webp',
-    label: '人際關係',
-    hint: '社交與人際互動',
-    prompt: '我想了解人際關係方面的運勢，如何改善與他人的互動？',
-  },
-  {
-    image: '/images/theme/icons/study.webp',
-    label: '學業',
-    hint: '學習與考試運',
-    prompt: '我想了解學業方面的運勢，目前的學習方向是否正確？',
-  },
-  {
-    image: '/images/theme/icons/free.webp',
-    label: '自由提問',
-    hint: '自訂你的問題',
-    prompt: '',
-  },
+/** 主題卡片靜態資料（label 和 prompt 都從 i18n 取） */
+type TopicKey = 'love' | 'career' | 'wealth' | 'fortune' | 'spirit' | 'social' | 'study' | 'free';
+const TOPIC_KEYS: { key: TopicKey; image: string }[] = [
+  { key: 'love', image: '/images/theme/icons/love.webp' },
+  { key: 'career', image: '/images/theme/icons/career.webp' },
+  { key: 'wealth', image: '/images/theme/icons/wealth.webp' },
+  { key: 'fortune', image: '/images/theme/icons/fortune.webp' },
+  { key: 'spirit', image: '/images/theme/icons/spirit.webp' },
+  { key: 'social', image: '/images/theme/icons/social.webp' },
+  { key: 'study', image: '/images/theme/icons/study.webp' },
+  { key: 'free', image: '/images/theme/icons/free.webp' },
 ];
+
+/** SpreadType → locale key 對照 */
+const SPREAD_I18N_KEY: Record<SpreadType, 'single' | 'threeCard' | 'celticCross'> = {
+  single: 'single',
+  'three-card': 'threeCard',
+  'celtic-cross': 'celticCross',
+};
 
 /**
  * 占卜主頁面。
@@ -79,6 +56,13 @@ export default function ReadingPage() {
   const spread = SPREADS[spreadType] || SPREADS.single;
   const { user } = useAuth();
   const { balance, loading: creditLoading } = useCredits();
+  const { t } = useI18n();
+  const posKey = SPREAD_I18N_KEY[spreadType] ?? 'single';
+  const positionNames = (t.positions as Record<string, string[]>)?.[posKey] ?? [];
+  const { onTopicChange, onTypingStart, resetSignals, buildContext } = useQuerentSignals(user?.uid);
+  const push = usePushNotification(user?.uid ?? null);
+  /** 記錄使用者選擇的主題標籤（非 prompt 文字） */
+  const selectedTopicLabel = useRef('');
 
   const {
     phase, question, setQuestion,
@@ -89,19 +73,18 @@ export default function ReadingPage() {
   } = useTarotSession(spreadType);
 
   const [followUpInput, setFollowUpInput] = useState('');
+  const [shareStatus, setShareStatus] = useState<string>('');
+  const [isCapturing, setIsCapturing] = useState(false);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const followUpEndRef = useRef<HTMLDivElement>(null);
   const canAsk = Boolean(user) && balance >= QUESTION_CREDIT_COST;
   const blockedReason = !user
-    ? '請先登入，註冊或 Google 登入會贈送 100 點。'
+    ? t.credits.loginRequired
     : balance < QUESTION_CREDIT_COST
-      ? '點數不足，請先購買點數或訂閱方案。'
+      ? t.credits.notEnough
       : '';
 
-  const interpretationHtml = useMemo(
-    // marked.parse 只在 interpretation 改變時執行，避免每次輸入追問都重算整篇解讀。
-    () => (interpretation ? (marked.parse(interpretation, { async: false }) as string) : ''),
-    [interpretation],
-  );
+  // interpretationHtml 已移除，改用 InterpretationSections 元件渲染
 
   const followUpHtmls = useMemo(
     () =>
@@ -136,10 +119,10 @@ export default function ReadingPage() {
               ))}
             </div>
             <p className="text-sm font-bold text-[var(--color-text-primary)]">
-              {isFollowingUp ? '正在解析追問' : '正在產生塔羅解讀'}
+              {isFollowingUp ? t.reading.interpretingFollowUp : t.reading.interpreting}
             </p>
             <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
-              請稍候，結果完成後會自動顯示。
+              {t.reading.waitHint}
             </p>
             <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
               <motion.div
@@ -154,28 +137,41 @@ export default function ReadingPage() {
       )}
 
       <h1 className="mb-2 text-2xl font-bold text-[var(--color-accent-gold)] animate-fade-in">
-        {spread.name}
+        {t.spreads[SPREAD_I18N_KEY[spreadType]]?.name ?? spread.name}
       </h1>
-      <p className="mb-10 text-sm text-[var(--color-text-muted)]">{spread.description}</p>
+      <p className="mb-10 text-sm text-[var(--color-text-muted)]">{t.spreads[SPREAD_I18N_KEY[spreadType]]?.description ?? spread.description}</p>
       <div className="mb-6 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-xs text-[var(--color-text-secondary)]">
         {user ? (
           <>
-            目前 {creditLoading ? '讀取點數中...' : `${balance} 點`}，每次占卜或追問消耗 {QUESTION_CREDIT_COST} 點
+            {creditLoading ? t.credits.loadingPoints : t.credits.currentPoints.replace('{points}', String(balance))}
+            {', '}
+            {t.credits.costPerReading.replace('{cost}', String(QUESTION_CREDIT_COST))}
           </>
         ) : (
-          <>登入後可取得 100 點，每次占卜或追問消耗 {QUESTION_CREDIT_COST} 點</>
+          <>
+            {t.credits.loginHint}
+            {', '}
+            {t.credits.costPerReading.replace('{cost}', String(QUESTION_CREDIT_COST))}
+          </>
         )}
       </div>
 
       {(blockedReason || error) && (
         <div className="mb-6 w-full max-w-xl rounded-lg border border-[var(--color-accent-gold)]/30 bg-[var(--color-accent-gold)]/10 p-4 text-center text-sm text-[var(--color-text-secondary)]">
           <p>{error || blockedReason}</p>
-          {!user || balance < QUESTION_CREDIT_COST ? (
+          {error && phase === 'idle' ? (
+            <button
+              onClick={() => { reset(); }}
+              className="mt-2 cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/40 bg-transparent px-4 py-1.5 text-xs font-bold text-[var(--color-accent-gold)] transition-colors hover:bg-[var(--color-accent-gold)]/10"
+            >
+              {t.retry}
+            </button>
+          ) : !user || balance < QUESTION_CREDIT_COST ? (
             <Link
               to="/billing"
               className="mt-2 inline-block font-bold text-[var(--color-accent-gold)] no-underline"
             >
-              查看點數方案
+              {t.credits.viewPlans}
             </Link>
           ) : null}
         </div>
@@ -186,40 +182,41 @@ export default function ReadingPage() {
         <div key="idle" className="w-full max-w-xl animate-fade-in-up">
           {/* 主題快速選擇 */}
           <p className="mb-3 text-center text-sm text-[var(--color-text-secondary)]">
-            選擇一個占卜主題，或自行輸入問題
+            {t.reading.topicPrompt}
           </p>
           <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {TOPIC_CARDS.map((topic) => (
-              <button
-                key={topic.label}
-                onClick={() => setQuestion(topic.prompt)}
-                className={`group flex cursor-pointer flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
-                  question === topic.prompt
-                    ? 'border-[var(--color-accent-gold)] bg-[var(--color-bg-card)] shadow-[var(--shadow-glow)]'
-                    : 'border-[var(--color-border)] bg-[var(--color-bg-card)] hover:border-[var(--color-border-hover)]'
-                }`}
-              >
-                <img
-                  src={topic.image}
-                  alt={topic.label}
-                  className="h-14 w-14 object-contain transition-transform group-hover:scale-110"
-                  style={{ mixBlendMode: 'lighten' }}
-                />
-                <span className="text-xs font-bold tracking-wider text-[var(--color-text-primary)]">
-                  {topic.label}
-                </span>
-                <span className="text-[10px] leading-tight text-[var(--color-text-muted)]">
-                  {topic.hint}
-                </span>
-              </button>
-            ))}
+            {TOPIC_KEYS.map((topic) => {
+              const label = t.topics[topic.key];
+              const prompt = (t.topicPrompts as Record<string, string>)[topic.key] ?? '';
+              return (
+                <button
+                  key={topic.key}
+                  onClick={() => { setQuestion(prompt); selectedTopicLabel.current = label; onTopicChange(label); }}
+                  className={`group flex cursor-pointer flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
+                    question === prompt
+                      ? 'border-[var(--color-accent-gold)] bg-[var(--color-bg-card)] shadow-[var(--shadow-glow)]'
+                      : 'border-[var(--color-border)] bg-[var(--color-bg-card)] hover:border-[var(--color-border-hover)]'
+                  }`}
+                >
+                  <img
+                    src={topic.image}
+                    alt={label}
+                    className="h-14 w-14 object-contain transition-transform group-hover:scale-110"
+                    style={{ mixBlendMode: 'lighten' }}
+                  />
+                  <span className="text-xs font-bold tracking-wider text-[var(--color-text-primary)]">
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* 自由輸入 */}
           <textarea
             value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="或在此輸入你想問的問題..."
+            onChange={(e) => { setQuestion(e.target.value); onTypingStart(); }}
+            placeholder={t.reading.inputPlaceholder}
             className="mb-5 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
             rows={2}
           />
@@ -230,7 +227,7 @@ export default function ReadingPage() {
             disabled={!canAsk || creditLoading}
             className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/30 bg-gradient-to-r from-[var(--color-accent-gold)]/20 via-[var(--color-accent-gold)]/10 to-[var(--color-accent-purple)]/20 px-6 py-3.5 text-base font-bold tracking-wider text-[var(--color-accent-gold)] shadow-[var(--shadow-glow)] transition-all hover:border-[var(--color-accent-gold)]/50 hover:shadow-[var(--shadow-card-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            ☉ 消耗 {QUESTION_CREDIT_COST} 點開始洗牌
+            ☉ {t.reading.startButton.replace('{cost}', String(QUESTION_CREDIT_COST))}
           </motion.button>
         </div>
       )}
@@ -255,7 +252,10 @@ export default function ReadingPage() {
           <DrawAnimation
             spread={spread}
             drawnCards={drawnCards}
-            onComplete={onDrawComplete}
+            onComplete={async () => {
+              const ctx = await buildContext(question, selectedTopicLabel.current);
+              onDrawComplete({ topic: selectedTopicLabel.current, querentSummary: ctx.summary });
+            }}
           />
         </div>
       )}
@@ -268,7 +268,7 @@ export default function ReadingPage() {
           ) : (
             <div className="flex flex-wrap justify-center gap-4">
               {drawnCards.map((dc) => (
-                <CardFace key={dc.card.id} drawnCard={dc} />
+                <CardFace key={dc.card.id} drawnCard={dc} positionLabel={positionNames[drawnCards.indexOf(dc)]} />
               ))}
             </div>
           )}
@@ -283,18 +283,18 @@ export default function ReadingPage() {
                 />
               ))}
             </div>
-            <p className="text-sm text-[var(--color-text-secondary)]">神諭正在解讀牌義...</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">{t.reading.oracleInterpreting}</p>
           </div>
         </div>
       )}
 
       {/* === complete：顯示結果、追問、重抽。解讀 HTML 來自 marked，內容源於 AI Markdown。 === */}
-      {phase === 'complete' && interpretationHtml && (
+      {phase === 'complete' && interpretation && (
         <div key="complete" className="w-full max-w-2xl animate-fade-in-up">
           {/* 問題回顯 */}
           {question && (
             <div className="mb-6 text-center animate-fade-in">
-              <span className="text-xs tracking-wider text-[var(--color-text-muted)] uppercase">你的問題</span>
+              <span className="text-xs tracking-wider text-[var(--color-text-muted)] uppercase">{t.reading.yourQuestion}</span>
               <p className="mt-1 text-base text-[var(--color-text-secondary)] italic">
                 「{question}」
               </p>
@@ -314,7 +314,7 @@ export default function ReadingPage() {
                   className="animate-fade-in-up"
                   style={{ animationDelay: `${i * 0.12}s` }}
                 >
-                  <CardFace drawnCard={dc} />
+                  <CardFace drawnCard={dc} positionLabel={positionNames[i]} />
                 </div>
               ))}
             </div>
@@ -323,19 +323,13 @@ export default function ReadingPage() {
           {/* 分隔線 */}
           <div className="mx-auto mb-8 flex items-center gap-4 max-w-xs">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[var(--color-accent-gold)]/30" />
-            <span className="text-sm text-[var(--color-accent-gold)]">✦ 神諭解讀 ✦</span>
+            <span className="text-sm text-[var(--color-accent-gold)]">✦ {t.reading.oracleReading} ✦</span>
             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--color-accent-gold)]/30" />
           </div>
 
-          {/* 解讀內容 */}
-          <div
-            className="interpretation-panel rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 md:p-8 shadow-[var(--shadow-card)] animate-fade-in"
-            style={{ animationDelay: '0.3s' }}
-          >
-            <div
-              className="max-w-none text-[var(--color-text-primary)] leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: interpretationHtml }}
-            />
+          {/* 解讀內容 — 分段式逐步展開 */}
+          <div className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <InterpretationSections markdown={interpretation} animated />
           </div>
 
           {/* === 追問對話區 === */}
@@ -344,7 +338,7 @@ export default function ReadingPage() {
               {/* 追問分隔線 */}
               <div className="flex items-center gap-3">
                 <div className="h-px flex-1 bg-[var(--color-border)]" />
-                <span className="text-xs font-medium text-[var(--color-accent-gold)]">追問延伸</span>
+                <span className="text-xs font-medium text-[var(--color-accent-gold)]">{t.reading.followUpSection}</span>
                 <div className="h-px flex-1 bg-[var(--color-border)]" />
               </div>
 
@@ -361,10 +355,10 @@ export default function ReadingPage() {
                   {f.drawnCard && (
                     <div className="mb-4 flex justify-center animate-fade-in">
                       <div className="text-center">
-                        <p className="mb-2 text-xs text-[var(--color-accent-gold)]">✦ 追問指引牌 ✦</p>
-                        <CardFace drawnCard={f.drawnCard} className="!w-32" />
+                        <p className="mb-2 text-xs text-[var(--color-accent-gold)]">✦ {t.reading.followUpGuideCard} ✦</p>
+                        <CardFace drawnCard={f.drawnCard} className="!w-32" positionLabel={t.reading.followUpGuidePosition} />
                         <p className="mt-2 text-xs text-[var(--color-text-muted)]">
-                          {f.drawnCard.card.name} — {f.drawnCard.isReversed ? '逆位' : '正位'}
+                          {f.drawnCard.card.name} — {f.drawnCard.isReversed ? t.reading.reversed : t.reading.upright}
                         </p>
                       </div>
                     </div>
@@ -395,7 +389,7 @@ export default function ReadingPage() {
                   transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
                 />
               ))}
-              <span className="ml-2 text-xs text-[var(--color-text-secondary)]">占卜師正在深入解讀...</span>
+              <span className="ml-2 text-xs text-[var(--color-text-secondary)]">{t.reading.followUpLoading}</span>
             </div>
           )}
 
@@ -403,7 +397,7 @@ export default function ReadingPage() {
           {suggestedQuestions.length > 0 && !isFollowingUp && (
             <div className="mt-6 animate-fade-in">
               <p className="mb-3 text-center text-xs text-[var(--color-text-muted)]">
-                ✦ 想更深入了解嗎？試試這些方向 ✦
+                ✦ {t.reading.suggestedHint} ✦
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {suggestedQuestions.map((sq, i) => (
@@ -436,7 +430,7 @@ export default function ReadingPage() {
                     setFollowUpInput('');
                   }
                 }}
-                placeholder="針對這次占卜結果追問..."
+                placeholder={t.reading.followUpPlaceholder}
                 className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
               />
               <button
@@ -449,26 +443,103 @@ export default function ReadingPage() {
                 disabled={!followUpInput.trim() || !canAsk}
                 className="cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-4 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
               >
-                追問
+                {t.reading.followUpButton}
               </button>
             </div>
           )}
 
           <div ref={followUpEndRef} />
 
+          {/* 截圖分享卡片（隱藏在螢幕外，供 html2canvas 截圖用） */}
+          <ReadingShareCard
+            ref={shareCardRef}
+            spreadName={spread.name}
+            question={question}
+            drawnCards={drawnCards}
+            interpretationPreview={
+              interpretation
+                .replace(/^#{1,3}\s+.*/gm, '') // 去掉 markdown 標題
+                .replace(/[*_`]/g, '')          // 去掉格式符號
+                .trim()
+                .slice(0, 200) + '…'
+            }
+          />
+
           {/* 底部操作 */}
           <div className="mt-8 flex flex-col items-center gap-3">
-            <button
-              onClick={reset}
-              className="cursor-pointer rounded-lg bg-gradient-to-r from-[var(--color-accent-purple)] to-[var(--color-accent-mystic)] px-8 py-2.5 font-bold text-white shadow-[var(--shadow-glow)] transition-shadow hover:shadow-[var(--shadow-card-hover)]"
-            >
-              ✦ 再占一次
-            </button>
+            <div className="flex flex-wrap justify-center gap-3">
+              <button
+                onClick={() => { reset(); resetSignals(); selectedTopicLabel.current = ''; }}
+                className="cursor-pointer rounded-lg bg-gradient-to-r from-[var(--color-accent-purple)] to-[var(--color-accent-mystic)] px-8 py-2.5 font-bold text-white shadow-[var(--shadow-glow)] transition-shadow hover:shadow-[var(--shadow-card-hover)]"
+              >
+                ✦ {t.reading.readAgain}
+              </button>
+              <button
+                onClick={async () => {
+                  setShareStatus('');
+                  const cardNames = drawnCards.map((dc) => `${dc.card.name}${dc.isReversed ? '(逆)' : ''}`).join('、');
+                  const method = await shareReading({
+                    title: `${spread.name} — ${cardNames}`,
+                    description: question
+                      ? `「${question.slice(0, 40)}」的塔羅占卜結果，來看看命運的指引吧！`
+                      : '來看看塔羅牌對命運的指引吧！',
+                    url: window.location.origin,
+                  });
+                  if (method === 'clipboard') {
+                    setShareStatus(t.share.copied);
+                    setTimeout(() => setShareStatus(''), 3000);
+                  } else if (method === 'line') {
+                    setShareStatus(t.share.sharedToLine);
+                    setTimeout(() => setShareStatus(''), 3000);
+                  }
+                }}
+                className="cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/10 px-5 py-2.5 font-bold text-[var(--color-accent-gold)] transition-all hover:bg-[var(--color-accent-gold)]/20"
+              >
+                {t.reading.share}
+              </button>
+              <button
+                onClick={async () => {
+                  if (!shareCardRef.current || isCapturing) return;
+                  setIsCapturing(true);
+                  setShareStatus(t.share.generating);
+                  try {
+                    const blob = await captureElement(shareCardRef.current);
+                    if (blob) {
+                      const cardNames = drawnCards.map((dc) => `${dc.card.name}${dc.isReversed ? '(逆)' : ''}`).join('、');
+                      await shareScreenshot(blob, `${spread.name} — ${cardNames}`);
+                      setShareStatus(t.share.screenshotSaved);
+                    } else {
+                      setShareStatus(t.share.screenshotFailed);
+                    }
+                  } catch {
+                    setShareStatus(t.share.screenshotFailed);
+                  } finally {
+                    setIsCapturing(false);
+                    setTimeout(() => setShareStatus(''), 3000);
+                  }
+                }}
+                disabled={isCapturing}
+                className="cursor-pointer rounded-lg border border-[var(--color-accent-purple)]/40 bg-[var(--color-accent-purple)]/10 px-5 py-2.5 font-bold text-[var(--color-accent-purple)] transition-all hover:bg-[var(--color-accent-purple)]/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isCapturing ? t.reading.capturing : t.reading.screenshotShare}
+              </button>
+            </div>
+            {shareStatus && (
+              <p className="text-xs text-[var(--color-accent-gold)] animate-fade-in">{shareStatus}</p>
+            )}
+            {/* 推播通知提示 — 占卜完成後引導開啟 */}
+            <PushPrompt
+              supported={push.supported}
+              granted={push.granted}
+              requesting={push.requesting}
+              onRequest={push.requestPush}
+            />
+
             <Link
               to="/history"
               className="text-xs text-[var(--color-text-muted)] no-underline transition-colors hover:text-[var(--color-accent-gold)]"
             >
-              查看占卜紀錄 →
+              {t.reading.viewHistory}
             </Link>
           </div>
         </div>

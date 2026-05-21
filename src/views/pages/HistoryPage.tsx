@@ -7,18 +7,21 @@ import { QUESTION_CREDIT_COST } from '../../models/credits';
 import { SPREADS } from '../../models/spread';
 import { useHistoryReadings } from '../../controllers/useHistoryReadings';
 import { useCredits } from '../../controllers/useCredits';
+import { useI18n } from '../../controllers/useI18n';
 import { stripFollowUpCardHeading } from '../../utils/follow-up';
 import CardFace from '../components/tarot/CardFace';
+import InterpretationSections from '../components/tarot/InterpretationSections';
 
 export default function HistoryPage() {
   const { readings, loading, followingUpId, error, deleteReading, askFollowUp } = useHistoryReadings();
   const { balance } = useCredits();
+  const { t } = useI18n();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (loading) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-20">
-        <MysticProgress title="正在讀取占卜紀錄" />
+        <MysticProgress title={t.history.loadingReadings} />
       </div>
     );
   }
@@ -33,16 +36,16 @@ export default function HistoryPage() {
         >
           <div className="mb-4 text-4xl text-[var(--color-accent-gold)] opacity-50">☽</div>
           <h1 className="mb-3 text-2xl font-bold tracking-wider text-[var(--color-accent-gold)]">
-            占卜紀錄
+            {t.history.title}
           </h1>
           <p className="mb-6 text-[var(--color-text-secondary)]">
-            尚無占卜紀錄，去進行一次占卜吧！
+            {t.history.empty}
           </p>
           <Link
             to="/"
             className="inline-block rounded-lg border border-[var(--color-accent-gold)]/30 bg-[var(--color-accent-gold)]/15 px-6 py-2.5 font-bold tracking-wider text-[var(--color-accent-gold)] no-underline shadow-[var(--shadow-glow)] transition-all hover:bg-[var(--color-accent-gold)]/25"
           >
-            ☉ 開始占卜
+            ☉ {t.history.emptyAction}
           </Link>
         </motion.div>
       </div>
@@ -56,7 +59,7 @@ export default function HistoryPage() {
         animate={{ opacity: 1 }}
         className="mb-8 text-2xl font-bold tracking-wider text-[var(--color-accent-gold)]"
       >
-        占卜紀錄
+        {t.history.title}
       </motion.h1>
       {error && (
         <div className="mb-6 w-full max-w-2xl rounded-lg border border-red-900/50 bg-red-950/30 p-4 text-sm text-red-200">
@@ -64,12 +67,16 @@ export default function HistoryPage() {
         </div>
       )}
 
+      {/* 趨勢概覽 */}
+      <TrendSummary readings={readings} t={t} />
+
       <div className="w-full max-w-2xl space-y-4">
         {readings.map((reading, i) => (
           <HistoryCard
             key={reading.id}
             reading={reading}
             index={i}
+            t={t}
             isExpanded={expandedId === reading.id}
             onToggle={() =>
               setExpandedId(expandedId === reading.id ? null : reading.id)
@@ -88,6 +95,7 @@ export default function HistoryPage() {
 function HistoryCard({
   reading,
   index,
+  t,
   isExpanded,
   onToggle,
   onDelete,
@@ -97,6 +105,7 @@ function HistoryCard({
 }: {
   reading: Reading;
   index: number;
+  t: import('../../services/i18n').Locale;
   isExpanded: boolean;
   onToggle: () => void;
   onDelete: () => void;
@@ -117,13 +126,8 @@ function HistoryCard({
     minute: '2-digit',
   });
 
-  const interpretationHtml = useMemo(
-    () =>
-      isExpanded && reading.interpretation
-        ? (marked.parse(reading.interpretation, { async: false }) as string)
-        : '',
-    [isExpanded, reading.interpretation],
-  );
+  // interpretationHtml 已被 InterpretationSections 取代，但追問 HTML 仍需要
+  const _interpretationReady = isExpanded && Boolean(reading.interpretation);
 
   const followUpHtmls = useMemo(
     () =>
@@ -157,7 +161,7 @@ function HistoryCard({
               </span>
               {followUpCount > 0 && (
                 <span className="rounded bg-[var(--color-accent-gold)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent-gold)]">
-                  +{followUpCount} 追問
+                  {t.history.followUpCount.replace('{count}', String(followUpCount))}
                 </span>
               )}
               <span className="text-xs text-[var(--color-text-muted)]">
@@ -208,10 +212,9 @@ function HistoryCard({
           </div>
 
           {/* 原始解讀 */}
-          <div
-            className="interpretation-panel rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-5"
-            dangerouslySetInnerHTML={{ __html: interpretationHtml }}
-          />
+          {_interpretationReady && (
+            <InterpretationSections markdown={reading.interpretation} animated={false} />
+          )}
 
           {/* 追問紀錄 */}
           {reading.followUps && reading.followUps.length > 0 && (
@@ -219,7 +222,7 @@ function HistoryCard({
               <div className="flex items-center gap-3">
                 <div className="h-px flex-1 bg-[var(--color-border)]" />
                 <span className="text-xs font-medium text-[var(--color-accent-gold)]">
-                  追問紀錄
+                  {t.history.followUpRecord}
                 </span>
                 <div className="h-px flex-1 bg-[var(--color-border)]" />
               </div>
@@ -238,10 +241,10 @@ function HistoryCard({
                   {fu.drawnCard && (
                     <div className="flex justify-center">
                       <div className="text-center">
-                        <p className="mb-2 text-xs text-[var(--color-text-muted)]">追問指引牌</p>
+                        <p className="mb-2 text-xs text-[var(--color-text-muted)]">{t.history.followUpGuideCard}</p>
                         <CardFace drawnCard={fu.drawnCard} className="!w-24" />
                         <p className="mt-2 text-xs text-[var(--color-text-muted)]">
-                          {fu.drawnCard.card.name} — {fu.drawnCard.isReversed ? '逆位' : '正位'}
+                          {fu.drawnCard.card.name} — {fu.drawnCard.isReversed ? t.reading.reversed : t.reading.upright}
                         </p>
                       </div>
                     </div>
@@ -261,10 +264,10 @@ function HistoryCard({
 
           <div className="mt-6 border-t border-[var(--color-border)] pt-5">
             <p className="mb-3 text-center text-xs text-[var(--color-text-muted)]">
-              針對這輪占卜繼續追問，每次消耗 {QUESTION_CREDIT_COST} 點
+              {t.history.followUpCost.replace('{cost}', String(QUESTION_CREDIT_COST))}
             </p>
             {isFollowingUp ? (
-              <MysticProgress title="正在解析這輪追問" />
+              <MysticProgress title={t.history.followUpLoading} />
             ) : (
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input
@@ -277,7 +280,7 @@ function HistoryCard({
                       setFollowUpInput('');
                     }
                   }}
-                  placeholder="針對這次紀錄追問..."
+                  placeholder={t.history.followUpPlaceholder}
                   className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
                 />
                 <button
@@ -290,11 +293,103 @@ function HistoryCard({
                   disabled={!followUpInput.trim() || !canFollowUp}
                   className="cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-4 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  追問
+                  {t.history.followUpButton}
                 </button>
               </div>
             )}
           </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/** 歷史趨勢概覽 */
+function TrendSummary({ readings, t }: { readings: Reading[]; t: import('../../services/i18n').Locale }) {
+  const [now] = useState(() => Date.now());
+  const stats = useMemo(() => {
+    if (readings.length < 2) return null;
+
+    // 統計最常出現的牌
+    const cardCounts = new Map<string, number>();
+    for (const r of readings) {
+      for (const dc of r.drawnCards) {
+        const key = dc.card.name;
+        cardCounts.set(key, (cardCounts.get(key) ?? 0) + 1);
+      }
+    }
+    const topCards = Array.from(cardCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+
+    // 統計主題趨勢（從問題中提取關鍵字）
+    const topicKeywords: Record<string, string[]> = {
+      '愛情': ['愛情', '感情', '戀愛', '關係', '對象', '另一半', '伴侶'],
+      '事業': ['事業', '工作', '職場', '升遷', '面試', '轉職'],
+      '財運': ['財', '錢', '投資', '理財', '收入'],
+      '學業': ['學業', '考試', '學習', '升學'],
+      '人際': ['人際', '朋友', '社交', '相處'],
+    };
+    const topicCounts = new Map<string, number>();
+    for (const r of readings) {
+      for (const [topic, keywords] of Object.entries(topicKeywords)) {
+        if (keywords.some((kw) => r.question.includes(kw))) {
+          topicCounts.set(topic, (topicCounts.get(topic) ?? 0) + 1);
+        }
+      }
+    }
+    const topTopic = Array.from(topicCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+
+    // 最近 7 天佔卜次數
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const recentCount = readings.filter((r) => r.timestamp > weekAgo).length;
+
+    return { topCards, topTopic, recentCount, total: readings.length };
+  }, [now, readings]);
+
+  if (!stats) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-6 w-full max-w-2xl rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 shadow-[var(--shadow-card)]"
+    >
+      <h2 className="mb-4 text-center text-sm font-bold tracking-wider text-[var(--color-accent-gold)]">
+        ✦ {t.history.trendTitle} ✦
+      </h2>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{stats.total}</p>
+          <p className="text-xs text-[var(--color-text-muted)]">{t.history.totalReadings}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{stats.recentCount}</p>
+          <p className="text-xs text-[var(--color-text-muted)]">{t.history.last7Days}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-bold text-[var(--color-accent-gold)]">
+            {stats.topTopic ? stats.topTopic[0] : '—'}
+          </p>
+          <p className="text-xs text-[var(--color-text-muted)]">{t.history.topTopic}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-bold text-[var(--color-accent-purple-light)]">
+            {stats.topCards[0]?.[0] ?? '—'}
+          </p>
+          <p className="text-xs text-[var(--color-text-muted)]">{t.history.topCard}</p>
+        </div>
+      </div>
+      {stats.topCards.length > 1 && (
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
+          {stats.topCards.map(([name, count]) => (
+            <span
+              key={name}
+              className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-1 text-[11px] text-[var(--color-text-secondary)]"
+            >
+              {name} ×{count}
+            </span>
+          ))}
         </div>
       )}
     </motion.div>

@@ -5,7 +5,11 @@ export interface AIInterpretationRequest {
   spreadType: SpreadType;
   drawnCards: DrawnCard[];
   question: string;
-  locale: 'zh-TW' | 'en';
+  locale: 'zh-TW' | 'en' | 'ja';
+  /** 使用者選擇的占卜主題（如「愛情」「事業」等） */
+  topic?: string;
+  /** 問卜者狀態摘要（由 useQuerentSignals 生成，直接注入 prompt） */
+  querentSummary?: string;
 }
 
 export interface AIInterpretationResponse {
@@ -27,7 +31,7 @@ export interface AIFollowUpRequest {
     isReversed: boolean;
     position: string;
   };
-  locale: 'zh-TW' | 'en';
+  locale: 'zh-TW' | 'en' | 'ja';
 }
 
 /**

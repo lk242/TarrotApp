@@ -1,12 +1,19 @@
 import type { DrawnCard } from '../../../models/tarot-card';
+import { useI18n } from '../../../controllers/useI18n';
+import { getCardDisplayName, getPositionDisplayName } from '../../../services/i18n/card-names';
 
 interface Props {
   drawnCard: DrawnCard;
+  /** 覆蓋 drawnCard.position 的顯示文字（i18n 用） */
+  positionLabel?: string;
   className?: string;
 }
 
-export default function CardFace({ drawnCard, className = '' }: Props) {
+export default function CardFace({ drawnCard, positionLabel, className = '' }: Props) {
   const { card, isReversed, position } = drawnCard;
+  const { t, lang } = useI18n();
+  const displayName = getCardDisplayName(card, lang);
+  const translatedPosition = positionLabel ?? getPositionDisplayName(position, t);
 
   return (
     <div
@@ -14,7 +21,7 @@ export default function CardFace({ drawnCard, className = '' }: Props) {
     >
       {isReversed && (
         <span className="absolute top-2.5 right-2.5 z-10 rounded bg-red-950/75 px-2 py-0.5 text-xs font-medium text-red-200">
-          逆位
+          {t.reading.reversed}
         </span>
       )}
       <div
@@ -23,7 +30,7 @@ export default function CardFace({ drawnCard, className = '' }: Props) {
       >
         <img
           src={card.imageUrl}
-          alt={`${card.name} ${isReversed ? '逆位' : '正位'}`}
+          alt={`${displayName} ${isReversed ? t.reading.reversed : t.reading.upright}`}
           /* 逆位只旋轉牌面圖片，不旋轉牌名與牌位，方便閱讀。 */
           className={`h-full w-full object-contain transition-transform duration-300 ${isReversed ? 'rotate-180' : ''}`}
           loading="lazy"
@@ -31,13 +38,15 @@ export default function CardFace({ drawnCard, className = '' }: Props) {
       </div>
       <div className="mt-2.5 flex w-full flex-col items-center text-center">
         <span className="text-sm font-bold text-[var(--color-accent-gold)]">
-          {card.name}
+          {displayName}
         </span>
-        <span className="mt-0.5 text-xs leading-tight text-[var(--color-text-muted)]">
-          {card.nameEn}
-        </span>
+        {lang !== 'en' && (
+          <span className="mt-0.5 text-xs leading-tight text-[var(--color-text-muted)]">
+            {card.nameEn}
+          </span>
+        )}
         <span className="mt-1 text-xs leading-tight text-[var(--color-accent-purple-light)]">
-          {position}
+          {translatedPosition}
         </span>
       </div>
     </div>

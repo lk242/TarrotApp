@@ -45,24 +45,46 @@ export function useAuthState(): AuthState {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    let authResolved = false;
+
     const unsub = onAuthChanged((u) => {
       setUser(u);
-      setLoading(false);
-    });
-    return unsub;
-  }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    tryAutoLineLogin().then(async (tokenInfo) => {
-      if (cancelled || !tokenInfo) return;
-      try {
-        await signInWithLine(tokenInfo);
-      } catch {
-        // LINE auto-login failed silently; user can retry manually
+      // 首次 auth 回呼後嘗試 LINE 自動登入
+      if (!authResolved) {
+        authResolved = true;
+
+        if (u) {
+          // 已有登入狀態，不需要自動登入
+          setLoading(false);
+          return;
+        }
+
+        // 沒有登入 → 嘗試 LINE 自動登入，完成前保持 loading
+        tryAutoLineLogin()
+          .then(async (tokenInfo) => {
+            if (cancelled || !tokenInfo) return;
+            try {
+              await signInWithLine(tokenInfo);
+              // signInWithLine 成功會再觸發 onAuthChanged，那裡會 setUser
+            } catch {
+              // LINE auto-login failed silently; user can retry manually
+            }
+          })
+          .finally(() => {
+            if (!cancelled) setLoading(false);
+          });
+      } else {
+        // 後續 auth 變更直接更新
+        setLoading(false);
       }
     });
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
   const loginWithGoogle = useCallback(async () => {

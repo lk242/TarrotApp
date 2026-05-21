@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useRef, useCallback } from 'react';
 import { SPREADS } from '../../models/spread';
 import type { SpreadType } from '../../models/spread';
+import { useI18n } from '../../controllers/useI18n';
 
 const spreadList = Object.values(SPREADS);
 
@@ -15,6 +16,7 @@ const SPREAD_CONFIG: Record<number, { image: string; opacity: number; hoverOpaci
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -68,7 +70,7 @@ export default function HomePage() {
           draggable={false}
         />
         <h1 className="mb-3 text-4xl font-bold tracking-[0.15em] text-[var(--color-accent-gold)]" style={{ fontVariant: 'small-caps' }}>
-          神秘塔羅
+          {t.appName}
         </h1>
         {/* 裝飾分隔線 */}
         <img
@@ -77,22 +79,31 @@ export default function HomePage() {
           className="mx-auto my-4 h-6 w-auto opacity-70"
         />
         <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-[var(--color-text-secondary)]">
-          讓古老的塔羅智慧，為你揭示命運的指引
+          {t.home.subtitle}
         </p>
       </motion.div>
 
       {/* ===== 牌陣選擇 ===== */}
       <div className="grid w-full max-w-3xl gap-6 md:grid-cols-3">
         {spreadList.map((spread, i) => (
-          <SpreadCard key={spread.type} spread={spread} delay={0.5 + i * 0.15} />
+          <SpreadCard key={spread.type} spread={spread} delay={0.5 + i * 0.15} t={t} />
         ))}
       </div>
     </div>
   );
 }
 
-function SpreadCard({ spread, delay }: { spread: (typeof SPREADS)[SpreadType]; delay: number }) {
+/** spread.type → i18n key 映射 */
+const SPREAD_I18N_KEY: Record<string, 'single' | 'threeCard' | 'celticCross'> = {
+  single: 'single',
+  'three-card': 'threeCard',
+  'celtic-cross': 'celticCross',
+};
+
+function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]; delay: number; t: import('../../services/i18n').Locale }) {
   const config = SPREAD_CONFIG[spread.cardCount] || { image: '', opacity: 0.4, hoverOpacity: 0.55 };
+  const i18nKey = SPREAD_I18N_KEY[spread.type] || 'single';
+  const spreadT = t.spreads[i18nKey];
 
   return (
     <motion.div
@@ -126,14 +137,25 @@ function SpreadCard({ spread, delay }: { spread: (typeof SPREADS)[SpreadType]; d
         {/* 內容 */}
         <div className="relative z-10 p-6 text-center">
           <div className="mb-10" />
+          {/* 新手推薦 / 深度解析標籤 */}
+          {spread.type === 'single' && (
+            <span className="mb-2 inline-block rounded-full bg-[var(--color-accent-gold)]/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-[var(--color-accent-gold)]">
+              {t.home.beginner}
+            </span>
+          )}
+          {spread.type === 'celtic-cross' && (
+            <span className="mb-2 inline-block rounded-full bg-[var(--color-accent-purple)]/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-[var(--color-accent-purple-light)]">
+              {t.home.deepAnalysis}
+            </span>
+          )}
           <h2 className="mb-2 text-lg font-bold tracking-wider text-[var(--color-text-primary)]">
-            {spread.name}
+            {spreadT.name}
           </h2>
           <p className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
-            {spread.description}
+            {spreadT.description}
           </p>
           <div className="mt-4 inline-block rounded-full border border-[var(--color-border-ornate)] bg-[var(--color-bg-primary)]/60 px-3 py-1 text-[10px] tracking-wider text-[var(--color-accent-gold)]">
-            {spread.cardCount} 張牌
+            {spread.cardCount} ✦
           </div>
         </div>
       </Link>

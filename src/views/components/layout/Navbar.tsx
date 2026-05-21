@@ -2,21 +2,26 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../../../controllers/useAuth';
 import { useCredits } from '../../../controllers/useCredits';
+import { useI18n } from '../../../controllers/useI18n';
+import { LANG_LABELS } from '../../../services/i18n';
+import type { LangCode } from '../../../services/i18n';
 import AuthModal from '../auth/AuthModal';
-
-const NAV_ITEMS = [
-  { path: '/', label: '開始占卜' },
-  { path: '/history', label: '占卜紀錄' },
-  { path: '/billing', label: '點數方案' },
-  { path: '/about', label: '關於' },
-];
 
 export default function Navbar() {
   const location = useLocation();
   const { user, loading, logout } = useAuth();
   const { balance } = useCredits();
+  const { t, lang, setLang } = useI18n();
+
+  const NAV_ITEMS = [
+    { path: '/', label: t.nav.home },
+    { path: '/history', label: t.nav.history },
+    { path: '/billing', label: t.nav.billing },
+    { path: '/about', label: t.nav.about },
+  ];
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
 
   // AuthModal 內也會監聽 user，自動關閉；這裡保留單純的外部關閉 callback。
   const handleAuthClose = () => setAuthOpen(false);
@@ -27,7 +32,7 @@ export default function Navbar() {
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <Link to="/" className="group flex items-center gap-2 text-[var(--color-accent-gold)] no-underline">
             <img src="/images/theme/logo.webp" alt="" className="h-8 w-8 transition-transform group-hover:scale-110" />
-            <span className="text-lg font-bold tracking-[0.15em]" style={{ fontVariant: 'small-caps' }}>神秘塔羅</span>
+            <span className="text-lg font-bold tracking-[0.15em]" style={{ fontVariant: 'small-caps' }}>{t.appName}</span>
           </Link>
 
           {/* 手機端漢堡 */}
@@ -57,7 +62,34 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {/* 登入/使用者：桌面端直接顯示頭像與登出；手機端在下方抽屜顯示。 */}
+            {/* 語系切換 */}
+            <div className="relative ml-2">
+              <button
+                onClick={() => setLangOpen(!langOpen)}
+                className="cursor-pointer rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-[10px] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-gold)]/40 hover:text-[var(--color-text-secondary)]"
+              >
+                {lang === 'zh-TW' ? '中' : lang === 'en' ? 'EN' : 'JP'}
+              </button>
+              {langOpen && (
+                <div className="absolute right-0 top-full mt-1 min-w-[100px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] py-1 shadow-lg">
+                  {(Object.keys(LANG_LABELS) as LangCode[]).map((code) => (
+                    <button
+                      key={code}
+                      onClick={() => { setLang(code); setLangOpen(false); }}
+                      className={`block w-full cursor-pointer px-3 py-1.5 text-left text-xs transition-colors ${
+                        lang === code
+                          ? 'bg-[var(--color-accent-gold)]/10 text-[var(--color-accent-gold)]'
+                          : 'bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]'
+                      }`}
+                    >
+                      {LANG_LABELS[code]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 登入/使用者：桌面端直接顯示頭像與{t.nav.logout}；手機端在下方抽屜顯示。 */}
             <div className="ml-3 border-l border-[var(--color-border)] pl-3">
               {loading ? (
                 <span className="text-xs text-[var(--color-text-muted)]">...</span>
@@ -67,7 +99,7 @@ export default function Navbar() {
                     to="/billing"
                     className="rounded border border-[var(--color-accent-gold)]/30 px-2 py-1 text-[10px] font-bold text-[var(--color-accent-gold)] no-underline"
                   >
-                    點數 {balance}
+                    {t.nav.billing} {balance}
                   </Link>
                   {user.photoURL ? (
                     <img src={user.photoURL} alt="" className="h-7 w-7 rounded-full" />
@@ -83,7 +115,7 @@ export default function Navbar() {
                     onClick={logout}
                     className="cursor-pointer rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-[10px] text-[var(--color-text-muted)] transition-colors hover:border-red-800/50 hover:text-red-400"
                   >
-                    登出
+                    {t.nav.logout}
                   </button>
                 </div>
               ) : (
@@ -91,14 +123,14 @@ export default function Navbar() {
                   onClick={() => setAuthOpen(true)}
                   className="cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/40 bg-transparent px-4 py-1.5 text-xs font-medium text-[var(--color-accent-gold)] transition-colors hover:bg-[var(--color-accent-gold)]/10"
                 >
-                  登入 / 註冊
+                  {t.nav.login}
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* 手機端選單：與桌面導覽共用 NAV_ITEMS，避免路由標籤分岔。 */}
+        {/* 手機端選單 */}
         {open && (
           <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-primary)] px-6 py-3 md:hidden">
             {NAV_ITEMS.map((item) => (
@@ -128,14 +160,14 @@ export default function Navbar() {
                       onClick={() => setOpen(false)}
                       className="rounded border border-[var(--color-accent-gold)]/30 px-2 py-1 text-xs font-bold text-[var(--color-accent-gold)] no-underline"
                     >
-                      點數 {balance}
+                      {t.nav.billing} {balance}
                     </Link>
                   </div>
                   <button
                     onClick={() => { logout(); setOpen(false); }}
                     className="w-full cursor-pointer rounded border border-[var(--color-border)] bg-transparent px-3 py-2 text-xs text-[var(--color-text-muted)] hover:text-red-400"
                   >
-                    登出
+                    {t.nav.logout}
                   </button>
                 </div>
               ) : (
@@ -143,7 +175,7 @@ export default function Navbar() {
                   onClick={() => { setAuthOpen(true); setOpen(false); }}
                   className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/40 bg-transparent px-4 py-2.5 text-sm font-medium text-[var(--color-accent-gold)]"
                 >
-                  登入 / 註冊
+                  {t.nav.login}
                 </button>
               )}
             </div>

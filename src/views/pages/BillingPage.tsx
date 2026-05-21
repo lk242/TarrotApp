@@ -9,6 +9,8 @@ import {
 } from '../../models/credits';
 import { useAuth } from '../../controllers/useAuth';
 import { useCredits } from '../../controllers/useCredits';
+import { useI18n } from '../../controllers/useI18n';
+import { useExchangeRate } from '../../controllers/useExchangeRate';
 import {
   createCreditPurchaseCallable,
   createSubscriptionCallable,
@@ -36,9 +38,13 @@ function submitCheckoutForm(action: string, fields: Array<{ name: string; value:
   form.submit();
 }
 
+type PkgLocale = Record<string, { name: string; description: string }>;
+
 export default function BillingPage() {
   const { user } = useAuth();
   const { balance, loading, error } = useCredits();
+  const { t, lang } = useI18n();
+  const { convert } = useExchangeRate(lang);
   const [pending, setPending] = useState<PurchaseTarget | null>(null);
   const [message, setMessage] = useState('');
 
@@ -86,10 +92,10 @@ export default function BillingPage() {
         <div className="mb-8 text-center">
           <div className="animate-rune-pulse mb-3 text-3xl text-[var(--color-accent-gold)]">⊛</div>
           <h1 className="mb-3 text-2xl font-bold tracking-[0.15em] text-[var(--color-accent-gold)]" style={{ fontVariant: 'small-caps' }}>
-            點數與訂閱
+            {t.billing.title}
           </h1>
           <p className="text-sm text-[var(--color-text-secondary)]">
-            註冊或 Google 登入會自動贈送 100 點；每次全新占卜或追問都消耗 {QUESTION_CREDIT_COST} 點。
+            {t.billing.subtitle.replace('{cost}', String(QUESTION_CREDIT_COST))}
           </p>
         </div>
 
@@ -107,36 +113,36 @@ export default function BillingPage() {
                 )}
                 <div>
                   <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                    {user.displayName || '探索者'}，歡迎回來
+                    {t.billing.welcome.replace('{name}', user.displayName || '探索者')}
                   </p>
                   <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
-                    願星辰指引你的每一次占卜
+                    {t.billing.welcomeHint}
                   </p>
                 </div>
               </div>
               {/* 右側：點數資訊 */}
               <div className="text-right">
                 <p className="text-xs tracking-wider text-[var(--color-text-muted)] uppercase">
-                  目前可用點數
+                  {t.billing.availablePoints}
                 </p>
                 <p className="mt-1 text-4xl font-bold text-[var(--color-accent-gold)]">
                   {loading ? '...' : balance}
                 </p>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                  約可再提問 {Math.floor(balance / QUESTION_CREDIT_COST)} 次
+                  {t.billing.canAsk.replace('{count}', String(Math.floor(balance / QUESTION_CREDIT_COST)))}
                 </p>
               </div>
             </div>
           ) : (
             <div className="text-center">
               <p className="mb-3 text-sm text-[var(--color-text-secondary)]">
-                請先登入，系統會建立你的點數帳戶並發放新會員 100 點。
+                {t.billing.loginPrompt}
               </p>
               <Link
                 to="/reading"
                 className="text-sm font-bold text-[var(--color-accent-gold)] no-underline"
               >
-                前往占卜頁登入
+                {t.billing.goLogin}
               </Link>
             </div>
           )}
@@ -150,7 +156,7 @@ export default function BillingPage() {
         )}
 
         <section className="mb-10">
-          <h2 className="mb-4 text-lg font-bold text-[var(--color-text-primary)]">購買點數</h2>
+          <h2 className="mb-4 text-lg font-bold text-[var(--color-text-primary)]">{t.billing.buyCredits}</h2>
           <div className="grid gap-4 md:grid-cols-3">
             {CREDIT_PACKAGES.map((item) => (
               <div
@@ -162,21 +168,21 @@ export default function BillingPage() {
                 }`}
               >
                 <div className="mb-4">
-                  <p className="text-base font-bold text-[var(--color-text-primary)]">{item.name}</p>
-                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">{item.description}</p>
+                  <p className="text-base font-bold text-[var(--color-text-primary)]">{(t.billing.packages as PkgLocale)[item.id]?.name ?? item.name}</p>
+                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">{(t.billing.packages as PkgLocale)[item.id]?.description ?? item.description}</p>
                 </div>
                 <p className="mb-1 text-3xl font-bold text-[var(--color-accent-gold)]">
-                  NT${item.priceTwd}
+                  {convert(item.priceTwd).display}
                 </p>
                 <p className="mb-5 text-sm text-[var(--color-text-secondary)]">
-                  {item.credits} 點，約 {Math.floor(item.credits / QUESTION_CREDIT_COST)} 次提問
+                  {t.billing.pointsCount.replace('{credits}', String(item.credits)).replace('{count}', String(Math.floor(item.credits / QUESTION_CREDIT_COST)))}
                 </p>
                 <button
                   onClick={() => handlePackage(item.id)}
                   disabled={!user || Boolean(pending)}
                   className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/15 px-4 py-2.5 text-sm font-bold tracking-wider text-[var(--color-accent-gold)] transition-all hover:bg-[var(--color-accent-gold)]/25 hover:border-[var(--color-accent-gold)]/60 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {pending?.type === 'package' && pending.id === item.id ? '建立中...' : '購買'}
+                  {pending?.type === 'package' && pending.id === item.id ? t.billing.creating : t.billing.buy}
                 </button>
               </div>
             ))}
@@ -184,7 +190,7 @@ export default function BillingPage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="mb-4 text-lg font-bold text-[var(--color-text-primary)]">訂閱帳戶</h2>
+          <h2 className="mb-4 text-lg font-bold text-[var(--color-text-primary)]">{t.billing.subscribe}</h2>
           <div className="grid gap-4 md:grid-cols-3">
             {SUBSCRIPTION_PLANS.map((item) => (
               <div
@@ -196,22 +202,22 @@ export default function BillingPage() {
                 }`}
               >
                 <div className="mb-4">
-                  <p className="text-base font-bold text-[var(--color-text-primary)]">{item.name}</p>
-                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">{item.description}</p>
+                  <p className="text-base font-bold text-[var(--color-text-primary)]">{(t.billing.subscriptions as PkgLocale)[item.id]?.name ?? item.name}</p>
+                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">{(t.billing.subscriptions as PkgLocale)[item.id]?.description ?? item.description}</p>
                 </div>
                 <p className="mb-1 text-3xl font-bold text-[var(--color-accent-gold)]">
-                  NT${item.priceTwd}
-                  <span className="text-sm font-normal text-[var(--color-text-muted)]"> / 月</span>
+                  {convert(item.priceTwd).display}
+                  <span className="text-sm font-normal text-[var(--color-text-muted)]"> {t.billing.perMonth}</span>
                 </p>
                 <p className="mb-5 text-sm text-[var(--color-text-secondary)]">
-                  每月 {item.monthlyCredits} 點，約 {Math.floor(item.monthlyCredits / QUESTION_CREDIT_COST)} 次提問
+                  {t.billing.monthlyCount.replace('{credits}', String(item.monthlyCredits)).replace('{count}', String(Math.floor(item.monthlyCredits / QUESTION_CREDIT_COST)))}
                 </p>
                 <button
                   onClick={() => handleSubscription(item.id)}
                   disabled={!user || Boolean(pending)}
                   className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-purple)]/40 bg-gradient-to-r from-[var(--color-accent-purple)]/20 to-[var(--color-accent-mystic)]/20 px-4 py-2.5 text-sm font-bold tracking-wider text-[var(--color-accent-purple-light)] transition-all hover:border-[var(--color-accent-purple)]/60 hover:from-[var(--color-accent-purple)]/30 hover:to-[var(--color-accent-mystic)]/30 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {pending?.type === 'subscription' && pending.id === item.id ? '建立中...' : '訂閱'}
+                  {pending?.type === 'subscription' && pending.id === item.id ? t.billing.creating : t.billing.subscribing}
                 </button>
               </div>
             ))}

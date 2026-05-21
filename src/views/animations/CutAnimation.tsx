@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import CardBack from '../components/tarot/CardBack';
+import { useI18n } from '../../controllers/useI18n';
 
 interface Props {
   onComplete: () => void;
@@ -9,6 +10,7 @@ interface Props {
 type Phase = 'idle' | 'split' | 'swap' | 'merge';
 
 export default function CutAnimation({ onComplete }: Props) {
+  const { t } = useI18n();
   const [phase, setPhase] = useState<Phase>('idle');
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export default function CutAnimation({ onComplete }: Props) {
         animate={{ opacity: 1 }}
         className="text-sm text-[var(--color-text-secondary)]"
       >
-        {phase === 'merge' ? '切牌完成，命運已定...' : '切牌中，分割命運的交叉點...'}
+        {phase === 'merge' ? t.reading.cutComplete : t.reading.cutInProgress}
       </motion.p>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../../controllers/useAuth';
+import { useI18n } from '../../../controllers/useI18n';
 import { getLineToken, isLineLoginConfigured } from '../../../services/line/liff-service';
 import {
   copyCurrentUrl,
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function AuthModal({ open, onClose }: Props) {
+  const { t } = useI18n();
   const {
     user,
     loginWithGoogle,
@@ -60,7 +62,7 @@ export default function AuthModal({ open, onClose }: Props) {
 
   const handleGoogle = async () => {
     if (googleAuthBlocked) {
-      setBrowserNotice('LINE 內建瀏覽器無法使用 Google 登入。請用右上角選單選擇「以瀏覽器開啟」，或先複製網址到 Chrome / Safari。');
+      setBrowserNotice(t.auth.googleBlocked);
       return;
     }
 
@@ -74,7 +76,7 @@ export default function AuthModal({ open, onClose }: Props) {
 
   const handleLine = async () => {
     if (!lineConfigured) {
-      setBrowserNotice('LINE 登入尚未設定，請先填入 LIFF ID。');
+      setBrowserNotice(t.auth.lineNotConfigured);
       return;
     }
 
@@ -90,7 +92,7 @@ export default function AuthModal({ open, onClose }: Props) {
 
   const handleCopyUrl = async () => {
     await copyCurrentUrl();
-    setBrowserNotice('網址已複製，請貼到 Chrome 或 Safari 後再使用 Google 登入。');
+    setBrowserNotice(t.auth.urlCopied);
   };
 
   return (
@@ -113,10 +115,10 @@ export default function AuthModal({ open, onClose }: Props) {
         </button>
 
         <h2 className="mb-1 text-center text-xl font-bold text-[var(--color-accent-gold)]">
-          {mode === 'login' ? '歡迎回來' : '加入神秘塔羅'}
+          {mode === 'login' ? t.auth.loginTitle : t.auth.registerTitle}
         </h2>
         <p className="mb-6 text-center text-xs text-[var(--color-text-muted)]">
-          {mode === 'login' ? '登入以同步你的占卜紀錄' : '創建帳號開始你的占卜之旅'}
+          {mode === 'login' ? t.auth.loginSubtitle : t.auth.registerSubtitle}
         </p>
 
         {lineConfigured && (
@@ -126,21 +128,21 @@ export default function AuthModal({ open, onClose }: Props) {
             className="mb-4 flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-[#06C755]/60 bg-[#06C755] px-4 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             <span className="text-base font-black">LINE</span>
-            {lineBrowser ? '使用 LINE 快速登入' : '使用 LINE 登入'}
+            {lineBrowser ? t.auth.lineQuickLogin : t.auth.lineLogin}
           </button>
         )}
 
         {googleAuthBlocked && (
           <div className="mb-4 rounded-lg border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/10 p-3 text-xs leading-relaxed text-[var(--color-text-secondary)]">
             <p>
-              LINE 內建瀏覽器會被 Google 阻擋登入。請用右上角選單選擇「以瀏覽器開啟」，或複製網址到 Chrome / Safari。
+              {t.auth.googleBlocked}
             </p>
             <button
               type="button"
               onClick={handleCopyUrl}
               className="mt-2 cursor-pointer rounded border border-[var(--color-accent-gold)]/50 bg-transparent px-3 py-1.5 text-xs font-bold text-[var(--color-accent-gold)]"
             >
-              複製目前網址
+              {t.auth.copyUrl}
             </button>
           </div>
         )}
@@ -163,13 +165,13 @@ export default function AuthModal({ open, onClose }: Props) {
             <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
           </svg>
-          使用 Google 登入
+          {t.auth.googleLogin}
         </button>
 
         {/* 分隔線 */}
         <div className="mb-4 flex items-center gap-3">
           <div className="h-px flex-1 bg-[var(--color-border)]" />
-          <span className="text-xs text-[var(--color-text-muted)]">或</span>
+          <span className="text-xs text-[var(--color-text-muted)]">{t.auth.separator}</span>
           <div className="h-px flex-1 bg-[var(--color-border)]" />
         </div>
 
@@ -179,7 +181,7 @@ export default function AuthModal({ open, onClose }: Props) {
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); clearError(); }}
-            placeholder="電子信箱"
+            placeholder={t.auth.emailPlaceholder}
             required
             className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-gold)]"
           />
@@ -187,7 +189,7 @@ export default function AuthModal({ open, onClose }: Props) {
             type="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); clearError(); }}
-            placeholder="密碼（至少 6 碼）"
+            placeholder={t.auth.passwordPlaceholder}
             required
             minLength={6}
             className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-gold)]"
@@ -202,18 +204,18 @@ export default function AuthModal({ open, onClose }: Props) {
             disabled={submitting}
             className="w-full cursor-pointer rounded-lg bg-gradient-to-r from-[var(--color-accent-purple)] to-[var(--color-accent-mystic)] px-4 py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-50"
           >
-            {submitting ? '處理中...' : mode === 'login' ? '登入' : '註冊'}
+            {submitting ? t.auth.submitting : mode === 'login' ? t.auth.loginButton : t.auth.registerButton}
           </button>
         </form>
 
         {/* 切換模式 */}
         <p className="mt-5 text-center text-xs text-[var(--color-text-muted)]">
-          {mode === 'login' ? '還沒有帳號？' : '已經有帳號？'}
+          {mode === 'login' ? t.auth.noAccount : t.auth.hasAccount}
           <button
             onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); clearError(); }}
             className="ml-1 cursor-pointer border-none bg-transparent text-[var(--color-accent-gold)] underline"
           >
-            {mode === 'login' ? '立即註冊' : '返回登入'}
+            {mode === 'login' ? t.auth.registerNow : t.auth.backToLogin}
           </button>
         </p>
       </motion.div>

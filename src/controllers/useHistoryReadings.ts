@@ -7,6 +7,7 @@ import { getStorageProvider } from '../services/storage/storage-factory';
 import { drawExtraCard } from '../services/tarot-engine';
 import { useAuth } from './useAuth';
 import { useCredits } from './useCredits';
+import { useI18n } from './useI18n';
 
 function buildFollowUpContext(reading: Reading): string {
   const previousFollowUps = reading.followUps
@@ -33,6 +34,7 @@ function collectUsedCardIds(reading: Reading): string[] {
 export function useHistoryReadings() {
   const { user } = useAuth();
   const { balance, refresh: refreshCredits } = useCredits();
+  const { lang } = useI18n();
   const [readings, setReadings] = useState<Reading[]>([]);
   const [loading, setLoading] = useState(true);
   const [followingUpId, setFollowingUpId] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export function useHistoryReadings() {
           spreadType: reading.spreadType,
           drawnCards: reading.drawnCards,
           question: reading.question,
-          locale: 'zh-TW',
+          locale: lang,
         };
         const result = await provider.followUp({
           originalRequest,
@@ -109,7 +111,7 @@ export function useHistoryReadings() {
             isReversed: extraCard.isReversed,
             position: extraCard.position,
           },
-          locale: 'zh-TW',
+          locale: lang,
         });
         const newEntry: FollowUpEntry = {
           question: followUpQuestion,
@@ -132,7 +134,7 @@ export function useHistoryReadings() {
         setFollowingUpId(null);
       }
     },
-    [balance, refreshCredits, user],
+    [balance, lang, refreshCredits, user],
   );
 
   return {

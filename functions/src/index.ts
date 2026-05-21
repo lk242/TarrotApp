@@ -32,7 +32,7 @@ const db = getFirestore();
 const adminAuth = getAuth();
 
 type SpreadType = 'single' | 'three-card' | 'celtic-cross';
-type Locale = 'zh-TW' | 'en';
+type Locale = 'zh-TW' | 'en' | 'ja';
 type CreditPackageId = 'starter' | 'standard' | 'deep';
 type SubscriptionTier = 'none' | 'monthly_light' | 'monthly_plus' | 'monthly_pro';
 
@@ -100,6 +100,10 @@ interface AIInterpretationRequest {
   drawnCards: DrawnCard[];
   question: string;
   locale: Locale;
+  /** 使用者選擇的占卜主題 */
+  topic?: string;
+  /** 問卜者狀態摘要（前端 useQuerentSignals 產出） */
+  querentSummary?: string;
 }
 
 interface FollowUpCard {
@@ -312,6 +316,31 @@ function requireUid(uid?: string): string {
     throw new HttpsError('unauthenticated', '請先登入後再使用 AI 占卜');
   }
   return uid;
+}
+
+/**
+ * 簡易 per-user rate limiter：每人每分鐘最多 N 次 AI 請求。
+ * 使用記憶體 Map，Cloud Function instance 重啟時自動歸零。
+ */
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 10;
+const rateLimitMap = new Map<string, number[]>();
+
+function checkRateLimit(uid: string): void {
+  const now = Date.now();
+  const timestamps = (rateLimitMap.get(uid) ?? []).filter(
+    (t) => now - t < RATE_LIMIT_WINDOW_MS,
+  );
+
+  if (timestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
+    throw new HttpsError(
+      'resource-exhausted',
+      '操作過於頻繁，請稍等一分鐘後再試。',
+    );
+  }
+
+  timestamps.push(now);
+  rateLimitMap.set(uid, timestamps);
 }
 
 function requireAdmin(email?: string): string {
@@ -721,7 +750,9 @@ function assertInterpretationRequest(data: unknown): AIInterpretationRequest {
     drawnCards: request.drawnCards,
     // 限制可控輸入長度，避免單次 callable 被超長 prompt 濫用。
     question: request.question.slice(0, 1000),
-    locale: request.locale === 'en' ? 'en' : 'zh-TW',
+    locale: request.locale === 'en' ? 'en' : request.locale === 'ja' ? 'ja' : 'zh-TW',
+    topic: typeof request.topic === 'string' ? request.topic.slice(0, 50) : undefined,
+    querentSummary: typeof request.querentSummary === 'string' ? request.querentSummary.slice(0, 1500) : undefined,
   };
 }
 
@@ -740,7 +771,7 @@ function assertFollowUpRequest(data: unknown): AIFollowUpRequest {
     originalRequest: assertInterpretationRequest(request.originalRequest),
     originalInterpretation: request.originalInterpretation.slice(0, 5000),
     followUpQuestion: request.followUpQuestion.slice(0, 1000),
-    locale: request.locale === 'en' ? 'en' : 'zh-TW',
+    locale: request.locale === 'en' ? 'en' : request.locale === 'ja' ? 'ja' : 'zh-TW',
   };
 }
 
@@ -772,10 +803,78 @@ function buildSystemPrompt(locale: Locale): string {
 - 使用繁體中文
 - 語氣溫暖但帶有神秘感
 - 避免空洞的場面話
-- 逆位牌要特別說明其能量轉變與提醒意義`;
+- 解讀必須緊扣問卜者提出的具體問題，不要泛泛而談
+- 參考每張牌附帶的「關鍵字」來深化解讀的具體性
+- 逆位牌要特別說明其能量轉變與提醒意義
+- 若有問卜者狀態資訊，自然融入解讀但不提及技術性字眼（如電池、裝置、打字速度等）
+- 建議必須具體到可立即執行，而非抽象的心態調整`;
   }
 
-  return 'You are a skilled tarot reader. Provide a detailed, insightful interpretation based on the drawn cards, spread positions, and the querent question. Use Markdown formatting with clear sections.';
+  if (locale === 'ja') {
+    return `あなたは深いタロットの知識と霊的なガイダンスに長けた熟練の占い師です。神秘的でありながら実用的な解釈スタイルで、相談者に理解と明確な方向性を提供します。
+
+450〜650字程度の明確で深みのある解釈を提供してください。以下のMarkdown形式に従ってください：
+
+## スプレッド概要
+このスプレッドが伝える核心的なエネルギーと全体的な雰囲気を概説。
+
+## カード別解析
+各カードについて ### 見出しで詳細に解析。
+
+## 総合リーディング
+すべてのカードを一つの物語として結び、カード間の関連と相互作用を分析。
+
+## 具体的なアドバイス
+実行可能な3-5つのアドバイス。
+
+## 注意すべき点
+相談者が見落としがちな1-2つの側面を指摘。
+
+## 箴言
+> 詩的で深い一言を結びとして。
+
+ルール：
+- 日本語で回答
+- 温かみがありつつ神秘的な語り口
+- 空虚な社交辞令を避ける
+- 相談者の具体的な質問に緊密に結びつける
+- 各カードの「キーワード」を参考に解釈を深める
+- 逆位置カードのエネルギー変化を特に説明
+- 相談者の状態情報がある場合は自然に解釈に融合（技術的用語は使わない）
+- アドバイスは具体的で即実行可能なものにする`;
+  }
+
+  return `You are a skilled tarot reader with deep knowledge and spiritual guidance abilities. Provide a detailed, insightful interpretation in about 450 to 650 words.
+
+Use this Markdown format:
+
+## Spread Overview
+Summarize the core energy and atmosphere.
+
+## Card-by-Card Analysis
+Detail each card with ### headings.
+
+## Comprehensive Reading
+Weave all cards into a cohesive narrative.
+
+## Practical Advice
+Provide 3-5 actionable suggestions.
+
+## Points of Caution
+Note 1-2 aspects to watch out for.
+
+## Closing Wisdom
+> A poetic, profound closing line.
+
+Rules:
+- Respond in English
+- Warm yet mystical tone
+- Avoid vague platitudes
+- Tie interpretation closely to the querent's specific question
+- Reference each card's keywords to deepen specificity
+- Explain reversed card energy shifts
+- If querent state info is available, weave it naturally (no technical jargon)
+- Advice must be specific and immediately actionable`;
 }
 
 function buildUserPrompt(request: AIInterpretationRequest): string {
@@ -787,12 +886,15 @@ function buildUserPrompt(request: AIInterpretationRequest): string {
         : '凱爾特十字（十牌全面解析）';
 
   const cardsDescription = request.drawnCards
-    .map(
-      (dc) =>
-        `- 位置「${dc.position}」：${dc.card.name}（${dc.card.nameEn}）— ${
-          dc.isReversed ? '逆位' : '正位'
-        }`,
-    )
+    .map((dc) => {
+      const keywords = dc.isReversed
+        ? (dc.card.reversedKeywords ?? []).join('、')
+        : (dc.card.keywords ?? []).join('、');
+      const kwPart = keywords ? `（關鍵字：${keywords}）` : '';
+      return `- 位置「${dc.position}」：${dc.card.name}（${dc.card.nameEn}）— ${
+        dc.isReversed ? '逆位' : '正位'
+      }${kwPart}`;
+    })
     .join('\n');
 
   const positionGuide =
@@ -810,14 +912,24 @@ function buildUserPrompt(request: AIInterpretationRequest): string {
 - 最終結果：事件的最終走向`
       : '';
 
-  return `**問題：** ${request.question}
+  // 主題提示
+  const topicHint = request.topic
+    ? `\n**占卜主題：** ${request.topic}（解讀必須緊扣此主題方向）`
+    : '';
 
+  // 問卜者狀態摘要
+  const querentPart = request.querentSummary
+    ? `\n\n**問卜者狀態分析：**\n${request.querentSummary}\n（請自然融入解讀中，但不要提及「電池」「裝置」等技術性字眼）`
+    : '';
+
+  return `**問題：** ${request.question}
+${topicHint}
 **牌陣：** ${spreadName}
 
 **抽出的牌：**
-${cardsDescription}${positionGuide}
+${cardsDescription}${positionGuide}${querentPart}
 
-請提供完整且深度的塔羅解讀。`;
+請參考每張牌附帶的「關鍵字」進行解讀，建議必須具體到可立即執行。`;
 }
 
 function parseSuggestedQuestions(text: string): string[] {
@@ -891,6 +1003,7 @@ export const generateTarotReading = onCall(
   async (request) => {
     // Callable Function 會自動處理 Firebase Web SDK 的 envelope 格式與 CORS。
     const uid = requireUid(request.auth?.uid);
+    checkRateLimit(uid);
     const data = assertInterpretationRequest(request.data);
     const todayContext = getTaipeiNowContext();
     const systemPrompt =
@@ -927,6 +1040,7 @@ export const followUpReading = onCall(
   async (request) => {
     // 追問沿用原始牌陣與前次解讀摘要，避免 AI 忘記上下文。
     const uid = requireUid(request.auth?.uid);
+    checkRateLimit(uid);
     const data = assertFollowUpRequest(request.data);
     const allowedCardNames = collectAllowedCardNames(data);
     const cardsDescription = data.originalRequest.drawnCards

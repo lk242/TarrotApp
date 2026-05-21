@@ -1,0 +1,23 @@
+{
+  "name": "神秘塔羅",
+  "short_name": "神秘塔羅",
+  "description": "結合 AI 智慧的線上塔羅占卜",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A14",
+  "theme_color": "#0A0A14",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/images/theme/logo.webp",
+      "sizes": "192x192",
+      "type": "image/webp"
+    },
+    {
+      "src": "/images/theme/logo.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}

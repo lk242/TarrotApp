@@ -17,4 +17,6 @@ export interface Reading {
   summary: string;
   followUps?: FollowUpEntry[];
   userId?: string;
+  /** 占卜時使用的語系，用於跨語系歷史顯示 */
+  locale?: 'zh-TW' | 'en' | 'ja';
 }

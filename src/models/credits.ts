@@ -1,5 +1,5 @@
-export const WELCOME_CREDITS = 100;
-export const QUESTION_CREDIT_COST = 5;
+export const WELCOME_CREDITS = 200;
+export const QUESTION_CREDIT_COST = 20;
 
 export interface CreditProfile {
   userId: string;
@@ -25,6 +25,7 @@ export interface CreditPackage {
   id: CreditPackageId;
   name: string;
   credits: number;
+  bonusCredits: number;
   priceTwd: number;
   description: string;
   featured?: boolean;
@@ -34,6 +35,7 @@ export interface SubscriptionPlan {
   id: Exclude<SubscriptionTier, 'none'>;
   name: string;
   monthlyCredits: number;
+  bonusCredits: number;
   priceTwd: number;
   description: string;
   featured?: boolean;
@@ -43,24 +45,27 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
   {
     id: 'starter',
     name: '入門補充包',
-    credits: 500,
-    priceTwd: 99,
-    description: '約 100 次提問，適合偶爾使用。',
+    credits: 400,
+    bonusCredits: 0,
+    priceTwd: 129,
+    description: '約 20 次提問，適合偶爾使用。',
   },
   {
     id: 'standard',
     name: '標準靈感包',
-    credits: 1200,
-    priceTwd: 199,
-    description: '約 240 次提問，單次成本更低。',
+    credits: 800,
+    bonusCredits: 80,
+    priceTwd: 269,
+    description: '約 44 次提問，單次成本更低。',
     featured: true,
   },
   {
     id: 'deep',
     name: '深度探索包',
-    credits: 3000,
-    priceTwd: 399,
-    description: '約 600 次提問，適合大量追問。',
+    credits: 1600,
+    bonusCredits: 150,
+    priceTwd: 529,
+    description: '約 87 次提問，適合大量追問。',
   },
 ];
 
@@ -68,23 +73,26 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'monthly_light',
     name: '月光方案',
-    monthlyCredits: 1000,
-    priceTwd: 149,
-    description: '每月約 200 次提問，輕鬆維持占卜習慣。',
+    monthlyCredits: 600,
+    bonusCredits: 0,
+    priceTwd: 199,
+    description: '每月約 30 次提問，輕鬆維持占卜習慣。',
   },
   {
     id: 'monthly_plus',
     name: '星辰方案',
-    monthlyCredits: 2500,
-    priceTwd: 299,
-    description: '每月約 500 次提問，最受歡迎的超值選擇。',
+    monthlyCredits: 1200,
+    bonusCredits: 80,
+    priceTwd: 399,
+    description: '每月約 64 次提問，最受歡迎的超值選擇。',
     featured: true,
   },
   {
     id: 'monthly_pro',
     name: '神諭方案',
-    monthlyCredits: 6000,
-    priceTwd: 599,
-    description: '每月約 1200 次提問，深度探索不設限。',
+    monthlyCredits: 2400,
+    bonusCredits: 150,
+    priceTwd: 749,
+    description: '每月約 127 次提問，深度探索不設限。',
   },
 ];

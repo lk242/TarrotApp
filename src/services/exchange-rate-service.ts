@@ -87,12 +87,38 @@ const LANG_CURRENCY: Record<string, 'TWD' | 'USD' | 'JPY'> = {
   ja: 'JPY',
 };
 
+/**
+ * 購買力平價（PPP）調整倍率。
+ * 純匯率換算會讓歐美日區定價過低，不符合當地數位產品消費水準。
+ * 這裡用倍率補償，讓各區定價合理且不低於台灣水準。
+ */
+const PPP_MULTIPLIER: Record<string, number> = {
+  USD: 1.6,
+  JPY: 1.3,
+};
+
 /** 貨幣符號 */
 const CURRENCY_SYMBOLS: Record<string, string> = {
   TWD: 'NT$',
   USD: '$',
   JPY: '¥',
 };
+
+/**
+ * 將浮點價格美化為消費者友善的數字。
+ * - USD: 一律 x.99 結尾
+ * - JPY: 取整到 500 的倍數（如 ¥500、¥1000、¥1500、¥2000）
+ */
+function friendlyPrice(raw: number, currency: 'USD' | 'JPY'): number {
+  if (currency === 'JPY') {
+    // 取整到 500 的倍數（無條件進位，寧可貴一點也要整數好看）
+    return Math.ceil(raw / 500) * 500;
+  }
+  // USD: 一律 .99 結尾
+  const floored = Math.floor(raw);
+  if (floored < 1) return 0.99;
+  return floored + 0.99;
+}
 
 /** 根據語系轉換 TWD 金額 */
 export function convertPrice(twdAmount: number, lang: string, rates: FxRates): {
@@ -108,15 +134,14 @@ export function convertPrice(twdAmount: number, lang: string, rates: FxRates): {
   }
 
   const rate = currency === 'USD' ? rates.USD : rates.JPY;
-  let converted = twdAmount * rate;
+  const ppp = PPP_MULTIPLIER[currency] ?? 1;
+  const raw = twdAmount * rate * ppp;
+  const converted = friendlyPrice(raw, currency);
 
-  if (currency === 'JPY') {
-    // 日圓取整到十位
-    converted = Math.round(converted / 10) * 10;
-  } else {
-    // USD 保留兩位小數
-    converted = Math.round(converted * 100) / 100;
-  }
+  // 格式化顯示：USD 帶小數、JPY 整數
+  const displayStr = currency === 'JPY'
+    ? `${symbol}${converted}`
+    : `${symbol}${converted.toFixed(2)}`;
 
-  return { amount: converted, symbol, display: `${symbol}${converted}` };
+  return { amount: converted, symbol, display: displayStr };
 }

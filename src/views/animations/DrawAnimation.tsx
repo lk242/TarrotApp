@@ -311,10 +311,18 @@ function MobileSwipeDraw({
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="relative cursor-grab select-none touch-none active:cursor-grabbing"
             >
-              {[2, 1, 0].map((offset) => (
-                <div key={offset} className="absolute" style={{ top: -offset * 2, left: offset, zIndex: offset }}>
+              {/* 牌堆隨抽取視覺減少：底層牌數量 = min(remaining-1, 2) */}
+              {Array.from({ length: Math.min(remaining - 1, 2) }, (_, i) => Math.min(remaining - 1, 2) - i).map((offset) => (
+                <motion.div
+                  key={`stack-${offset}`}
+                  className="absolute"
+                  style={{ top: -offset * 2, left: offset, zIndex: offset }}
+                  initial={false}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
                   <CardBack width={140} height={224} />
-                </div>
+                </motion.div>
               ))}
               <div className="relative" style={{ zIndex: 3 }}>
                 <CardBack width={140} height={224} glowing />
@@ -332,15 +340,17 @@ function MobileSwipeDraw({
               animate={{ y: [0, -6, 0] }}
               transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
             >↑</motion.div>
-            <p className="text-xs text-[var(--color-text-muted)]">向上滑動抽取第 {revealCount + 1} 張牌</p>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {t.reading.drawMobileSwipeNth.replace('{nth}', String(revealCount + 1))}
+            </p>
             <button onClick={() => doDrawCard()} className="mt-1 cursor-pointer border-none bg-transparent text-[10px] text-[var(--color-text-muted)] underline opacity-60 hover:opacity-100">
-              或點此抽牌
+              {t.reading.drawMobileTapFallback}
             </button>
           </motion.div>
         </div>
       ) : (
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-[var(--color-accent-gold-light)]">
-          ✦ 牌已抽齊，準備揭示...
+          {t.reading.drawMobileAllDrawn}
         </motion.p>
       )}
 

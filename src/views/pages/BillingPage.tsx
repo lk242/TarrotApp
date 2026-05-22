@@ -174,9 +174,14 @@ export default function BillingPage() {
                 <p className="mb-1 text-3xl font-bold text-[var(--color-accent-gold)]">
                   {convert(item.priceTwd).display}
                 </p>
-                <p className="mb-5 text-sm text-[var(--color-text-secondary)]">
-                  {t.billing.pointsCount.replace('{credits}', String(item.credits)).replace('{count}', String(Math.floor(item.credits / QUESTION_CREDIT_COST)))}
+                <p className="mb-1 text-sm text-[var(--color-text-secondary)]">
+                  {t.billing.pointsCount.replace('{credits}', String(item.credits + item.bonusCredits)).replace('{count}', String(Math.floor((item.credits + item.bonusCredits) / QUESTION_CREDIT_COST)))}
                 </p>
+                {item.bonusCredits > 0 && (
+                  <p className="mb-4 text-xs font-medium text-[var(--color-accent-mystic)]">
+                    ✦ {t.billing.bonusTag.replace('{bonus}', String(item.bonusCredits))}
+                  </p>
+                )}
                 <button
                   onClick={() => handlePackage(item.id)}
                   disabled={!user || Boolean(pending)}
@@ -209,9 +214,14 @@ export default function BillingPage() {
                   {convert(item.priceTwd).display}
                   <span className="text-sm font-normal text-[var(--color-text-muted)]"> {t.billing.perMonth}</span>
                 </p>
-                <p className="mb-5 text-sm text-[var(--color-text-secondary)]">
-                  {t.billing.monthlyCount.replace('{credits}', String(item.monthlyCredits)).replace('{count}', String(Math.floor(item.monthlyCredits / QUESTION_CREDIT_COST)))}
+                <p className="mb-1 text-sm text-[var(--color-text-secondary)]">
+                  {t.billing.monthlyCount.replace('{credits}', String(item.monthlyCredits + item.bonusCredits)).replace('{count}', String(Math.floor((item.monthlyCredits + item.bonusCredits) / QUESTION_CREDIT_COST)))}
                 </p>
+                {item.bonusCredits > 0 && (
+                  <p className="mb-4 text-xs font-medium text-[var(--color-accent-mystic)]">
+                    ✦ {t.billing.bonusTag.replace('{bonus}', String(item.bonusCredits))}
+                  </p>
+                )}
                 <button
                   onClick={() => handleSubscription(item.id)}
                   disabled={!user || Boolean(pending)}

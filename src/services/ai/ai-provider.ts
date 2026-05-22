@@ -35,6 +35,11 @@ export interface AIFollowUpRequest {
 }
 
 /**
+ * 串流回呼：每次收到新的文字 delta 時呼叫。
+ */
+export type StreamCallback = (delta: string, accumulated: string) => void;
+
+/**
  * 所有 AI provider 的共同合約。
  *
  * 前端流程只依賴這個介面，不關心背後是 Mock、前端直呼 OpenAI，
@@ -43,6 +48,11 @@ export interface AIFollowUpRequest {
 export interface IAIProvider {
   readonly name: string;
   interpret(request: AIInterpretationRequest): Promise<AIInterpretationResponse>;
+  /** 串流版解讀：每收到一小段文字就透過 onDelta 回呼即時更新 UI */
+  interpretStream?(
+    request: AIInterpretationRequest,
+    onDelta: StreamCallback,
+  ): Promise<AIInterpretationResponse>;
   followUp?(request: AIFollowUpRequest): Promise<AIInterpretationResponse>;
   isAvailable(): boolean;
 }

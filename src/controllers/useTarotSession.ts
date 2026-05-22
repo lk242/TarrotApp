@@ -55,6 +55,7 @@ export function useTarotSession(spreadType: SpreadType) {
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [followUps, setFollowUps] = useState<FollowUpEntry[]>([]);
   const [isFollowingUp, setIsFollowingUp] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState('');
 
   const drawnCardsRef = useRef<DrawnCard[]>([]);
@@ -97,12 +98,42 @@ export function useTarotSession(spreadType: SpreadType) {
     originalRequestRef.current = request;
 
     try {
-      const result = await provider.interpret(request);
+      let result;
+
+      if (provider.interpretStream) {
+        // 串流版：第一個 delta 到達就切到 complete + isStreaming
+        // 節流：每 80ms 批次更新一次 UI，避免每 token 都 re-render + marked.parse
+        let streamStarted = false;
+        let throttleTimer: ReturnType<typeof setTimeout> | null = null;
+        setIsStreaming(true);
+        result = await provider.interpretStream(request, (_delta, accumulated) => {
+          interpretationRef.current = accumulated;
+          if (!streamStarted) {
+            streamStarted = true;
+            setInterpretation(accumulated);
+            setPhase('complete');
+          } else if (!throttleTimer) {
+            throttleTimer = setTimeout(() => {
+              setInterpretation(interpretationRef.current);
+              throttleTimer = null;
+            }, 80);
+          }
+        });
+        // 確保最後一次更新
+        if (throttleTimer) clearTimeout(throttleTimer);
+        setIsStreaming(false);
+      } else {
+        // 非串流 fallback
+        result = await provider.interpret(request);
+      }
+
+      // 最終結果更新（含清理後的 interpretation + suggestedQuestions）
       setInterpretation(result.interpretation);
       interpretationRef.current = result.interpretation;
       setSuggestedQuestions(result.suggestedQuestions || []);
+      setPhase('complete');
 
-      // 自動存入占卜紀錄：storage-factory 依登入狀態切換 Firestore/localStorage。
+      // 存檔放背景，不阻塞 UI
       const storage = getStorageProvider(user?.uid);
       const reading: Reading = {
         id: crypto.randomUUID(),
@@ -112,13 +143,14 @@ export function useTarotSession(spreadType: SpreadType) {
         drawnCards: drawnCardsRef.current,
         interpretation: result.interpretation,
         summary: result.summary,
+        locale: lang,
       };
-      const docId = await storage.saveReading(reading);
-      savedReadingIdRef.current = docId;
+      storage.saveReading(reading).then((docId) => {
+        savedReadingIdRef.current = docId;
+      }).catch(console.error);
       refreshCredits().catch(console.error);
 
       trackEvent('reading_complete', { spread_type: spreadType });
-      setPhase('complete');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI 解讀失敗，請稍後再試';
       console.error('占卜解讀失敗:', err);
@@ -231,6 +263,7 @@ export function useTarotSession(spreadType: SpreadType) {
     suggestedQuestions,
     followUps,
     isFollowingUp,
+    isStreaming,
     askFollowUp,
     error,
     clearError: () => setError(''),

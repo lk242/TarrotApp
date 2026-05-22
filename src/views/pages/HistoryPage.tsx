@@ -15,8 +15,15 @@ import InterpretationSections from '../components/tarot/InterpretationSections';
 export default function HistoryPage() {
   const { readings, loading, followingUpId, error, deleteReading, askFollowUp } = useHistoryReadings();
   const { balance } = useCredits();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showAllLangs, setShowAllLangs] = useState(false);
+
+  // 過濾語系：舊紀錄若無 locale 欄位視為 zh-TW
+  const filteredReadings = useMemo(
+    () => showAllLangs ? readings : readings.filter((r) => (r.locale ?? 'zh-TW') === lang),
+    [readings, showAllLangs, lang],
+  );
 
   if (loading) {
     return (
@@ -67,16 +74,30 @@ export default function HistoryPage() {
         </div>
       )}
 
+      {/* 語系過濾 toggle */}
+      {readings.length > filteredReadings.length || showAllLangs ? (
+        <div className="mb-4 w-full max-w-2xl flex justify-end">
+          <button
+            onClick={() => setShowAllLangs(!showAllLangs)}
+            className="cursor-pointer rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-1.5 text-xs text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent-gold)]/40"
+          >
+            {showAllLangs ? t.history.showCurrentLang : t.history.showAllLangs}
+            {!showAllLangs && ` (${readings.length - filteredReadings.length})`}
+          </button>
+        </div>
+      ) : null}
+
       {/* 趨勢概覽 */}
-      <TrendSummary readings={readings} t={t} />
+      <TrendSummary readings={filteredReadings} t={t} />
 
       <div className="w-full max-w-2xl space-y-4">
-        {readings.map((reading, i) => (
+        {filteredReadings.map((reading, i) => (
           <HistoryCard
             key={reading.id}
             reading={reading}
             index={i}
             t={t}
+            currentLang={lang}
             isExpanded={expandedId === reading.id}
             onToggle={() =>
               setExpandedId(expandedId === reading.id ? null : reading.id)
@@ -96,6 +117,7 @@ function HistoryCard({
   reading,
   index,
   t,
+  currentLang,
   isExpanded,
   onToggle,
   onDelete,
@@ -106,6 +128,7 @@ function HistoryCard({
   reading: Reading;
   index: number;
   t: import('../../services/i18n').Locale;
+  currentLang: string;
   isExpanded: boolean;
   onToggle: () => void;
   onDelete: () => void;
@@ -115,13 +138,23 @@ function HistoryCard({
 }) {
   const [followUpInput, setFollowUpInput] = useState('');
   const spread = SPREADS[reading.spreadType];
+  // SpreadType → locale key 對照
+  const spreadLocaleKey: Record<string, string> = { single: 'single', 'three-card': 'threeCard', 'celtic-cross': 'celticCross' };
+  const spreadI18nName = (t.spreads as Record<string, { name: string }>)[spreadLocaleKey[reading.spreadType] ?? '']?.name;
+  const readingLocale = reading.locale ?? 'zh-TW';
+  const isForeignLang = readingLocale !== currentLang;
+  const langLabels = (t.history as Record<string, unknown>).langLabel as Record<string, string> | undefined;
+
+  // 用紀錄的語系格式化日期
+  const dateLocaleMap: Record<string, string> = { 'zh-TW': 'zh-TW', en: 'en-US', ja: 'ja-JP' };
+  const dateFmtLocale = dateLocaleMap[currentLang] ?? 'zh-TW';
   const date = new Date(reading.timestamp);
-  const dateStr = date.toLocaleDateString('zh-TW', {
+  const dateStr = date.toLocaleDateString(dateFmtLocale, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
-  const timeStr = date.toLocaleTimeString('zh-TW', {
+  const timeStr = date.toLocaleTimeString(dateFmtLocale, {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -157,11 +190,16 @@ function HistoryCard({
           <div className="flex-1 min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <span className="rounded bg-[var(--color-accent-purple)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent-purple-light)]">
-                {spread?.name || reading.spreadType}
+                {spreadI18nName || spread?.name || reading.spreadType}
               </span>
               {followUpCount > 0 && (
                 <span className="rounded bg-[var(--color-accent-gold)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent-gold)]">
                   {t.history.followUpCount.replace('{count}', String(followUpCount))}
+                </span>
+              )}
+              {isForeignLang && (
+                <span className="rounded bg-[var(--color-accent-mystic)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent-mystic)]">
+                  {langLabels?.[readingLocale] ?? readingLocale}
                 </span>
               )}
               <span className="text-xs text-[var(--color-text-muted)]">

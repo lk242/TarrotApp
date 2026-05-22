@@ -68,7 +68,7 @@ export default function ReadingPage() {
     phase, question, setQuestion,
     startReading, onShuffleComplete, onCutComplete, onDrawComplete,
     reset, drawnCards, interpretation,
-    suggestedQuestions, followUps, isFollowingUp, askFollowUp,
+    suggestedQuestions, followUps, isFollowingUp, isStreaming, askFollowUp,
     error,
   } = useTarotSession(spreadType);
 
@@ -288,7 +288,7 @@ export default function ReadingPage() {
         </div>
       )}
 
-      {/* === complete：顯示結果、追問、重抽。解讀 HTML 來自 marked，內容源於 AI Markdown。 === */}
+      {/* === complete：顯示結果、追問、重抽。串流進行中也在此渲染。 === */}
       {phase === 'complete' && interpretation && (
         <div key="complete" className="w-full max-w-2xl animate-fade-in-up">
           {/* 問題回顯 */}
@@ -327,10 +327,22 @@ export default function ReadingPage() {
             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--color-accent-gold)]/30" />
           </div>
 
-          {/* 解讀內容 — 分段式逐步展開 */}
-          <div className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            <InterpretationSections markdown={interpretation} animated />
-          </div>
+          {/* 解讀內容 */}
+          {isStreaming ? (
+            /* 串流進行中：單卡直接渲染 markdown，不拆段不動畫 */
+            <div className="interpretation-panel rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 md:p-8 shadow-[var(--shadow-card)]">
+              <div
+                className="max-w-none text-[var(--color-text-primary)] leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: marked.parse(interpretation, { async: false }) as string }}
+              />
+              <span className="inline-block w-0.5 h-4 bg-[var(--color-accent-gold)] animate-pulse ml-0.5 align-text-bottom" />
+            </div>
+          ) : (
+            /* 串流完成 / 非串流：使用 InterpretationSections 分段顯示 */
+            <div className="animate-fade-in">
+              <InterpretationSections markdown={interpretation} animated={false} />
+            </div>
+          )}
 
           {/* === 追問對話區 === */}
           {followUpHtmls.length > 0 && (
@@ -394,7 +406,7 @@ export default function ReadingPage() {
           )}
 
           {/* 建議追問按鈕 */}
-          {suggestedQuestions.length > 0 && !isFollowingUp && (
+          {suggestedQuestions.length > 0 && !isFollowingUp && !isStreaming && (
             <div className="mt-6 animate-fade-in">
               <p className="mb-3 text-center text-xs text-[var(--color-text-muted)]">
                 ✦ {t.reading.suggestedHint} ✦
@@ -418,7 +430,7 @@ export default function ReadingPage() {
           )}
 
           {/* 自由追問輸入 */}
-          {!isFollowingUp && (
+          {!isFollowingUp && !isStreaming && (
             <div className="mt-5 flex w-full gap-2">
               <input
                 type="text"
@@ -465,12 +477,12 @@ export default function ReadingPage() {
             }
           />
 
-          {/* 底部操作 */}
-          <div className="mt-8 flex flex-col items-center gap-3">
+          {/* 底部操作（串流進行中隱藏） */}
+          {!isStreaming && <div className="mt-8 flex flex-col items-center gap-3">
             <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={() => { reset(); resetSignals(); selectedTopicLabel.current = ''; }}
-                className="cursor-pointer rounded-lg bg-gradient-to-r from-[var(--color-accent-purple)] to-[var(--color-accent-mystic)] px-8 py-2.5 font-bold text-white shadow-[var(--shadow-glow)] transition-shadow hover:shadow-[var(--shadow-card-hover)]"
+                className="cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold)]/15 px-6 py-2.5 font-bold text-[var(--color-accent-gold)] transition-all hover:border-[var(--color-accent-gold)]/70 hover:bg-[var(--color-accent-gold)]/25"
               >
                 ✦ {t.reading.readAgain}
               </button>
@@ -541,7 +553,7 @@ export default function ReadingPage() {
             >
               {t.reading.viewHistory}
             </Link>
-          </div>
+          </div>}
         </div>
       )}
     </div>

@@ -21,7 +21,7 @@ const OPENAI_FOLLOW_UP_MODEL = process.env.OPENAI_FOLLOW_UP_MODEL ?? 'gpt-4o-min
 const REGION = 'asia-east1';
 const WELCOME_CREDITS = 200;
 const QUESTION_CREDIT_COST = 20;
-const FOLLOW_UP_CREDIT_COST = 8;
+const FOLLOW_UP_CREDIT_COST = 5;
 const APP_BASE_URL = 'https://mystic-tarot-2026.web.app';
 const ECPAY_CHECKOUT_URL = 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5';
 const ECPAY_MERCHANT_ID = '3501280';
@@ -1380,8 +1380,10 @@ ${followUpHeading ? `本次追問指引牌是「${followUpHeading.replace(/^##\s
 請根據原始牌陣背景、之前的解讀，以及這張新抽的追問指引牌，針對追問提供具體的分析與建議。
 
 重點：解讀應以追問指引牌為核心，結合原始牌陣的脈絡來回答問卜者的追問。
+風格一致性：請延續「之前的解讀摘要」中的語氣、節奏、神秘感與安撫但具體的分析方式；追問是同一場占卜的延伸，不要改成過度簡短、制式、客服式或條列過多的回答。
+內容密度：即使追問消耗較低點數，也必須保有完整占卜的沉浸感與解讀深度；可以更聚焦，但不能顯得廉價或斷裂。
 
-回應長度約 300 到 400 字，使用 Markdown 格式。
+回應長度約 350 到 500 字，使用 Markdown 格式。
 
 結構：
 ## 延伸解析

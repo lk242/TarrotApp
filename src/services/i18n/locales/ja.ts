@@ -186,14 +186,14 @@ const ja: Locale = {
     bonusTag: '+{bonus} ボーナス',
     monthlyCount: '月 {credits} ポイント、約 {readingCount} 回の占い / {followUpCount} 回の追加質問',
     packages: {
-      starter: { name: '入門パック', description: '約20回の新規占い、または50回の追加質問。' },
-      standard: { name: 'スタンダードパック', description: '約44回の新規占い、または110回の追加質問。' },
-      deep: { name: 'ディープパック', description: '約87回の新規占い、または218回の追加質問。' },
+      starter: { name: '入門パック', description: '約20回の新規占い、または80回の追加質問。' },
+      standard: { name: 'スタンダードパック', description: '約44回の新規占い、または176回の追加質問。' },
+      deep: { name: 'ディープパック', description: '約87回の新規占い、または350回の追加質問。' },
     },
     subscriptions: {
-      monthly_light: { name: '月光プラン', description: '月約30回の新規占い、または75回の追加質問。' },
-      monthly_plus: { name: '星辰プラン', description: '月約64回の新規占い、または160回の追加質問。' },
-      monthly_pro: { name: '神託プラン', description: '月約127回の新規占い、または318回の追加質問。' },
+      monthly_light: { name: '月光プラン', description: '月約30回の新規占い、または120回の追加質問。' },
+      monthly_plus: { name: '星辰プラン', description: '月約64回の新規占い、または256回の追加質問。' },
+      monthly_pro: { name: '神託プラン', description: '月約127回の新規占い、または510回の追加質問。' },
     },
   },
 

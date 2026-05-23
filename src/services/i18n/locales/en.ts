@@ -186,14 +186,14 @@ const en: Locale = {
     bonusTag: '+{bonus} bonus',
     monthlyCount: '{credits} credits/month, about {readingCount} readings / {followUpCount} follow-ups',
     packages: {
-      starter: { name: 'Starter Pack', description: 'About 20 new readings, or 50 follow-ups.' },
-      standard: { name: 'Inspiration Pack', description: 'About 44 new readings, or 110 follow-ups.' },
-      deep: { name: 'Deep Explorer Pack', description: 'About 87 new readings, or 218 follow-ups.' },
+      starter: { name: 'Starter Pack', description: 'About 20 new readings, or 80 follow-ups.' },
+      standard: { name: 'Inspiration Pack', description: 'About 44 new readings, or 176 follow-ups.' },
+      deep: { name: 'Deep Explorer Pack', description: 'About 87 new readings, or 350 follow-ups.' },
     },
     subscriptions: {
-      monthly_light: { name: 'Moonlight Plan', description: 'About 30 new readings/month, or 75 follow-ups.' },
-      monthly_plus: { name: 'Starlight Plan', description: 'About 64 new readings/month, or 160 follow-ups.' },
-      monthly_pro: { name: 'Oracle Plan', description: 'About 127 new readings/month, or 318 follow-ups.' },
+      monthly_light: { name: 'Moonlight Plan', description: 'About 30 new readings/month, or 120 follow-ups.' },
+      monthly_plus: { name: 'Starlight Plan', description: 'About 64 new readings/month, or 256 follow-ups.' },
+      monthly_pro: { name: 'Oracle Plan', description: 'About 127 new readings/month, or 510 follow-ups.' },
     },
   },
 

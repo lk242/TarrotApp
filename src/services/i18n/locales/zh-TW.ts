@@ -201,14 +201,14 @@ const zhTW = {
     bonusTag: '再贈 {bonus} 點',
     monthlyCount: '每月 {credits} 點，約 {readingCount} 次占卜 / {followUpCount} 次追問',
     packages: {
-      starter: { name: '入門補充包', description: '約 20 次全新占卜，或 50 次追問。' },
-      standard: { name: '標準靈感包', description: '約 44 次全新占卜，或 110 次追問。' },
-      deep: { name: '深度探索包', description: '約 87 次全新占卜，或 218 次追問。' },
+      starter: { name: '入門補充包', description: '約 20 次全新占卜，或 80 次追問。' },
+      standard: { name: '標準靈感包', description: '約 44 次全新占卜，或 176 次追問。' },
+      deep: { name: '深度探索包', description: '約 87 次全新占卜，或 350 次追問。' },
     },
     subscriptions: {
-      monthly_light: { name: '月光方案', description: '每月約 30 次全新占卜，或 75 次追問。' },
-      monthly_plus: { name: '星辰方案', description: '每月約 64 次全新占卜，或 160 次追問。' },
-      monthly_pro: { name: '神諭方案', description: '每月約 127 次全新占卜，或 318 次追問。' },
+      monthly_light: { name: '月光方案', description: '每月約 30 次全新占卜，或 120 次追問。' },
+      monthly_plus: { name: '星辰方案', description: '每月約 64 次全新占卜，或 256 次追問。' },
+      monthly_pro: { name: '神諭方案', description: '每月約 127 次全新占卜，或 510 次追問。' },
     },
   },
 

@@ -1,6 +1,6 @@
 export const WELCOME_CREDITS = 200;
 export const QUESTION_CREDIT_COST = 20;
-export const FOLLOW_UP_CREDIT_COST = 8;
+export const FOLLOW_UP_CREDIT_COST = 5;
 
 export interface CreditProfile {
   userId: string;
@@ -49,7 +49,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     credits: 400,
     bonusCredits: 0,
     priceTwd: 129,
-    description: '約 20 次全新占卜，或 50 次追問。',
+    description: '約 20 次全新占卜，或 80 次追問。',
   },
   {
     id: 'standard',
@@ -57,7 +57,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     credits: 800,
     bonusCredits: 80,
     priceTwd: 269,
-    description: '約 44 次全新占卜，或 110 次追問。',
+    description: '約 44 次全新占卜，或 176 次追問。',
     featured: true,
   },
   {
@@ -66,7 +66,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     credits: 1600,
     bonusCredits: 150,
     priceTwd: 529,
-    description: '約 87 次全新占卜，或 218 次追問。',
+    description: '約 87 次全新占卜，或 350 次追問。',
   },
 ];
 
@@ -77,7 +77,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyCredits: 600,
     bonusCredits: 0,
     priceTwd: 199,
-    description: '每月約 30 次全新占卜，或 75 次追問。',
+    description: '每月約 30 次全新占卜，或 120 次追問。',
   },
   {
     id: 'monthly_plus',
@@ -85,7 +85,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyCredits: 1200,
     bonusCredits: 80,
     priceTwd: 399,
-    description: '每月約 64 次全新占卜，或 160 次追問。',
+    description: '每月約 64 次全新占卜，或 256 次追問。',
     featured: true,
   },
   {
@@ -94,6 +94,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyCredits: 2400,
     bonusCredits: 150,
     priceTwd: 749,
-    description: '每月約 127 次全新占卜，或 318 次追問。',
+    description: '每月約 127 次全新占卜，或 510 次追問。',
   },
 ];

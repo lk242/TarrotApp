@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Reading, FollowUpEntry } from '../models/reading';
-import { QUESTION_CREDIT_COST } from '../models/credits';
+import { FOLLOW_UP_CREDIT_COST } from '../models/credits';
 import type { AIInterpretationRequest } from '../services/ai/ai-provider';
 import { getConfiguredProvider } from '../services/ai/ai-factory';
 import { getStorageProvider } from '../services/storage/storage-factory';
@@ -75,7 +75,7 @@ export function useHistoryReadings() {
         return;
       }
 
-      if (balance < QUESTION_CREDIT_COST) {
+      if (balance < FOLLOW_UP_CREDIT_COST) {
         setError('點數不足，請先購買點數或訂閱方案。');
         return;
       }
@@ -96,6 +96,7 @@ export function useHistoryReadings() {
           drawnCards: reading.drawnCards,
           question: reading.question,
           locale: lang,
+          querentSummary: reading.querentSummary,
         };
         const result = await provider.followUp({
           originalRequest,

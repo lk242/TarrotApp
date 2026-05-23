@@ -14,7 +14,7 @@ export async function captureElement(el: HTMLElement): Promise<Blob | null> {
       logging: false,
     });
     return await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((blob) => resolve(blob), 'image/png'),
+      canvas.toBlob((blob: Blob | null) => resolve(blob), 'image/png'),
     );
   } catch (err) {
     console.error('[screenshot] captureElement failed:', err);

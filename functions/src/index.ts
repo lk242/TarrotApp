@@ -16,10 +16,12 @@ const openAIKey = defineSecret('OPENAI_API_KEY');
 const ecpayHashKey = defineSecret('ECPAY_HASH_KEY');
 const ecpayHashIV = defineSecret('ECPAY_HASH_IV');
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const OPENAI_MODEL = 'gpt-4o';
+const OPENAI_READING_MODEL = 'gpt-4o';
+const OPENAI_FOLLOW_UP_MODEL = process.env.OPENAI_FOLLOW_UP_MODEL ?? 'gpt-4o-mini';
 const REGION = 'asia-east1';
 const WELCOME_CREDITS = 200;
 const QUESTION_CREDIT_COST = 20;
+const FOLLOW_UP_CREDIT_COST = 8;
 const APP_BASE_URL = 'https://mystic-tarot-2026.web.app';
 const ECPAY_CHECKOUT_URL = 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5';
 const ECPAY_MERCHANT_ID = '3501280';
@@ -292,6 +294,23 @@ function findConflictingCardNames(text: string, allowedCardNames: Set<string>): 
 
     // 大牌名稱常是一般詞彙，只在明顯牌名語境下視為衝突。
     return new RegExp(`(?:牌|抽出|抽到|指引牌|塔羅)\\s*[「『]?${name}[」』]?|[「『]?${name}[」』]?\\s*(?:牌|正位|逆位)`).test(text);
+  });
+}
+
+function findMismatchedFollowUpCardAssertions(text: string, followUpCard?: FollowUpCard): string[] {
+  if (!followUpCard) return [];
+
+  const expectedName = followUpCard.card.name;
+
+  return TAROT_CARD_NAMES.filter((name) => {
+    if (name === expectedName) return false;
+
+    return [
+      `(?:我(?:為你|幫你)?抽(?:出|到)了?|抽(?:出|到)了?)\\s*(?:一張)?(?:追問指引牌)?\\s*[—:：-]?\\s*[「『"]?${name}`,
+      `[「『"]?${name}[」』"]?\\s*(?:這張牌)?\\s*(?:作為|當作|是|為)\\s*(?:本次|這次)?追問指引`,
+      `(?:本次|這次)?追問指引牌(?:是|為|：|:)\\s*[「『"]?${name}`,
+      `(?:以|用)\\s*[「『"]?${name}[」』"]?\\s*(?:作為|當作)?\\s*(?:本次|這次)?追問.*?(?:核心|指引)`,
+    ].some((pattern) => new RegExp(pattern).test(text));
   });
 }
 
@@ -641,7 +660,7 @@ async function ensureCreditAccount(uid: string): Promise<CreditProfile> {
   });
 }
 
-async function chargeQuestionCredits(uid: string, reason: string): Promise<void> {
+async function chargeCredits(uid: string, amount: number, reason: string): Promise<void> {
   const userRef = db.doc(`users/${uid}`);
 
   await db.runTransaction(async (transaction) => {
@@ -684,16 +703,16 @@ async function chargeQuestionCredits(uid: string, reason: string): Promise<void>
       });
     }
 
-    if (balance < QUESTION_CREDIT_COST) {
+    if (balance < amount) {
       throw new HttpsError('failed-precondition', '點數不足，請購買點數或訂閱方案。');
     }
 
     transaction.update(userRef, {
-      balance: FieldValue.increment(-QUESTION_CREDIT_COST),
+      balance: FieldValue.increment(-amount),
       updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.create(userRef.collection('creditTransactions').doc(), {
-      amount: -QUESTION_CREDIT_COST,
+      amount: -amount,
       type: 'usage',
       reason,
       createdAt: FieldValue.serverTimestamp(),
@@ -701,18 +720,34 @@ async function chargeQuestionCredits(uid: string, reason: string): Promise<void>
   });
 }
 
-async function refundQuestionCredits(uid: string, reason: string): Promise<void> {
+async function refundCredits(uid: string, amount: number, reason: string): Promise<void> {
   const userRef = db.doc(`users/${uid}`);
   await userRef.update({
-    balance: FieldValue.increment(QUESTION_CREDIT_COST),
+    balance: FieldValue.increment(amount),
     updatedAt: FieldValue.serverTimestamp(),
   });
   await userRef.collection('creditTransactions').add({
-    amount: QUESTION_CREDIT_COST,
+    amount,
     type: 'refund',
     reason,
     createdAt: FieldValue.serverTimestamp(),
   });
+}
+
+async function chargeQuestionCredits(uid: string, reason: string): Promise<void> {
+  return chargeCredits(uid, QUESTION_CREDIT_COST, reason);
+}
+
+async function refundQuestionCredits(uid: string, reason: string): Promise<void> {
+  return refundCredits(uid, QUESTION_CREDIT_COST, reason);
+}
+
+async function chargeFollowUpCredits(uid: string, reason: string): Promise<void> {
+  return chargeCredits(uid, FOLLOW_UP_CREDIT_COST, reason);
+}
+
+async function refundFollowUpCredits(uid: string, reason: string): Promise<void> {
+  return refundCredits(uid, FOLLOW_UP_CREDIT_COST, reason);
 }
 
 async function getRecentCreditTransactions(uid: string) {
@@ -1088,6 +1123,7 @@ function cleanText(text: string): string {
 async function chat(
   messages: Array<{ role: 'system' | 'user'; content: string }>,
   maxTokens: number,
+  model = OPENAI_READING_MODEL,
 ): Promise<{ text: string; usage?: ChatUsage }> {
   const apiKey = openAIKey.value();
   if (!apiKey) {
@@ -1101,7 +1137,7 @@ async function chat(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: OPENAI_MODEL,
+      model,
       max_completion_tokens: maxTokens,
       messages,
     }),
@@ -1194,7 +1230,7 @@ export const streamTarotReading = onRequest(
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: OPENAI_MODEL,
+          model: OPENAI_READING_MODEL,
           max_completion_tokens: 3500,
           stream: true,
           messages: [
@@ -1252,7 +1288,7 @@ export const streamTarotReading = onRequest(
             }
           }
         }
-      } catch (streamErr) {
+      } catch {
         if (!fullText) {
           await refundQuestionCredits(uid, 'AI 串流中斷退還點數');
         }
@@ -1300,6 +1336,7 @@ export const generateTarotReading = onCall(
           { role: 'user', content: userPrompt },
         ],
         3500,
+        OPENAI_READING_MODEL,
       );
 
       return toResponse(result.text, result.usage);
@@ -1335,7 +1372,7 @@ export const followUpReading = onCall(
       ? `\n**追問指引牌：** ${followUpCard.card.name}（${followUpCard.card.nameEn}）— ${followUpCard.isReversed ? '逆位' : '正位'}\n關鍵字：${followUpCard.isReversed ? followUpCard.card.reversedKeywords.join('、') : followUpCard.card.keywords.join('、')}`
       : '';
     const systemPromptPrefix = `${todayContext}
-${followUpHeading ? `本次追問指引牌是「${followUpHeading.replace(/^##\s*/, '')}」。前端會另外顯示牌名，正文不要再輸出「追問指引牌」標題，也不要改寫成其他牌名、英文名或正逆位。` : ''}`;
+${followUpHeading ? `本次追問指引牌是「${followUpHeading.replace(/^##\s*/, '')}」。前端會另外顯示牌名，正文不要再輸出「追問指引牌」標題，也不要寫「我抽出了某張牌」。如果需要引用原始牌陣中的其他牌，必須明確說「原始牌陣中的...」，不得把它宣稱成本次追問牌。` : ''}`;
 
     const systemPrompt = `你是一位資深塔羅占卜師，正在為問卜者進行深入的追問解讀。
 
@@ -1368,6 +1405,8 @@ ${cardsDescription}
 **之前的解讀摘要：**
 ${data.originalInterpretation.slice(0, 3000)}
 
+${data.originalRequest.querentSummary ? `**問卜者狀態記憶：**\n${data.originalRequest.querentSummary}` : ''}
+
 ---
 
 **問卜者的追問：** ${data.followUpQuestion}
@@ -1375,7 +1414,7 @@ ${newCardDescription}
 
 請以這張追問指引牌為核心，結合原始牌陣脈絡，針對追問提供深入解讀。`;
 
-    await chargeQuestionCredits(uid, '占卜追問');
+    await chargeFollowUpCredits(uid, '占卜追問');
 
     try {
       let lastConflicts: string[] = [];
@@ -1383,7 +1422,7 @@ ${newCardDescription}
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const retryInstruction =
           attempt > 0
-            ? `\n\n上一版回覆提到了不屬於本次上下文的牌名：${lastConflicts.join('、')}。請重新生成，只能依據允許的牌名：${Array.from(allowedCardNames).join('、')}。`
+            ? `\n\n上一版回覆錯誤宣稱本次追問牌或引用了不該出現的牌名：${lastConflicts.join('、')}。請重新生成；本次追問牌只能是「${followUpCard?.card.name ?? '追問指引牌'}」，可回扣的上下文牌只有：${Array.from(allowedCardNames).join('、')}。`
             : '';
         const result = await chat(
           [
@@ -1391,8 +1430,14 @@ ${newCardDescription}
             { role: 'user', content: userPrompt },
           ],
           2000,
+          OPENAI_FOLLOW_UP_MODEL,
         );
-        const conflicts = findConflictingCardNames(result.text, allowedCardNames);
+        const conflicts = [
+          ...new Set([
+            ...findConflictingCardNames(result.text, allowedCardNames),
+            ...findMismatchedFollowUpCardAssertions(result.text, followUpCard),
+          ]),
+        ];
 
         if (conflicts.length === 0) {
           return toResponse(normalizeFollowUpText(result.text, followUpCard), result.usage);
@@ -1406,7 +1451,7 @@ ${newCardDescription}
         `AI 追問回覆引用了錯誤牌名（${lastConflicts.join('、')}），已退還點數，請再試一次。`,
       );
     } catch (error) {
-      await refundQuestionCredits(uid, 'AI 追問失敗退還點數');
+      await refundFollowUpCredits(uid, 'AI 追問失敗退還點數');
       throw error;
     }
   },

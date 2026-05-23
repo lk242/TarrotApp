@@ -144,6 +144,7 @@ export function useTarotSession(spreadType: SpreadType) {
         interpretation: result.interpretation,
         summary: result.summary,
         locale: lang,
+        querentSummary: ctx?.querentSummary,
       };
       storage.saveReading(reading).then((docId) => {
         savedReadingIdRef.current = docId;

@@ -19,4 +19,6 @@ export interface Reading {
   userId?: string;
   /** 占卜時使用的語系，用於跨語系歷史顯示 */
   locale?: 'zh-TW' | 'en' | 'ja';
+  /** 占卜當下的問卜者狀態摘要，用於歷史紀錄追問延續記憶 */
+  querentSummary?: string;
 }

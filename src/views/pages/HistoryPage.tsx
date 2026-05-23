@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import { marked } from 'marked';
 import type { Reading } from '../../models/reading';
-import { QUESTION_CREDIT_COST } from '../../models/credits';
+import { FOLLOW_UP_CREDIT_COST } from '../../models/credits';
 import { SPREADS } from '../../models/spread';
 import { useHistoryReadings } from '../../controllers/useHistoryReadings';
 import { useCredits } from '../../controllers/useCredits';
@@ -105,7 +105,7 @@ export default function HistoryPage() {
             onDelete={() => deleteReading(reading.id)}
             onFollowUp={(question) => askFollowUp(reading, question)}
             isFollowingUp={followingUpId === reading.id}
-            canFollowUp={balance >= QUESTION_CREDIT_COST}
+            canFollowUp={balance >= FOLLOW_UP_CREDIT_COST}
           />
         ))}
       </div>
@@ -302,7 +302,7 @@ function HistoryCard({
 
           <div className="mt-6 border-t border-[var(--color-border)] pt-5">
             <p className="mb-3 text-center text-xs text-[var(--color-text-muted)]">
-              {t.history.followUpCost.replace('{cost}', String(QUESTION_CREDIT_COST))}
+              {t.history.followUpCost.replace('{cost}', String(FOLLOW_UP_CREDIT_COST))}
             </p>
             {isFollowingUp ? (
               <MysticProgress title={t.history.followUpLoading} />

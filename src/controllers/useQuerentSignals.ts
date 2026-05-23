@@ -74,6 +74,7 @@ export function useQuerentSignals(uid: string | undefined) {
       let daysSinceLastReading: number | null = null;
       let readingsInPast7Days = 0;
       let repeatedTopic = false;
+      const memoryLines: string[] = [];
 
       try {
         const storage = getStorageProvider(uid);
@@ -97,6 +98,29 @@ export function useQuerentSignals(uid: string | undefined) {
             repeatedTopic = recentReadings.some(
               (r) => r.question?.includes(topic),
             );
+          }
+
+          const recentQuestions = sorted
+            .slice(0, 3)
+            .map((r) => r.question?.trim())
+            .filter(Boolean)
+            .map((q) => (q.length > 60 ? `${q.slice(0, 60)}...` : q));
+          const followUpCount = sorted.reduce(
+            (sum, reading) => sum + (reading.followUps?.length ?? 0),
+            0,
+          );
+
+          if (recentQuestions.length > 0) {
+            memoryLines.push(`- 近期曾問過：${recentQuestions.join('；')}`);
+          }
+          if (lastReading.summary) {
+            const summary = lastReading.summary.length > 90
+              ? `${lastReading.summary.slice(0, 90)}...`
+              : lastReading.summary;
+            memoryLines.push(`- 上次占卜摘要：${summary}`);
+          }
+          if (followUpCount > 0) {
+            memoryLines.push(`- 過去累計追問 ${followUpCount} 次，使用者可能重視連續對話與深入釐清`);
           }
         }
       } catch {
@@ -131,9 +155,12 @@ export function useQuerentSignals(uid: string | undefined) {
         repeatedTopic,
       };
 
+      const baseSummary = buildQuerentSummary(signals);
+      const summary = [baseSummary, memoryLines.join('\n')].filter(Boolean).join('\n');
+
       return {
         signals,
-        summary: buildQuerentSummary(signals),
+        summary,
       };
     },
     [uid],

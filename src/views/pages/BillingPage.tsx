@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import {
   CREDIT_PACKAGES,
+  FOLLOW_UP_CREDIT_COST,
   QUESTION_CREDIT_COST,
   SUBSCRIPTION_PLANS,
   type CreditPackageId,
@@ -95,7 +96,9 @@ export default function BillingPage() {
             {t.billing.title}
           </h1>
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {t.billing.subtitle.replace('{cost}', String(QUESTION_CREDIT_COST))}
+            {t.billing.subtitle
+              .replace('{readingCost}', String(QUESTION_CREDIT_COST))
+              .replace('{followUpCost}', String(FOLLOW_UP_CREDIT_COST))}
           </p>
         </div>
 
@@ -129,7 +132,9 @@ export default function BillingPage() {
                   {loading ? '...' : balance}
                 </p>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                  {t.billing.canAsk.replace('{count}', String(Math.floor(balance / QUESTION_CREDIT_COST)))}
+                  {t.billing.canAsk
+                    .replace('{readingCount}', String(Math.floor(balance / QUESTION_CREDIT_COST)))
+                    .replace('{followUpCount}', String(Math.floor(balance / FOLLOW_UP_CREDIT_COST)))}
                 </p>
               </div>
             </div>
@@ -175,7 +180,10 @@ export default function BillingPage() {
                   {convert(item.priceTwd).display}
                 </p>
                 <p className="mb-1 text-sm text-[var(--color-text-secondary)]">
-                  {t.billing.pointsCount.replace('{credits}', String(item.credits + item.bonusCredits)).replace('{count}', String(Math.floor((item.credits + item.bonusCredits) / QUESTION_CREDIT_COST)))}
+                  {t.billing.pointsCount
+                    .replace('{credits}', String(item.credits + item.bonusCredits))
+                    .replace('{readingCount}', String(Math.floor((item.credits + item.bonusCredits) / QUESTION_CREDIT_COST)))
+                    .replace('{followUpCount}', String(Math.floor((item.credits + item.bonusCredits) / FOLLOW_UP_CREDIT_COST)))}
                 </p>
                 {item.bonusCredits > 0 && (
                   <p className="mb-4 text-xs font-medium text-[var(--color-accent-mystic)]">
@@ -215,7 +223,10 @@ export default function BillingPage() {
                   <span className="text-sm font-normal text-[var(--color-text-muted)]"> {t.billing.perMonth}</span>
                 </p>
                 <p className="mb-1 text-sm text-[var(--color-text-secondary)]">
-                  {t.billing.monthlyCount.replace('{credits}', String(item.monthlyCredits + item.bonusCredits)).replace('{count}', String(Math.floor((item.monthlyCredits + item.bonusCredits) / QUESTION_CREDIT_COST)))}
+                  {t.billing.monthlyCount
+                    .replace('{credits}', String(item.monthlyCredits + item.bonusCredits))
+                    .replace('{readingCount}', String(Math.floor((item.monthlyCredits + item.bonusCredits) / QUESTION_CREDIT_COST)))
+                    .replace('{followUpCount}', String(Math.floor((item.monthlyCredits + item.bonusCredits) / FOLLOW_UP_CREDIT_COST)))}
                 </p>
                 {item.bonusCredits > 0 && (
                   <p className="mb-4 text-xs font-medium text-[var(--color-accent-mystic)]">

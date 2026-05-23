@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { marked } from 'marked';
 import type { SpreadType } from '../../models/spread';
 import { SPREADS } from '../../models/spread';
-import { QUESTION_CREDIT_COST } from '../../models/credits';
+import { FOLLOW_UP_CREDIT_COST, QUESTION_CREDIT_COST } from '../../models/credits';
 import { useTarotSession } from '../../controllers/useTarotSession';
 import { useAuth } from '../../controllers/useAuth';
 import { useCredits } from '../../controllers/useCredits';
@@ -78,6 +78,7 @@ export default function ReadingPage() {
   const shareCardRef = useRef<HTMLDivElement>(null);
   const followUpEndRef = useRef<HTMLDivElement>(null);
   const canAsk = Boolean(user) && balance >= QUESTION_CREDIT_COST;
+  const canFollowUp = Boolean(user) && balance >= FOLLOW_UP_CREDIT_COST;
   const blockedReason = !user
     ? t.credits.loginRequired
     : balance < QUESTION_CREDIT_COST
@@ -145,13 +146,17 @@ export default function ReadingPage() {
           <>
             {creditLoading ? t.credits.loadingPoints : t.credits.currentPoints.replace('{points}', String(balance))}
             {', '}
-            {t.credits.costPerReading.replace('{cost}', String(QUESTION_CREDIT_COST))}
+            {t.credits.costSummary
+              .replace('{readingCost}', String(QUESTION_CREDIT_COST))
+              .replace('{followUpCost}', String(FOLLOW_UP_CREDIT_COST))}
           </>
         ) : (
           <>
             {t.credits.loginHint}
             {', '}
-            {t.credits.costPerReading.replace('{cost}', String(QUESTION_CREDIT_COST))}
+            {t.credits.costSummary
+              .replace('{readingCost}', String(QUESTION_CREDIT_COST))
+              .replace('{followUpCost}', String(FOLLOW_UP_CREDIT_COST))}
           </>
         )}
       </div>
@@ -419,7 +424,7 @@ export default function ReadingPage() {
                       setFollowUpInput('');
                       askFollowUp(sq);
                     }}
-                    disabled={!canAsk}
+                    disabled={!canFollowUp}
                     className="cursor-pointer rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2 text-xs text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {sq}
@@ -437,7 +442,7 @@ export default function ReadingPage() {
                 value={followUpInput}
                 onChange={(e) => setFollowUpInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && followUpInput.trim() && canAsk) {
+                  if (e.key === 'Enter' && followUpInput.trim() && canFollowUp) {
                     askFollowUp(followUpInput.trim());
                     setFollowUpInput('');
                   }
@@ -447,12 +452,12 @@ export default function ReadingPage() {
               />
               <button
                 onClick={() => {
-                  if (followUpInput.trim() && canAsk) {
+                  if (followUpInput.trim() && canFollowUp) {
                     askFollowUp(followUpInput.trim());
                     setFollowUpInput('');
                   }
                 }}
-                disabled={!followUpInput.trim() || !canAsk}
+                disabled={!followUpInput.trim() || !canFollowUp}
                 className="cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-4 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {t.reading.followUpButton}

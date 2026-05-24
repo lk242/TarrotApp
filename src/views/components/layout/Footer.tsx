@@ -17,6 +17,9 @@ export default function Footer() {
       <p className="mt-1 text-[10px] tracking-[0.2em] text-[var(--color-text-muted)] opacity-50">
         {t.footer.tagline}
       </p>
+      <p className="mt-3 text-xs tracking-wide text-[var(--color-text-muted)]">
+        客服聯絡：lukewolf899@gmail.com
+      </p>
     </footer>
   );
 }

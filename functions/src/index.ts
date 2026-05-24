@@ -598,7 +598,7 @@ async function grantPurchasedCredits(orderId: string, body: Record<string, strin
     transaction.create(userRef.collection('creditTransactions').doc(), {
       amount: order.credits,
       type: 'purchase',
-      reason: `綠界點數包付款：${order.packageId}`,
+      reason: `綠界AI塔羅解讀服務方案付款：${order.packageId}`,
       paymentOrderId: orderId,
       createdAt: FieldValue.serverTimestamp(),
     });
@@ -626,7 +626,7 @@ async function ensureCreditAccount(uid: string): Promise<CreditProfile> {
       transaction.create(userRef.collection('creditTransactions').doc(), {
         amount: WELCOME_CREDITS,
         type: 'welcome',
-        reason: '新會員登入贈送點數',
+        reason: '新會員登入贈送服務額度',
         createdAt: FieldValue.serverTimestamp(),
       });
       return {
@@ -647,7 +647,7 @@ async function ensureCreditAccount(uid: string): Promise<CreditProfile> {
       transaction.create(userRef.collection('creditTransactions').doc(), {
         amount: WELCOME_CREDITS,
         type: 'welcome',
-        reason: '補發新會員贈送點數',
+        reason: '補發新會員贈送服務額度',
         createdAt: FieldValue.serverTimestamp(),
       });
       return normalizeCreditProfile(uid, {
@@ -685,7 +685,7 @@ async function chargeCredits(uid: string, amount: number, reason: string): Promi
       transaction.create(userRef.collection('creditTransactions').doc(), {
         amount: WELCOME_CREDITS,
         type: 'welcome',
-        reason: '新會員登入贈送點數',
+        reason: '新會員登入贈送服務額度',
         createdAt: FieldValue.serverTimestamp(),
       });
     } else if (!freeCreditsGranted) {
@@ -699,13 +699,13 @@ async function chargeCredits(uid: string, amount: number, reason: string): Promi
       transaction.create(userRef.collection('creditTransactions').doc(), {
         amount: WELCOME_CREDITS,
         type: 'welcome',
-        reason: '補發新會員贈送點數',
+        reason: '補發新會員贈送服務額度',
         createdAt: FieldValue.serverTimestamp(),
       });
     }
 
     if (balance < amount) {
-      throw new HttpsError('failed-precondition', '點數不足，請購買點數或訂閱方案。');
+      throw new HttpsError('failed-precondition', '服務額度不足，請購買解讀方案或訂閱方案。');
     }
 
     transaction.update(userRef, {
@@ -1219,7 +1219,7 @@ export const streamTarotReading = onRequest(
 
       const apiKey = openAIKey.value();
       if (!apiKey) {
-        await refundQuestionCredits(uid, 'API key 未設定退還點數');
+        await refundQuestionCredits(uid, 'API key 未設定退還服務額度');
         res.status(500).json({ error: 'OPENAI_API_KEY 尚未設定' });
         return;
       }
@@ -1243,7 +1243,7 @@ export const streamTarotReading = onRequest(
 
       if (!openaiRes.ok || !openaiRes.body) {
         const body = await openaiRes.text();
-        await refundQuestionCredits(uid, 'AI 解讀失敗退還點數');
+        await refundQuestionCredits(uid, 'AI 解讀失敗退還服務額度');
         res.status(openaiRes.status).json({ error: body });
         return;
       }
@@ -1291,7 +1291,7 @@ export const streamTarotReading = onRequest(
         }
       } catch {
         if (!fullText) {
-          await refundQuestionCredits(uid, 'AI 串流中斷退還點數');
+          await refundQuestionCredits(uid, 'AI 串流中斷退還服務額度');
         }
         res.write(`data: ${JSON.stringify({ error: '串流中斷' })}\n\n`);
         res.end();
@@ -1342,7 +1342,7 @@ export const generateTarotReading = onCall(
 
       return toResponse(result.text, result.usage);
     } catch (error) {
-      await refundQuestionCredits(uid, 'AI 解讀失敗退還點數');
+      await refundQuestionCredits(uid, 'AI 解讀失敗退還服務額度');
       throw error;
     }
   },
@@ -1382,7 +1382,7 @@ ${followUpHeading ? `本次追問指引牌是「${followUpHeading.replace(/^##\s
 
 重點：解讀應以追問指引牌為核心，結合原始牌陣的脈絡來回答問卜者的追問。
 風格一致性：請延續「之前的解讀摘要」中的語氣、節奏、神秘感與安撫但具體的分析方式；追問是同一場占卜的延伸，不要改成過度簡短、制式、客服式或條列過多的回答。
-內容密度：即使追問消耗較低點數，也必須保有完整占卜的沉浸感與解讀深度；可以更聚焦，但不能顯得廉價或斷裂。
+內容密度：即使追問消耗較低服務額度，也必須保有完整占卜的沉浸感與解讀深度；可以更聚焦，但不能顯得廉價或斷裂。
 
 回應長度約 350 到 500 字，使用 Markdown 格式。
 
@@ -1451,10 +1451,10 @@ ${newCardDescription}
 
       throw new HttpsError(
         'internal',
-        `AI 追問回覆引用了錯誤牌名（${lastConflicts.join('、')}），已退還點數，請再試一次。`,
+        `AI 追問回覆引用了錯誤牌名（${lastConflicts.join('、')}），已退還服務額度，請再試一次。`,
       );
     } catch (error) {
-      await refundFollowUpCredits(uid, 'AI 追問失敗退還點數');
+      await refundFollowUpCredits(uid, 'AI 追問失敗退還服務額度');
       throw error;
     }
   },
@@ -1607,7 +1607,7 @@ export const createCreditPurchase = onCall({ region: REGION, secrets: [ecpayHash
 
   const packageId = request.data?.packageId as CreditPackageId | undefined;
   if (!packageId || !CREDIT_PACKAGES[packageId]) {
-    throw new HttpsError('invalid-argument', '點數包不存在');
+    throw new HttpsError('invalid-argument', '解讀服務方案不存在');
   }
 
   const product = CREDIT_PACKAGES[packageId];
@@ -1631,8 +1631,8 @@ export const createCreditPurchase = onCall({ region: REGION, secrets: [ecpayHash
     MerchantTradeDate: toEcpayDate(),
     PaymentType: 'aio',
     TotalAmount: product.priceTwd,
-    TradeDesc: 'MysticTarotCredits',
-    ItemName: `神秘塔羅${product.credits}點`,
+    TradeDesc: 'MysticTarotAIReadingService',
+    ItemName: `神秘塔羅AI塔羅解讀服務方案${product.priceTwd}元`,
     ReturnURL: `https://${REGION}-mystic-tarot-2026.cloudfunctions.net/ecpayNotify`,
     ChoosePayment: ECPAY_CHOOSE_PAYMENT,
     EncryptType: 1,
@@ -1724,6 +1724,6 @@ export const createSubscription = onCall({ region: REGION }, async (request) => 
 
   const product = SUBSCRIPTION_PLANS[planId];
   return {
-    message: `已選擇每月 ${product.credits} 點 / NT$${product.priceTwd}。金流尚未串接，接上訂閱 webhook 後才會啟用方案並發放每月點數。`,
+    message: `已選擇每月 ${product.credits} 服務額度 / NT$${product.priceTwd}。金流尚未串接，接上訂閱 webhook 後才會啟用方案並發放每月服務額度。`,
   };
 });

@@ -11,7 +11,7 @@ const zhTW = {
   nav: {
     home: '首頁',
     history: '紀錄',
-    billing: '點數',
+    billing: '服務額度',
     about: '關於',
     admin: '管理',
     login: '登入',
@@ -30,7 +30,7 @@ const zhTW = {
   reading: {
     topicPrompt: '選擇一個占卜主題，或自行輸入問題',
     inputPlaceholder: '或在此輸入你想問的問題...',
-    startButton: '消耗 {cost} 點開始洗牌',
+    startButton: '使用 {cost} 服務額度開始洗牌',
     interpreting: '正在產生塔羅解讀',
     interpretingFollowUp: '正在解析追問',
     waitHint: '請稍候，結果完成後會自動顯示。',
@@ -136,16 +136,16 @@ const zhTW = {
     free: '',
   },
 
-  // 點數
+  // 服務額度
   credits: {
-    currentPoints: '目前 {points} 點',
-    loadingPoints: '讀取點數中...',
-    costPerReading: '每次占卜或追問消耗 {cost} 點',
-    costSummary: '全新占卜 {readingCost} 點，追問 {followUpCost} 點',
-    loginHint: '登入後可取得 200 點',
-    notEnough: '點數不足，請先購買點數或訂閱方案。',
-    loginRequired: '請先登入，註冊或 Google 登入會贈送 200 點。',
-    viewPlans: '查看點數方案',
+    currentPoints: '目前 {points} 服務額度',
+    loadingPoints: '讀取服務額度中...',
+    costPerReading: '每次占卜或追問消耗 {cost} 服務額度',
+    costSummary: '全新占卜 {readingCost} 額度，追問 {followUpCost} 額度',
+    loginHint: '登入後可取得 200 服務額度',
+    notEnough: '服務額度不足，請先購買解讀方案或訂閱方案。',
+    loginRequired: '請先登入，註冊或 Google 登入會贈送 200 服務額度。',
+    viewPlans: '查看解讀方案',
   },
 
   // 分享
@@ -166,7 +166,7 @@ const zhTW = {
     followUpCount: '+{count} 追問',
     followUpRecord: '追問紀錄',
     followUpGuideCard: '追問指引牌',
-    followUpCost: '針對這輪占卜繼續追問，每次消耗 {cost} 點',
+    followUpCost: '針對這輪占卜繼續追問，每次使用 {cost} 服務額度',
     followUpLoading: '正在解析這輪追問',
     followUpPlaceholder: '針對這次紀錄追問...',
     followUpButton: '追問',
@@ -181,34 +181,34 @@ const zhTW = {
     topCard: '最常出現的牌',
   },
 
-  // 點數購買頁
+  // 解讀服務購買頁
   billing: {
-    title: '點數與訂閱',
-    subtitle: '註冊或 Google 登入會自動贈送 200 點；全新占卜 {readingCost} 點，追問 {followUpCost} 點。',
+    title: 'AI 塔羅解讀服務方案',
+    subtitle: '註冊或 Google 登入會自動贈送 200 服務額度；全新占卜 {readingCost} 額度，追問 {followUpCost} 額度。',
     welcome: '{name}，歡迎回來',
     welcomeHint: '願星辰指引你的每一次占卜',
-    availablePoints: '目前可用點數',
+    availablePoints: '目前可用服務額度',
     canAsk: '約可再占卜 {readingCount} 次，或追問 {followUpCount} 次',
-    loginPrompt: '請先登入，系統會建立你的點數帳戶並發放新會員 100 點。',
+    loginPrompt: '請先登入，系統會建立你的服務帳戶並發放新會員 200 服務額度。',
     goLogin: '前往占卜頁登入',
-    buyCredits: '購買點數',
+    buyCredits: '購買 AI 解讀服務額度',
     subscribe: '訂閱帳戶',
     buy: '購買',
     subscribing: '訂閱',
     creating: '建立中...',
     perMonth: '/ 月',
-    pointsCount: '{credits} 點，約 {readingCount} 次占卜 / {followUpCount} 次追問',
-    bonusTag: '再贈 {bonus} 點',
-    monthlyCount: '每月 {credits} 點，約 {readingCount} 次占卜 / {followUpCount} 次追問',
+    pointsCount: '{credits} 服務額度，約 {readingCount} 次占卜 / {followUpCount} 次追問',
+    bonusTag: '再贈 {bonus} 服務額度',
+    monthlyCount: '每月 {credits} 服務額度，約 {readingCount} 次占卜 / {followUpCount} 次追問',
     packages: {
-      starter: { name: '入門補充包', description: '約 20 次全新占卜，或 80 次追問。' },
-      standard: { name: '標準靈感包', description: '約 44 次全新占卜，或 176 次追問。' },
-      deep: { name: '深度探索包', description: '約 87 次全新占卜，或 350 次追問。' },
+      starter: { name: '入門解讀方案', description: 'AI 塔羅解讀服務額度，約 20 次全新占卜，或 80 次追問。' },
+      standard: { name: '標準解讀方案', description: 'AI 塔羅解讀服務額度，約 44 次全新占卜，或 176 次追問。' },
+      deep: { name: '深度解讀方案', description: 'AI 塔羅解讀服務額度，約 87 次全新占卜，或 350 次追問。' },
     },
     subscriptions: {
-      monthly_light: { name: '月光方案', description: '每月約 30 次全新占卜，或 120 次追問。' },
-      monthly_plus: { name: '星辰方案', description: '每月約 64 次全新占卜，或 256 次追問。' },
-      monthly_pro: { name: '神諭方案', description: '每月約 127 次全新占卜，或 510 次追問。' },
+      monthly_light: { name: '月光解讀月方案', description: 'AI 塔羅解讀月方案，每月約 30 次全新占卜，或 120 次追問。' },
+      monthly_plus: { name: '星辰解讀月方案', description: 'AI 塔羅解讀月方案，每月約 64 次全新占卜，或 256 次追問。' },
+      monthly_pro: { name: '神諭解讀月方案', description: 'AI 塔羅解讀月方案，每月約 127 次全新占卜，或 510 次追問。' },
     },
   },
 

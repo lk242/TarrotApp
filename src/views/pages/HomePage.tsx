@@ -89,6 +89,23 @@ export default function HomePage() {
           <SpreadCard key={spread.type} spread={spread} delay={0.5 + i * 0.15} t={t} />
         ))}
       </div>
+
+      <section className="ornate-card mt-12 w-full max-w-3xl rounded-xl p-6 text-sm leading-7 text-[var(--color-text-secondary)]">
+        <h2 className="mb-3 text-lg font-bold tracking-wider text-[var(--color-accent-gold)]">
+          AI 塔羅線上解讀服務
+        </h2>
+        <p>
+          神秘塔羅提供線上 AI 塔羅文字解讀服務。使用者可選擇牌陣、輸入問題、抽取塔羅牌，
+          並取得由 AI 依照牌義、牌位與問題脈絡生成的個人化解讀內容。
+        </p>
+        <p className="mt-2">
+          付款方案購買的是本站 AI 塔羅解讀服務額度，可用於全新占卜與同一輪占卜後的延伸追問；
+          服務額度僅限本站帳戶本人於本站使用，不具貨幣價值，不得轉讓、兌換現金或作為其他商品交易使用。
+        </p>
+        <p className="mt-2 font-medium text-[var(--color-accent-gold)]">
+          客服聯絡 Email：lukewolf899@gmail.com
+        </p>
+      </section>
     </div>
   );
 }

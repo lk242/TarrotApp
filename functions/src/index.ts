@@ -25,6 +25,7 @@ const FOLLOW_UP_CREDIT_COST = 5;
 const APP_BASE_URL = 'https://mystic-tarot-2026.web.app';
 const ECPAY_CHECKOUT_URL = 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5';
 const ECPAY_MERCHANT_ID = '3501280';
+const ECPAY_CHOOSE_PAYMENT = 'Credit';
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? 'lukewolf899@gmail.com')
   .split(',')
   .map((email) => email.trim().toLowerCase())
@@ -1633,9 +1634,11 @@ export const createCreditPurchase = onCall({ region: REGION, secrets: [ecpayHash
     TradeDesc: 'MysticTarotCredits',
     ItemName: `神秘塔羅${product.credits}點`,
     ReturnURL: `https://${REGION}-mystic-tarot-2026.cloudfunctions.net/ecpayNotify`,
-    ChoosePayment: 'ALL',
+    ChoosePayment: ECPAY_CHOOSE_PAYMENT,
     EncryptType: 1,
     ClientBackURL: `${APP_BASE_URL}/billing?payment=pending&orderId=${orderId}`,
+    OrderResultURL: `${APP_BASE_URL}/billing?payment=result&orderId=${orderId}`,
+    NeedExtraPaidInfo: 'N',
     CustomField1: uid.slice(0, 50),
     CustomField2: packageId,
   };

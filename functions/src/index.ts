@@ -257,12 +257,6 @@ function getTaipeiNowContext(date = new Date()): string {
   return `目前日期是 ${parts.year} 年 ${parts.month} 月 ${parts.day} 日，時區是 Asia/Taipei。目前年份是 ${parts.year}。除非使用者明確指定其他年份，解讀中不可把今年寫成其他年份。`;
 }
 
-function buildFollowUpHeading(followUpCard: FollowUpCard): string {
-  return `## 追問指引牌：${followUpCard.card.name}（${followUpCard.card.nameEn}） - ${
-    followUpCard.isReversed ? '逆位' : '正位'
-  }`;
-}
-
 function normalizeFollowUpText(text: string, followUpCard?: FollowUpCard): string {
   if (!followUpCard) return text;
 
@@ -317,8 +311,15 @@ function findMismatchedFollowUpCardAssertions(text: string, followUpCard?: Follo
 
 function collectAllowedCardNames(request: AIFollowUpRequest): Set<string> {
   const names = new Set<string>();
-  request.originalRequest.drawnCards.forEach((drawnCard) => names.add(drawnCard.card.name));
-  if (request.followUpCard) names.add(request.followUpCard.card.name);
+  // 加入中文和英文牌名，兩者都可能出現在 AI 回覆中
+  request.originalRequest.drawnCards.forEach((drawnCard) => {
+    names.add(drawnCard.card.name);
+    if (drawnCard.card.nameEn) names.add(drawnCard.card.nameEn);
+  });
+  if (request.followUpCard) {
+    names.add(request.followUpCard.card.name);
+    if (request.followUpCard.card.nameEn) names.add(request.followUpCard.card.nameEn);
+  }
 
   const mentionedFollowUpCards = request.originalInterpretation.matchAll(
     /追問指引牌[:：]\s*([^（\n—-]+)/g,
@@ -329,6 +330,198 @@ function collectAllowedCardNames(request: AIFollowUpRequest): Set<string> {
   }
 
   return names;
+}
+
+function buildFollowUpPrompts(
+  data: AIFollowUpRequest,
+  followUpCard: FollowUpCard | undefined,
+  todayContext: string,
+  locale: Locale,
+): { systemPrompt: string; userPrompt: string } {
+  // 追問牌名（中英都帶，確保 AI 不會搞混）
+  const cardIdentity = followUpCard
+    ? `${followUpCard.card.name}（${followUpCard.card.nameEn}）— ${
+        locale === 'en' ? (followUpCard.isReversed ? 'Reversed' : 'Upright')
+        : locale === 'ja' ? (followUpCard.isReversed ? '逆位置' : '正位置')
+        : (followUpCard.isReversed ? '逆位' : '正位')
+      }`
+    : '';
+  const cardKeywords = followUpCard
+    ? (followUpCard.isReversed ? followUpCard.card.reversedKeywords : followUpCard.card.keywords).join(locale === 'ja' ? '、' : ', ')
+    : '';
+
+  // 原始牌陣描述（locale-aware）
+  const cardsDescription = data.originalRequest.drawnCards
+    .map((dc) => {
+      const pos = dc.position;
+      const dir = locale === 'en' ? (dc.isReversed ? 'Reversed' : 'Upright')
+        : locale === 'ja' ? (dc.isReversed ? '逆位置' : '正位置')
+        : (dc.isReversed ? '逆位' : '正位');
+      return locale === 'en'
+        ? `- Position "${pos}": ${dc.card.nameEn} (${dc.card.name}) — ${dir}`
+        : locale === 'ja'
+          ? `- ポジション「${pos}」：${dc.card.name}（${dc.card.nameEn}）— ${dir}`
+          : `- 位置「${pos}」：${dc.card.name}（${dc.card.nameEn}）— ${dir}`;
+    })
+    .join('\n');
+
+  if (locale === 'en') {
+    const cardRule = followUpCard
+      ? `CRITICAL CONSTRAINT: The follow-up guide card is "${cardIdentity}". You MUST base your interpretation on THIS card ONLY. Do NOT mention or claim any other card as the follow-up guide card. The frontend already displays the card name, so do NOT write "I drew..." or output the card name as a heading.`
+      : '';
+
+    const systemPrompt = `${todayContext}
+${cardRule}
+
+You are a seasoned tarot reader conducting a follow-up interpretation.
+
+The querent asked a follow-up question about their original spread. You drew one additional "guide card" to answer it.
+Interpret based on: the original spread context, previous interpretation, and this new guide card.
+
+Key rules:
+- Focus on the guide card (${followUpCard?.card.nameEn ?? 'N/A'}) as the core of your interpretation
+- Maintain the same warm, insightful tone from the previous reading — this is a continuation, not a new session
+- Keep the immersive depth even though this is a follow-up
+
+Response length: 350-500 words in Markdown.
+
+Structure:
+## Extended Analysis
+## Action Plan
+## Closing Words
+
+End with suggested follow-ups:
+<!-- SUGGESTED_QUESTIONS:
+- Question one
+- Question two
+- Question three
+-->`;
+
+    const userPrompt = `${todayContext}
+
+**Original Question:** ${data.originalRequest.question}
+**Original Spread:**
+${cardsDescription}
+
+**Previous Interpretation:**
+${data.originalInterpretation.slice(0, 3000)}
+
+${data.originalRequest.querentSummary ? `**Querent Context:**\n${data.originalRequest.querentSummary}` : ''}
+
+---
+
+**Follow-up Question:** ${data.followUpQuestion}
+${followUpCard ? `\n**Follow-up Guide Card:** ${cardIdentity}\nKeywords: ${cardKeywords}` : ''}
+
+Base your interpretation on the guide card "${followUpCard?.card.nameEn ?? ''}" and the original spread context.`;
+
+    return { systemPrompt, userPrompt };
+  }
+
+  if (locale === 'ja') {
+    const cardRule = followUpCard
+      ? `【絶対ルール】本追加質問のガイドカードは「${cardIdentity}」です。このカードのみを追加質問カードとして解釈してください。他のカードを追加質問カードと称してはいけません。フロントエンドがカード名を表示するため、「引いたカードは...」やカード名の見出しを書かないでください。`
+      : '';
+
+    const systemPrompt = `${todayContext}
+${cardRule}
+
+あなたはベテランのタロットリーダーで、追加質問の解釈を行っています。
+
+質問者は元のスプレッドについて追加質問をしました。あなたは追加の「ガイドカード」を1枚引きました。
+元のスプレッド、以前の解釈、そしてこの新しいガイドカードに基づいて解釈してください。
+
+重要なルール：
+- ガイドカード（${followUpCard?.card.nameEn ?? 'N/A'}）を解釈の中心にすること
+- 前回のリーディングと同じ温かく洞察力のあるトーンを維持すること
+- 追加質問でも没入感のある深さを保つこと
+
+回答の長さ：350〜500文字、Markdown形式。
+
+構成：
+## 延伸解析
+## 具体的なアクションプラン
+## メッセージ
+
+最後に追加質問の提案：
+<!-- SUGGESTED_QUESTIONS:
+- 質問1
+- 質問2
+- 質問3
+-->`;
+
+    const userPrompt = `${todayContext}
+
+**元の質問：** ${data.originalRequest.question}
+**元のスプレッド：**
+${cardsDescription}
+
+**前回の解釈：**
+${data.originalInterpretation.slice(0, 3000)}
+
+${data.originalRequest.querentSummary ? `**質問者の状態：**\n${data.originalRequest.querentSummary}` : ''}
+
+---
+
+**追加質問：** ${data.followUpQuestion}
+${followUpCard ? `\n**追加質問ガイドカード：** ${cardIdentity}\nキーワード：${cardKeywords}` : ''}
+
+ガイドカード「${followUpCard?.card.nameEn ?? ''}」を中心に、元のスプレッドの脈絡と合わせて解釈してください。`;
+
+    return { systemPrompt, userPrompt };
+  }
+
+  // zh-TW（預設）
+  const cardRule = followUpCard
+    ? `【絕對規則】本次追問指引牌是「${cardIdentity}」。你必須以這張牌為核心來解讀，不得提及或宣稱其他任何牌是本次追問指引牌。前端會另外顯示牌名，正文不要再輸出「追問指引牌」標題，也不要寫「我抽出了某張牌」。如果需要引用原始牌陣中的其他牌，必須明確說「原始牌陣中的...」。`
+    : '';
+
+  const systemPrompt = `${todayContext}
+${cardRule}
+
+你是一位資深塔羅占卜師，正在為問卜者進行深入的追問解讀。
+
+問卜者針對原始牌陣提出了追問，你為他額外抽了一張「追問指引牌」來回應。
+請根據原始牌陣背景、之前的解讀，以及這張新抽的追問指引牌，針對追問提供具體的分析與建議。
+
+重點規則：
+- 解讀必須以追問指引牌「${followUpCard?.card.name ?? ''}」為核心
+- 風格一致性：延續之前的語氣、節奏、神秘感；追問是同一場占卜的延伸
+- 內容密度：保有完整占卜的沉浸感與解讀深度
+
+回應長度約 350 到 500 字，使用 Markdown 格式。
+
+結構：
+## 延伸解析
+## 具體行動方案
+## 寄語
+
+同樣在結尾附上建議追問：
+<!-- SUGGESTED_QUESTIONS:
+- 問題一
+- 問題二
+- 問題三
+-->`;
+
+  const userPrompt = `${todayContext}
+
+**原始問題：** ${data.originalRequest.question}
+**原始牌陣：**
+${cardsDescription}
+
+**之前的解讀摘要：**
+${data.originalInterpretation.slice(0, 3000)}
+
+${data.originalRequest.querentSummary ? `**問卜者狀態記憶：**\n${data.originalRequest.querentSummary}` : ''}
+
+---
+
+**問卜者的追問：** ${data.followUpQuestion}
+${followUpCard ? `\n**追問指引牌：** ${cardIdentity}\n關鍵字：${cardKeywords}` : ''}
+
+請以追問指引牌「${followUpCard?.card.name ?? ''}」為核心，結合原始牌陣脈絡，針對追問提供深入解讀。`;
+
+  return { systemPrompt, userPrompt };
 }
 
 function requireUid(uid?: string): string {
@@ -807,6 +1000,7 @@ function assertFollowUpRequest(data: unknown): AIFollowUpRequest {
     originalRequest: assertInterpretationRequest(request.originalRequest),
     originalInterpretation: request.originalInterpretation.slice(0, 5000),
     followUpQuestion: request.followUpQuestion.slice(0, 1000),
+    followUpCard: request.followUpCard ?? undefined,
     locale: request.locale === 'en' ? 'en' : request.locale === 'ja' ? 'ja' : 'zh-TW',
   };
 }
@@ -1310,6 +1504,164 @@ export const streamTarotReading = onRequest(
   },
 );
 
+/**
+ * SSE 串流版追問解讀。
+ *
+ * 與 streamTarotReading 相同的 SSE 模式，但使用追問專用 prompt + 卡牌名稱驗證。
+ * 第一次串流完成後若偵測到卡牌名稱衝突，會自動重試一次（第二次也串流）。
+ */
+export const streamFollowUpReading = onRequest(
+  { region: REGION, secrets: [openAIKey], timeoutSeconds: 120, cors: true, invoker: 'public' },
+  async (req, res) => {
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    try {
+      const uid = await verifyAuthToken(req);
+      checkRateLimit(uid);
+      const data = assertFollowUpRequest(req.body);
+      const allowedCardNames = collectAllowedCardNames(data);
+      const locale = data.locale ?? 'zh-TW';
+      const followUpCard = data.followUpCard;
+      const todayContext = getTaipeiNowContext();
+
+      const { systemPrompt, userPrompt } = buildFollowUpPrompts(
+        data, followUpCard, todayContext, locale,
+      );
+
+      await chargeFollowUpCredits(uid, '占卜追問');
+
+      const apiKey = openAIKey.value();
+      if (!apiKey) {
+        await refundFollowUpCredits(uid, 'API key 未設定退還服務額度');
+        res.status(500).json({ error: 'OPENAI_API_KEY 尚未設定' });
+        return;
+      }
+
+      // SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+
+      let lastConflicts: string[] = [];
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const retryInstruction =
+          attempt > 0
+            ? `\n\n上一版回覆錯誤宣稱本次追問牌或引用了不該出現的牌名：${lastConflicts.join('、')}。請重新生成；本次追問牌只能是「${followUpCard?.card.name ?? '追問指引牌'}」，可回扣的上下文牌只有：${Array.from(allowedCardNames).join('、')}。`
+            : '';
+
+        const openaiRes = await fetch(OPENAI_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: OPENAI_FOLLOW_UP_MODEL,
+            max_completion_tokens: 2000,
+            stream: true,
+            messages: [
+              { role: 'system', content: `${systemPrompt}${retryInstruction}` },
+              { role: 'user', content: userPrompt },
+            ],
+          }),
+        });
+
+        if (!openaiRes.ok || !openaiRes.body) {
+          const body = await openaiRes.text();
+          if (attempt === 0) {
+            await refundFollowUpCredits(uid, 'AI 追問失敗退還服務額度');
+          }
+          res.write(`data: ${JSON.stringify({ error: body })}\n\n`);
+          res.end();
+          return;
+        }
+
+        let fullText = '';
+        const reader = openaiRes.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data: ')) continue;
+              const payload = trimmed.slice(6);
+              if (payload === '[DONE]') continue;
+
+              try {
+                const chunk = JSON.parse(payload) as {
+                  choices?: Array<{ delta?: { content?: string } }>;
+                };
+                const content = chunk.choices?.[0]?.delta?.content;
+                if (content) {
+                  fullText += content;
+                  res.write(`data: ${JSON.stringify({ delta: content })}\n\n`);
+                }
+              } catch {
+                // 忽略無法解析的 chunk
+              }
+            }
+          }
+        } catch {
+          if (!fullText) {
+            await refundFollowUpCredits(uid, 'AI 追問串流中斷退還服務額度');
+          }
+          res.write(`data: ${JSON.stringify({ error: '串流中斷' })}\n\n`);
+          res.end();
+          return;
+        }
+
+        // 驗證卡牌名稱
+        const conflicts = [
+          ...new Set([
+            ...findConflictingCardNames(fullText, allowedCardNames),
+            ...findMismatchedFollowUpCardAssertions(fullText, followUpCard),
+          ]),
+        ];
+
+        if (conflicts.length === 0) {
+          // 驗證通過，發送最終結果
+          const normalized = normalizeFollowUpText(fullText, followUpCard);
+          const finalResponse = toResponse(normalized);
+          res.write(`data: ${JSON.stringify({ done: true, ...finalResponse })}\n\n`);
+          res.end();
+          return;
+        }
+
+        // 卡牌名稱衝突，需要重試
+        lastConflicts = conflicts;
+
+        if (attempt === 0) {
+          // 通知前端將重試（前端需清空已累積文字）
+          res.write(`data: ${JSON.stringify({ retry: true, reason: `卡牌名稱衝突：${conflicts.join('、')}` })}\n\n`);
+        }
+      }
+
+      // 兩次都失敗
+      await refundFollowUpCredits(uid, 'AI 追問回覆引用錯誤牌名退還服務額度');
+      res.write(`data: ${JSON.stringify({ error: `AI 追問回覆引用了錯誤牌名（${lastConflicts.join('、')}），已退還服務額度，請再試一次。` })}\n\n`);
+      res.end();
+    } catch (error) {
+      const msg = error instanceof HttpsError ? error.message : 'Internal error';
+      const code = error instanceof HttpsError ? error.httpErrorCode?.status ?? 500 : 500;
+      res.status(code).json({ error: msg });
+    }
+  },
+);
+
 export const generateTarotReading = onCall(
   { region: REGION, secrets: [openAIKey], timeoutSeconds: 120 },
   async (request) => {
@@ -1356,66 +1708,15 @@ export const followUpReading = onCall(
     checkRateLimit(uid);
     const data = assertFollowUpRequest(request.data);
     const allowedCardNames = collectAllowedCardNames(data);
-    const cardsDescription = data.originalRequest.drawnCards
-      .map(
-        (dc) =>
-          `- 位置「${dc.position}」：${dc.card.name}（${dc.card.nameEn}）— ${
-            dc.isReversed ? '逆位' : '正位'
-          }`,
-      )
-      .join('\n');
+    const locale = data.locale ?? 'zh-TW';
 
-    // 追問新牌描述
+    // 追問新牌描述（locale-aware）
     const followUpCard = data.followUpCard;
     const todayContext = getTaipeiNowContext();
-    const followUpHeading = followUpCard ? buildFollowUpHeading(followUpCard) : '';
-    const newCardDescription = followUpCard
-      ? `\n**追問指引牌：** ${followUpCard.card.name}（${followUpCard.card.nameEn}）— ${followUpCard.isReversed ? '逆位' : '正位'}\n關鍵字：${followUpCard.isReversed ? followUpCard.card.reversedKeywords.join('、') : followUpCard.card.keywords.join('、')}`
-      : '';
-    const systemPromptPrefix = `${todayContext}
-${followUpHeading ? `本次追問指引牌是「${followUpHeading.replace(/^##\s*/, '')}」。前端會另外顯示牌名，正文不要再輸出「追問指引牌」標題，也不要寫「我抽出了某張牌」。如果需要引用原始牌陣中的其他牌，必須明確說「原始牌陣中的...」，不得把它宣稱成本次追問牌。` : ''}`;
 
-    const systemPrompt = `你是一位資深塔羅占卜師，正在為問卜者進行深入的追問解讀。
-
-問卜者針對原始牌陣提出了追問，你為他額外抽了一張「追問指引牌」來回應。
-請根據原始牌陣背景、之前的解讀，以及這張新抽的追問指引牌，針對追問提供具體的分析與建議。
-
-重點：解讀應以追問指引牌為核心，結合原始牌陣的脈絡來回答問卜者的追問。
-風格一致性：請延續「之前的解讀摘要」中的語氣、節奏、神秘感與安撫但具體的分析方式；追問是同一場占卜的延伸，不要改成過度簡短、制式、客服式或條列過多的回答。
-內容密度：即使追問消耗較低服務額度，也必須保有完整占卜的沉浸感與解讀深度；可以更聚焦，但不能顯得廉價或斷裂。
-
-回應長度約 350 到 500 字，使用 Markdown 格式。
-
-結構：
-## 延伸解析
-## 具體行動方案
-## 寄語
-
-同樣在結尾附上建議追問：
-<!-- SUGGESTED_QUESTIONS:
-- 問題一
-- 問題二
-- 問題三
--->`;
-
-    const userPrompt = `${todayContext}
-${followUpHeading ? `本次追問請以這張牌作為核心：${followUpHeading.replace(/^##\s*/, '')}` : ''}
-
-**原始問題：** ${data.originalRequest.question}
-**原始牌陣：**
-${cardsDescription}
-
-**之前的解讀摘要：**
-${data.originalInterpretation.slice(0, 3000)}
-
-${data.originalRequest.querentSummary ? `**問卜者狀態記憶：**\n${data.originalRequest.querentSummary}` : ''}
-
----
-
-**問卜者的追問：** ${data.followUpQuestion}
-${newCardDescription}
-
-請以這張追問指引牌為核心，結合原始牌陣脈絡，針對追問提供深入解讀。`;
+    const { systemPrompt, userPrompt } = buildFollowUpPrompts(
+      data, followUpCard, todayContext, locale,
+    );
 
     await chargeFollowUpCredits(uid, '占卜追問');
 
@@ -1429,7 +1730,7 @@ ${newCardDescription}
             : '';
         const result = await chat(
           [
-            { role: 'system', content: `${systemPromptPrefix}\n\n${systemPrompt}${retryInstruction}` },
+            { role: 'system', content: `${systemPrompt}${retryInstruction}` },
             { role: 'user', content: userPrompt },
           ],
           2000,
@@ -1727,3 +2028,793 @@ export const createSubscription = onCall({ region: REGION }, async (request) => 
     message: `已選擇每月 ${product.credits} 服務額度 / NT$${product.priceTwd}。金流尚未串接，接上訂閱 webhook 後才會啟用方案並發放每月服務額度。`,
   };
 });
+
+// ═══════════════════════════════════════════════════════════
+// ██  瑪雅曆 — Cloud Functions
+// ═══════════════════════════════════════════════════════════
+
+const MAYA_DAILY_COST = 10;
+const MAYA_COMBO_COST = 20;
+const MAYA_SIGNATURE_COST = 20;
+const MAYA_AI_MODEL = 'gpt-4o';
+
+// ── 瑪雅曆靜態資料（Cloud Function 端簡化版） ─────────
+
+const SEAL_NAMES_ZH = [
+  '', '紅龍', '白風', '藍夜', '黃種子', '紅蛇',
+  '白世界橋', '藍手', '黃星星', '紅月', '白狗',
+  '藍猴', '黃人', '紅天行者', '白巫師', '藍鷹',
+  '黃戰士', '紅地球', '白鏡', '藍風暴', '黃太陽',
+];
+const SEAL_NAMES_EN = [
+  '', 'Red Dragon', 'White Wind', 'Blue Night', 'Yellow Seed', 'Red Serpent',
+  'White World-Bridger', 'Blue Hand', 'Yellow Star', 'Red Moon', 'White Dog',
+  'Blue Monkey', 'Yellow Human', 'Red Skywalker', 'White Wizard', 'Blue Eagle',
+  'Yellow Warrior', 'Red Earth', 'White Mirror', 'Blue Storm', 'Yellow Sun',
+];
+const SEAL_KEYWORDS_ZH = [
+  [],
+  ['誕生', '滋養', '存在'], ['精神', '溝通', '呼吸'], ['豐盛', '夢想', '直覺'],
+  ['開花', '目標', '覺察'], ['生命力', '本能', '生存'], ['死亡', '等化', '機會'],
+  ['完成', '知曉', '療癒'], ['優雅', '藝術', '美'], ['淨化', '流動', '宇宙之水'],
+  ['愛', '忠誠', '心'], ['魔法', '幻象', '遊戲'], ['自由意志', '智慧', '影響'],
+  ['空間', '探索', '覺醒'], ['永恆', '魅力', '接受'], ['視野', '創造', '心智'],
+  ['智能', '勇氣', '提問'], ['進化', '導航', '同步'], ['無限', '秩序', '反射'],
+  ['催化', '能量', '自我轉化'], ['啟蒙', '生命', '宇宙之火'],
+];
+const SEAL_KEYWORDS_EN = [
+  [],
+  ['Birth', 'Nurtures', 'Being'], ['Spirit', 'Communicates', 'Breath'],
+  ['Abundance', 'Dreams', 'Intuition'], ['Flowering', 'Targets', 'Awareness'],
+  ['Life Force', 'Instinct', 'Survival'], ['Death', 'Equalizes', 'Opportunity'],
+  ['Accomplishment', 'Knows', 'Healing'], ['Elegance', 'Art', 'Beauty'],
+  ['Purifies', 'Flow', 'Universal Water'], ['Love', 'Loyalty', 'Heart'],
+  ['Magic', 'Illusion', 'Play'], ['Free Will', 'Wisdom', 'Influence'],
+  ['Space', 'Explores', 'Wakefulness'], ['Timelessness', 'Enchants', 'Receptivity'],
+  ['Vision', 'Creates', 'Mind'], ['Intelligence', 'Fearlessness', 'Questioning'],
+  ['Evolution', 'Navigation', 'Synchronicity'], ['Endlessness', 'Order', 'Reflects'],
+  ['Catalyzes', 'Energy', 'Self-Generation'], ['Enlightens', 'Life', 'Universal Fire'],
+];
+const TONE_NAMES_ZH = [
+  '', '磁性', '月亮', '電力', '自我存在', '超頻',
+  '韻律', '共鳴', '銀河星系', '太陽', '行星',
+  '光譜', '水晶', '宇宙',
+];
+const TONE_NAMES_EN = [
+  '', 'Magnetic', 'Lunar', 'Electric', 'Self-Existing', 'Overtone',
+  'Rhythmic', 'Resonant', 'Galactic', 'Solar', 'Planetary',
+  'Spectral', 'Crystal', 'Cosmic',
+];
+const TONE_KEYWORDS_ZH = [
+  [],
+  ['統一', '吸引', '目的'], ['極化', '穩定', '挑戰'], ['啟動', '連結', '服務'],
+  ['定義', '測量', '形式'], ['賦權', '命令', '光芒'], ['平衡', '組織', '等化'],
+  ['通道', '啟發', '調和'], ['和諧', '模範', '整合'], ['脈動', '實現', '意圖'],
+  ['顯化', '完美', '產出'], ['溶解', '釋放', '解放'], ['合作', '奉獻', '普遍化'],
+  ['超越', '存在', '忍耐'],
+];
+const TONE_KEYWORDS_EN = [
+  [],
+  ['Unify', 'Attract', 'Purpose'], ['Polarize', 'Stabilize', 'Challenge'],
+  ['Activate', 'Bond', 'Service'], ['Define', 'Measure', 'Form'],
+  ['Empower', 'Command', 'Radiance'], ['Balance', 'Organize', 'Equality'],
+  ['Channel', 'Inspire', 'Attunement'], ['Harmonize', 'Model', 'Integrity'],
+  ['Pulse', 'Realize', 'Intention'], ['Manifest', 'Perfect', 'Produce'],
+  ['Dissolve', 'Release', 'Liberation'], ['Cooperate', 'Dedicate', 'Universalize'],
+  ['Transcend', 'Endure', 'Presence'],
+];
+const TONE_QUESTIONS_ZH = [
+  '',
+  '我的目的是什麼？', '我的挑戰是什麼？', '我如何給予最好的服務？',
+  '我該採取什麼形式？', '我如何收回自己的力量？', '我如何擴展平衡？',
+  '我如何調和自身的服務？', '我是否活出我所信仰的？', '我如何實現我的目標？',
+  '我如何完善我所做的？', '我如何釋放與放下？', '我如何奉獻於所有生命？',
+  '我如何回到喜悅？',
+];
+const TONE_QUESTIONS_EN = [
+  '',
+  'What is my purpose?', 'What is my challenge?', 'How can I best serve?',
+  'What form shall my action take?', 'How can I best empower myself?',
+  'How can I extend my equality?', 'How can I attune my service?',
+  'Do I live what I believe?', 'How do I attain my purpose?',
+  'How do I perfect what I do?', 'How do I release and let go?',
+  'How can I dedicate myself to all that lives?', 'How can I expand my joy?',
+];
+const SEAL_COLORS = ['', 'red', 'white', 'blue', 'yellow', 'red', 'white', 'blue', 'yellow', 'red', 'white', 'blue', 'yellow', 'red', 'white', 'blue', 'yellow', 'red', 'white', 'blue', 'yellow'];
+
+function mayaSealName(seal: number, locale: Locale): string {
+  return locale === 'en' ? SEAL_NAMES_EN[seal] : SEAL_NAMES_ZH[seal];
+}
+function mayaToneName(tone: number, locale: Locale): string {
+  return locale === 'en' ? TONE_NAMES_EN[tone] : TONE_NAMES_ZH[tone];
+}
+function mayaKinLabel(seal: number, tone: number, locale: Locale): string {
+  return locale === 'en'
+    ? `${TONE_NAMES_EN[tone]} ${SEAL_NAMES_EN[seal]}`
+    : `${TONE_NAMES_ZH[tone]}${SEAL_NAMES_ZH[seal]}`;
+}
+function mayaSealKeywords(seal: number, locale: Locale): string[] {
+  return locale === 'en' ? SEAL_KEYWORDS_EN[seal] : SEAL_KEYWORDS_ZH[seal];
+}
+function mayaToneKeywords(tone: number, locale: Locale): string[] {
+  return locale === 'en' ? TONE_KEYWORDS_EN[tone] : TONE_KEYWORDS_ZH[tone];
+}
+function mayaToneQuestion(tone: number, locale: Locale): string {
+  return locale === 'en' ? TONE_QUESTIONS_EN[tone] : TONE_QUESTIONS_ZH[tone];
+}
+
+// ── 瑪雅 AI Prompt 建構 ─────────────────────────────
+
+function buildMayaDailySystemPrompt(locale: Locale): string {
+  if (locale === 'en') {
+    return `You are a Maya calendar healing guide and psychological counselor who uses the Dreamspell/13 Moon Calendar system as a tool. Your style is warm, insightful, and grounded in practical psychology.
+
+Your approach:
+- Combine Maya calendar energy descriptions with Jungian archetypes, attachment theory, and cognitive behavioral insights (explain in plain language, no jargon dropping)
+- Speak like a wise friend having coffee with the user — conversational, honest, occasionally witty
+- Use "Look," "honestly," "here's the thing" naturally
+- Reference the specific seal and tone energies with their keywords
+
+Response structure (use markdown):
+### ✦ Today's Energy Snapshot
+A quick intuitive read of today's cosmic weather (2-3 sentences)
+
+### 🌀 How This Resonates With You
+How today's Kin energy interacts with the user's birth Kin — harmonies, tensions, growth edges (use psychology frameworks in plain language)
+
+### 💡 Action Steps
+3 ultra-specific things they can do TODAY (not vague platitudes)
+
+### ⚠️ Blind Spot Alert
+One thing they might not see — a defense mechanism, cognitive bias, or unconscious pattern activated today
+
+### ✨ One Last Thing
+A warm, powerful closing line they'd want to screenshot
+
+Keep it 300-500 words. Be specific, not generic.`;
+  }
+
+  if (locale === 'ja') {
+    return `あなたはドリームスペル/13の月の暦を使うマヤ暦ヒーリングガイド兼心理カウンセラーです。温かく、洞察力があり、実践的な心理学に基づいたスタイルです。
+
+アプローチ：
+- マヤ暦のエネルギー説明にユング原型論、愛着理論、認知行動の洞察を組み合わせる（専門用語は使わず平易に）
+- 親しい友人と話すような口調 —「うーん」「実は」「正直に言うと」を自然に使う
+- 紋章と音のエネルギーとキーワードを具体的に引用する
+
+回答構造（マークダウン使用）：
+### ✦ 今日のエネルギースナップショット
+今日の宇宙の天気を直感的に読む（2-3文）
+
+### 🌀 あなたとの共鳴
+今日のKinエネルギーがユーザーの誕生Kinとどう相互作用するか — 調和、緊張、成長のポイント
+
+### 💡 アクションステップ
+今日できる超具体的なこと3つ（曖昧な言葉はNG）
+
+### ⚠️ ブラインドスポット
+見えていないかもしれないこと — 防衛機制、認知バイアス、今日活性化される無意識パターン
+
+### ✨ 最後に一言
+スクリーンショットしたくなる温かく力強い一言
+
+300-500字で。具体的に、一般論は避ける。`;
+  }
+
+  // zh-TW (default)
+  return `你是一位使用 Dreamspell / 13 月亮曆系統作為工具的瑪雅曆療癒引導師兼心理諮詢師。你的風格溫暖、有洞見，並以實用心理學為基底。
+
+你的方式：
+- 結合瑪雅曆能量描述與榮格原型理論、依附理論、認知行為洞見（用白話解釋，不掉書袋）
+- 像一個有智慧的朋友在聊天 — 口語、真誠、偶爾幽默
+- 自然使用「嗯」「其實」「說真的」
+- 引用具體的圖騰與調性能量及關鍵字
+
+回應結構（使用 markdown）：
+### ✦ 今日能量速寫
+快速的直覺宇宙氣象報告（2-3 句）
+
+### 🌀 與你的共振
+今日 Kin 能量如何與使用者的出生 Kin 互動 — 和諧、張力、成長邊緣（用心理學框架白話解說）
+
+### 💡 行動方案
+3 個今天就能做的超具體事項（不要空洞的心靈雞湯）
+
+### ⚠️ 盲點提醒
+一個他們可能看不見的東西 — 防衛機制、認知偏誤、今天被啟動的潛意識模式
+
+### ✨ 最後一句話
+一句溫暖有力量的結語，讓人想截圖收藏
+
+控制在 300-500 字。要具體，不要泛泛而談。`;
+}
+
+function buildMayaDailyUserPrompt(
+  dailyKin: number, dailySeal: number, dailyTone: number,
+  userKin: number, userSeal: number, userTone: number,
+  locale: Locale,
+): string {
+  const dLabel = mayaKinLabel(dailySeal, dailyTone, locale);
+  const uLabel = mayaKinLabel(userSeal, userTone, locale);
+  const dSealKw = mayaSealKeywords(dailySeal, locale).join(', ');
+  const dToneKw = mayaToneKeywords(dailyTone, locale).join(', ');
+  const uSealKw = mayaSealKeywords(userSeal, locale).join(', ');
+  const uToneKw = mayaToneKeywords(userTone, locale).join(', ');
+  const dQ = mayaToneQuestion(dailyTone, locale);
+  const uQ = mayaToneQuestion(userTone, locale);
+  const dColor = SEAL_COLORS[dailySeal];
+  const uColor = SEAL_COLORS[userSeal];
+
+  if (locale === 'en') {
+    return `Today's date: ${new Date().toISOString().slice(0, 10)}
+
+**Today's Flow Kin:**
+- Kin ${dailyKin}: ${dLabel} (Color: ${dColor})
+- Seal keywords: ${dSealKw}
+- Tone keywords: ${dToneKw}
+- Tone question: "${dQ}"
+
+**User's Birth Kin:**
+- Kin ${userKin}: ${uLabel} (Color: ${uColor})
+- Seal keywords: ${uSealKw}
+- Tone keywords: ${uToneKw}
+- Tone question: "${uQ}"
+
+Please provide today's daily flow reading, analyzing how today's cosmic energy interacts with the user's birth Kin.`;
+  }
+
+  if (locale === 'ja') {
+    return `今日の日付：${new Date().toISOString().slice(0, 10)}
+
+**今日の流日Kin：**
+- Kin ${dailyKin}：${dLabel}（色：${dColor}）
+- 紋章キーワード：${dSealKw}
+- 音キーワード：${dToneKw}
+- 音の問い：「${dQ}」
+
+**ユーザーの誕生Kin：**
+- Kin ${userKin}：${uLabel}（色：${uColor}）
+- 紋章キーワード：${uSealKw}
+- 音キーワード：${uToneKw}
+- 音の問い：「${uQ}」
+
+今日のデイリーフロー鑑定をお願いします。今日の宇宙エネルギーがユーザーの誕生Kinとどう相互作用するか分析してください。`;
+  }
+
+  return `今日日期：${new Date().toISOString().slice(0, 10)}
+
+**今日流日 Kin：**
+- Kin ${dailyKin}：${dLabel}（顏色：${dColor}）
+- 圖騰關鍵字：${dSealKw}
+- 調性關鍵字：${dToneKw}
+- 調性提問：「${dQ}」
+
+**使用者出生 Kin：**
+- Kin ${userKin}：${uLabel}（顏色：${uColor}）
+- 圖騰關鍵字：${uSealKw}
+- 調性關鍵字：${uToneKw}
+- 調性提問：「${uQ}」
+
+請提供今日流日解讀，分析今天的宇宙能量如何與使用者的出生 Kin 互動。`;
+}
+
+function buildMayaComboSystemPrompt(locale: Locale): string {
+  if (locale === 'en') {
+    return `You are a Maya calendar relationship guide who uses the Dreamspell/13 Moon Calendar to analyze the cosmic connection between two people. Your style combines Maya energy interpretation with relationship psychology (attachment theory, Jungian shadow work, communication styles).
+
+Speak like a warm, insightful counselor — conversational and honest.
+
+Response structure (markdown):
+### ✦ First Impression
+Your intuitive read of this pair's energy dynamic (2-3 sentences)
+
+### 🔗 Relationship Analysis
+- Analyze each relationship type found between the two Kins
+- Explain what each connection means in daily life using psychology
+- Both harmonies AND growth edges
+
+### 🌀 Combined Kin Energy
+Interpret the combined Kin as the "third entity" — the relationship's own energy signature
+
+### 💡 Relationship Action Steps
+3 specific things this pair can practice together
+
+### ✨ One Last Thing
+A warm, powerful closing about their cosmic connection
+
+Keep it 400-600 words.`;
+  }
+
+  if (locale === 'ja') {
+    return `あなたはドリームスペル/13の月の暦を使って二人の宇宙的つながりを分析するマヤ暦リレーションシップガイドです。マヤのエネルギー解釈と関係性心理学（愛着理論、ユングのシャドーワーク、コミュニケーションスタイル）を組み合わせます。
+
+温かく洞察力のあるカウンセラーとして話す — 会話的で正直に。
+
+回答構造（マークダウン）：
+### ✦ ファーストインプレッション
+このペアのエネルギーダイナミクスの直感的な読み（2-3文）
+
+### 🔗 関係性分析
+- 二つのKin間の各関係タイプを分析
+- 各つながりが日常生活で何を意味するか心理学で説明
+- 調和と成長のポイント両方
+
+### 🌀 合算Kinエネルギー
+合算Kinを「第三のエンティティ」として解釈 — 関係性自体のエネルギー
+
+### 💡 関係性アクションステップ
+このペアが一緒に実践できる具体的なこと3つ
+
+### ✨ 最後に一言
+宇宙的つながりについての温かく力強い結び
+
+400-600字で。`;
+  }
+
+  return `你是一位使用 Dreamspell / 13 月亮曆分析兩人宇宙連結的瑪雅曆關係引導師。你的風格結合瑪雅能量解讀與關係心理學（依附理論、榮格陰影工作、溝通風格）。
+
+像一個溫暖、有洞見的諮詢師說話 — 口語、真誠。
+
+回應結構（markdown）：
+### ✦ 第一印象
+對這對組合的能量動態的直覺解讀（2-3 句）
+
+### 🔗 關係分析
+- 分析兩個 Kin 之間找到的每種關係類型
+- 用心理學解釋每個連結在日常生活中的意義
+- 和諧面 AND 成長面都要講
+
+### 🌀 合盤 Kin 能量
+解讀合盤 Kin 作為「第三個實體」— 這段關係本身的能量印記
+
+### 💡 關係行動方案
+3 個這對組合可以一起練習的具體事項
+
+### ✨ 最後一句話
+一句關於他們宇宙連結的溫暖有力結語
+
+控制在 400-600 字。`;
+}
+
+function buildMayaComboUserPrompt(
+  kinA: number, sealA: number, toneA: number,
+  kinB: number, sealB: number, toneB: number,
+  comboKin: number, comboSeal: number, comboTone: number,
+  relations: Array<{ type: string; description: string; descriptionEn: string }>,
+  locale: Locale,
+): string {
+  const labelA = mayaKinLabel(sealA, toneA, locale);
+  const labelB = mayaKinLabel(sealB, toneB, locale);
+  const labelCombo = mayaKinLabel(comboSeal, comboTone, locale);
+  const isEn = locale === 'en';
+
+  const relText = relations
+    .map((r) => `- ${isEn ? r.descriptionEn : r.description}`)
+    .join('\n');
+
+  const kwA = `${mayaSealKeywords(sealA, locale).join(', ')} / ${mayaToneKeywords(toneA, locale).join(', ')}`;
+  const kwB = `${mayaSealKeywords(sealB, locale).join(', ')} / ${mayaToneKeywords(toneB, locale).join(', ')}`;
+  const kwCombo = `${mayaSealKeywords(comboSeal, locale).join(', ')} / ${mayaToneKeywords(comboTone, locale).join(', ')}`;
+
+  if (isEn) {
+    return `**Person A:** Kin ${kinA} — ${labelA}
+Keywords: ${kwA}
+
+**Person B:** Kin ${kinB} — ${labelB}
+Keywords: ${kwB}
+
+**Relationship types found:**
+${relText}
+
+**Combined Kin:** Kin ${comboKin} — ${labelCombo}
+Keywords: ${kwCombo}
+
+Please provide a deep relationship reading analyzing the cosmic connection between these two people.`;
+  }
+
+  if (locale === 'ja') {
+    return `**Aさん：** Kin ${kinA} — ${labelA}
+キーワード：${kwA}
+
+**Bさん：** Kin ${kinB} — ${labelB}
+キーワード：${kwB}
+
+**見つかった関係タイプ：**
+${relText}
+
+**合算Kin：** Kin ${comboKin} — ${labelCombo}
+キーワード：${kwCombo}
+
+この二人の宇宙的つながりを分析する深層リレーションシップ鑑定をお願いします。`;
+  }
+
+  return `**第一人：** Kin ${kinA} — ${labelA}
+關鍵字：${kwA}
+
+**第二人：** Kin ${kinB} — ${labelB}
+關鍵字：${kwB}
+
+**找到的關係類型：**
+${relText}
+
+**合盤 Kin：** Kin ${comboKin} — ${labelCombo}
+關鍵字：${kwCombo}
+
+請提供深度關係解讀，分析這兩人之間的宇宙連結。`;
+}
+
+function buildMayaSignatureSystemPrompt(locale: Locale): string {
+  if (locale === 'en') {
+    return `You are a Maya calendar guide using the Dreamspell/13 Moon Calendar system. Interpret a user's Galactic Signature with warmth, clarity, and practical psychological insight.
+
+Use markdown. Keep the reading personal and specific, not generic. Do not claim certainty about fate; frame the reading as symbolic reflection and self-understanding.
+
+Response structure:
+### ✦ Signature Snapshot
+Summarize the overall energy of this Kin in 2-3 sentences.
+
+### 🌀 Core Seal
+Explain the destiny seal: gifts, natural pattern, and growth edge.
+
+### ◇ Galactic Tone
+Explain the tone and its tone question in practical life.
+
+### ✦ Five Positions
+Explain guide, support, challenge, hidden, and destiny positions. Make each one useful and concrete.
+
+### 🌊 Wavespell Context
+Explain how the wavespell colors the larger life journey.
+
+### 💡 Integration Practice
+Give 3 specific practices or reflection prompts.
+
+Keep it 600-850 words.`;
+  }
+
+  if (locale === 'ja') {
+    return `あなたはDreamspell/13の月の暦を使うマヤ暦ガイドです。ユーザーの銀河の署名を、温かく、明確に、実践的な心理的洞察を交えて解釈してください。
+
+マークダウンを使用。一般論ではなく、そのKinに固有の読みとして書いてください。運命を断定せず、象徴的な内省と自己理解として表現してください。
+
+回答構造：
+### ✦ 署名の概要
+このKinの全体的なエネルギーを2-3文で要約。
+
+### 🌀 中心の紋章
+運命の紋章について、才能、自然なパターン、成長課題を説明。
+
+### ◇ 銀河の音
+音と音の問いが日常で何を意味するか説明。
+
+### ✦ 五つの位置
+ガイド、サポート、チャレンジ、隠された力、運命の位置を具体的に説明。
+
+### 🌊 ウェイブスペル
+ウェイブスペルが人生の大きな流れにどう影響するか説明。
+
+### 💡 統合の実践
+具体的な実践または内省の問いを3つ。
+
+600-850字程度で。`;
+  }
+
+  return `你是一位使用 Dreamspell / 13 月亮曆系統的瑪雅曆引導師。請用溫暖、清楚、帶有實用心理洞見的方式，解讀使用者的星系印記。
+
+使用 markdown。內容要針對這個 Kin 具體解讀，不要泛泛而談。不要斷言命運，請把它表達為象徵性的自我理解與內在整理工具。
+
+回應結構：
+### ✦ 印記速寫
+用 2-3 句總結這個 Kin 的整體能量。
+
+### 🌀 核心圖騰
+解讀自身／命運圖騰：天賦、自然模式、成長課題。
+
+### ◇ 銀河調性
+解讀調性與調性提問在日常生活中的意義。
+
+### ✦ 五方位解讀
+依序解讀引導、支持、挑戰、隱藏、自身，每個位置都要具體且能落地。
+
+### 🌊 波符脈絡
+說明波符圖騰如何影響這段生命旅程的背景主題。
+
+### 💡 整合練習
+給 3 個具體練習或反思題。
+
+控制在 600-850 字。`;
+}
+
+function buildMayaSignatureUserPrompt(
+  kin: number,
+  seal: number,
+  tone: number,
+  guide: number,
+  support: number,
+  challenge: number,
+  hidden: number,
+  wavespellSeal: number,
+  locale: Locale,
+): string {
+  const label = mayaKinLabel(seal, tone, locale);
+  const sealKw = mayaSealKeywords(seal, locale).join(', ');
+  const toneKw = mayaToneKeywords(tone, locale).join(', ');
+  const toneQuestion = mayaToneQuestion(tone, locale);
+  const positionLine = (name: string, sealNumber: number) =>
+    `- ${name}: Seal ${sealNumber} ${mayaSealName(sealNumber, locale)} — ${mayaSealKeywords(sealNumber, locale).join(', ')}`;
+
+  if (locale === 'en') {
+    return `**User's Galactic Signature**
+- Kin ${kin}: ${label}
+- Destiny seal: Seal ${seal} ${mayaSealName(seal, locale)} (${SEAL_COLORS[seal]})
+- Seal keywords: ${sealKw}
+- Galactic tone: Tone ${tone} ${mayaToneName(tone, locale)}
+- Tone keywords: ${toneKw}
+- Tone question: "${toneQuestion}"
+
+**Five Positions**
+${positionLine('Guide', guide)}
+${positionLine('Support', support)}
+${positionLine('Challenge', challenge)}
+${positionLine('Hidden power', hidden)}
+${positionLine('Destiny / Self', seal)}
+
+**Wavespell**
+${positionLine('Wavespell seal', wavespellSeal)}
+
+Please provide a full Galactic Signature reading for this person.`;
+  }
+
+  if (locale === 'ja') {
+    return `**ユーザーの銀河の署名**
+- Kin ${kin}：${label}
+- 運命の紋章：Seal ${seal} ${mayaSealName(seal, locale)}（${SEAL_COLORS[seal]}）
+- 紋章キーワード：${sealKw}
+- 銀河の音：Tone ${tone} ${mayaToneName(tone, locale)}
+- 音キーワード：${toneKw}
+- 音の問い：「${toneQuestion}」
+
+**五つの位置**
+${positionLine('ガイド', guide)}
+${positionLine('サポート', support)}
+${positionLine('チャレンジ', challenge)}
+${positionLine('隠された力', hidden)}
+${positionLine('運命／自己', seal)}
+
+**ウェイブスペル**
+${positionLine('ウェイブスペルの紋章', wavespellSeal)}
+
+この人の銀河の署名を総合的に解読してください。`;
+  }
+
+  return `**使用者星系印記**
+- Kin ${kin}：${label}
+- 自身／命運圖騰：Seal ${seal} ${mayaSealName(seal, locale)}（${SEAL_COLORS[seal]}）
+- 圖騰關鍵字：${sealKw}
+- 銀河調性：Tone ${tone} ${mayaToneName(tone, locale)}
+- 調性關鍵字：${toneKw}
+- 調性提問：「${toneQuestion}」
+
+**五方位**
+${positionLine('引導', guide)}
+${positionLine('支持', support)}
+${positionLine('挑戰', challenge)}
+${positionLine('隱藏力量', hidden)}
+${positionLine('自身／命運', seal)}
+
+**波符**
+${positionLine('波符圖騰', wavespellSeal)}
+
+請為這個人提供完整星系印記解讀。`;
+}
+
+// ── 瑪雅流日 AI 解讀 ─────────────────────────────────
+
+interface MayaDailyRequest {
+  dailyKin: number;
+  dailySeal: number;
+  dailyTone: number;
+  userKin: number;
+  userSeal: number;
+  userTone: number;
+  locale?: Locale;
+}
+
+function assertMayaDailyRequest(data: unknown): MayaDailyRequest {
+  const d = data as Record<string, unknown>;
+  if (!d || typeof d.dailyKin !== 'number' || typeof d.userKin !== 'number') {
+    throw new HttpsError('invalid-argument', '缺少必要的 Kin 參數');
+  }
+  return {
+    dailyKin: d.dailyKin as number,
+    dailySeal: d.dailySeal as number,
+    dailyTone: d.dailyTone as number,
+    userKin: d.userKin as number,
+    userSeal: d.userSeal as number,
+    userTone: d.userTone as number,
+    locale: (d.locale as Locale) ?? 'zh-TW',
+  };
+}
+
+export const generateMayaDailyReading = onCall(
+  { region: REGION, secrets: [openAIKey], timeoutSeconds: 120 },
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    checkRateLimit(uid);
+    const data = assertMayaDailyRequest(request.data);
+    const locale = data.locale ?? 'zh-TW';
+
+    const systemPrompt = buildMayaDailySystemPrompt(locale);
+    const userPrompt = buildMayaDailyUserPrompt(
+      data.dailyKin, data.dailySeal, data.dailyTone,
+      data.userKin, data.userSeal, data.userTone,
+      locale,
+    );
+
+    await chargeCredits(uid, MAYA_DAILY_COST, '瑪雅流日解讀');
+
+    try {
+      const result = await chat(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        2000,
+        MAYA_AI_MODEL,
+      );
+
+      return {
+        interpretation: result.text,
+        tokenUsage: result.usage
+          ? { input: result.usage.prompt_tokens, output: result.usage.completion_tokens }
+          : undefined,
+      };
+    } catch (error) {
+      await refundCredits(uid, MAYA_DAILY_COST, '瑪雅流日解讀失敗退還');
+      throw error;
+    }
+  },
+);
+
+// ── 瑪雅星系印記完整 AI 解讀 ─────────────────────────────
+
+interface MayaSignatureRequest {
+  kin: number;
+  seal: number;
+  tone: number;
+  guide: number;
+  support: number;
+  challenge: number;
+  hidden: number;
+  wavespellSeal: number;
+  locale?: Locale;
+}
+
+function assertMayaSignatureRequest(data: unknown): MayaSignatureRequest {
+  const d = data as Record<string, unknown>;
+  if (!d || typeof d.kin !== 'number' || typeof d.seal !== 'number' || typeof d.tone !== 'number') {
+    throw new HttpsError('invalid-argument', '缺少必要的星系印記參數');
+  }
+  return {
+    kin: d.kin as number,
+    seal: d.seal as number,
+    tone: d.tone as number,
+    guide: d.guide as number,
+    support: d.support as number,
+    challenge: d.challenge as number,
+    hidden: d.hidden as number,
+    wavespellSeal: d.wavespellSeal as number,
+    locale: (d.locale as Locale) ?? 'zh-TW',
+  };
+}
+
+export const generateMayaSignatureReading = onCall(
+  { region: REGION, secrets: [openAIKey], timeoutSeconds: 120 },
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    checkRateLimit(uid);
+    const data = assertMayaSignatureRequest(request.data);
+    const locale = data.locale ?? 'zh-TW';
+
+    const systemPrompt = buildMayaSignatureSystemPrompt(locale);
+    const userPrompt = buildMayaSignatureUserPrompt(
+      data.kin,
+      data.seal,
+      data.tone,
+      data.guide,
+      data.support,
+      data.challenge,
+      data.hidden,
+      data.wavespellSeal,
+      locale,
+    );
+
+    await chargeCredits(uid, MAYA_SIGNATURE_COST, '瑪雅星系印記完整解讀');
+
+    try {
+      const result = await chat(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        3200,
+        MAYA_AI_MODEL,
+      );
+
+      return {
+        interpretation: result.text,
+        tokenUsage: result.usage
+          ? { input: result.usage.prompt_tokens, output: result.usage.completion_tokens }
+          : undefined,
+      };
+    } catch (error) {
+      await refundCredits(uid, MAYA_SIGNATURE_COST, '瑪雅星系印記完整解讀失敗退還');
+      throw error;
+    }
+  },
+);
+
+// ── 瑪雅合盤 AI 解讀 ─────────────────────────────────
+
+interface MayaComboRequest {
+  kinA: number; sealA: number; toneA: number;
+  kinB: number; sealB: number; toneB: number;
+  comboKin: number; comboSeal: number; comboTone: number;
+  relations: Array<{ type: string; description: string; descriptionEn: string }>;
+  locale?: Locale;
+}
+
+function assertMayaComboRequest(data: unknown): MayaComboRequest {
+  const d = data as Record<string, unknown>;
+  if (!d || typeof d.kinA !== 'number' || typeof d.kinB !== 'number' || typeof d.comboKin !== 'number') {
+    throw new HttpsError('invalid-argument', '缺少必要的合盤 Kin 參數');
+  }
+  return {
+    kinA: d.kinA as number, sealA: d.sealA as number, toneA: d.toneA as number,
+    kinB: d.kinB as number, sealB: d.sealB as number, toneB: d.toneB as number,
+    comboKin: d.comboKin as number, comboSeal: d.comboSeal as number, comboTone: d.comboTone as number,
+    relations: d.relations as MayaComboRequest['relations'],
+    locale: (d.locale as Locale) ?? 'zh-TW',
+  };
+}
+
+export const generateMayaComboReading = onCall(
+  { region: REGION, secrets: [openAIKey], timeoutSeconds: 120 },
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    checkRateLimit(uid);
+    const data = assertMayaComboRequest(request.data);
+    const locale = data.locale ?? 'zh-TW';
+
+    const systemPrompt = buildMayaComboSystemPrompt(locale);
+    const userPrompt = buildMayaComboUserPrompt(
+      data.kinA, data.sealA, data.toneA,
+      data.kinB, data.sealB, data.toneB,
+      data.comboKin, data.comboSeal, data.comboTone,
+      data.relations,
+      locale,
+    );
+
+    await chargeCredits(uid, MAYA_COMBO_COST, '瑪雅合盤解讀');
+
+    try {
+      const result = await chat(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        3000,
+        MAYA_AI_MODEL,
+      );
+
+      return {
+        interpretation: result.text,
+        tokenUsage: result.usage
+          ? { input: result.usage.prompt_tokens, output: result.usage.completion_tokens }
+          : undefined,
+      };
+    } catch (error) {
+      await refundCredits(uid, MAYA_COMBO_COST, '瑪雅合盤解讀失敗退還');
+      throw error;
+    }
+  },
+);

@@ -1,6 +1,6 @@
 # 當前任務狀態
 
-> 最後更新：2026-05-22（串流回應 + GPT-4o + Prompt 大改版）
+> 最後更新：2026-05-27（追問串流化 SSE 實作）
 
 ## 已完成（2026-05-22）
 
@@ -126,6 +126,43 @@
 - `exchange-rate-service.ts` — Open Exchange Rates API，localStorage 快取 1 小時
 - `useExchangeRate` hook，`convert(twdAmount).display` 動態顯示
 - BillingPage 價格依語系自動換算（TWD/USD/JPY）
+
+## 已完成（2026-05-27）
+
+### 追問串流化（Streaming SSE）
+- 新增 `streamFollowUpReading` Cloud Function（`onRequest` + SSE + `invoker: 'public'`）
+- 與 `streamTarotReading` 相同的 SSE 模式，使用追問專用 prompt + 卡牌名稱驗證
+- 卡牌名稱衝突時自動重試：發送 `{ retry: true }` 事件，前端清空累積文字後接收第二次串流
+- `IAIProvider` 介面新增 `followUpStream?()` 方法
+- `FunctionsProvider` 新增 `followUpStream()` 實作，處理 SSE + retry 事件
+- `useTarotSession.askFollowUp` 優先使用 `followUpStream`，保留 `followUp` 作為 fallback
+- 串流期間即時更新 `followUps` state，追問回覆逐字出現（80ms 節流）
+- 移除未使用的 `buildFollowUpHeading` 函式（修正 lint 警告）
+- Endpoint URL：`https://asia-east1-mystic-tarot-2026.cloudfunctions.net/streamFollowUpReading`
+- ✅ 已部署上線（2026-05-27 functions + hosting deploy complete）
+
+## 已完成（2026-05-26）
+
+### 追問牌名不一致根因修復
+- **根本原因**：`assertFollowUpRequest()` 回傳時漏掉 `followUpCard`，導致 AI 完全不知道追問指引牌是哪張
+- 修復：`assertFollowUpRequest` 加回 `followUpCard: request.followUpCard ?? undefined`
+- 追問模型維持 `gpt-4o-mini`（追問僅 5 點，成本需控制；根因是 followUpCard 遺失，不是模型問題）
+- 新增 `buildFollowUpPrompts()` 函式，追問 prompt 三語系化（zh-TW / en / ja）
+- System prompt 加入「絕對規則」明確約束牌名：AI 必須以指定的追問指引牌為核心
+- `collectAllowedCardNames` 同時收集中英文牌名，提升衝突偵測覆蓋率
+- ✅ 已部署上線（2026-05-26 followUpReading deploy complete）
+
+### 綠界正式環境切換
+- Checkout URL：`payment-stage` → `payment.ecpay.com.tw`
+- MerchantID：`3002607`（測試）→ `3501280`（正式）
+- HashKey / HashIV 從程式碼硬編碼改為 `defineSecret()` + Firebase Secret Manager
+- ✅ 已部署上線
+
+### 手機抽牌牌堆視覺 + 歷史頁 i18n
+- 手機抽牌牌堆數量隨抽取減少（`Math.min(remaining - 1, 2)`）
+- 硬編碼中文改 i18n：`drawMobileSwipeNth`、`drawMobileTapFallback`、`drawMobileAllDrawn`
+- 歷史頁牌陣 badge 改用 `t.spreads[key].name`
+- ✅ 已部署上線
 
 ## 已完成（2026-05-22 UI 修正批次）
 

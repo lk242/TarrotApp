@@ -24,6 +24,11 @@ const STREAM_URL =
   (import.meta.env.VITE_STREAM_URL as string | undefined) ||
   'https://streamtarotreading-hoqm6svvza-de.a.run.app';
 
+/** 追問串流 endpoint URL */
+const STREAM_FOLLOW_UP_URL =
+  (import.meta.env.VITE_STREAM_FOLLOW_UP_URL as string | undefined) ||
+  'https://asia-east1-mystic-tarot-2026.cloudfunctions.net/streamFollowUpReading';
+
 /**
  * Production AI provider。
  *
@@ -145,5 +150,109 @@ export class FunctionsProvider implements IAIProvider {
   async followUp(request: AIFollowUpRequest): Promise<AIInterpretationResponse> {
     const result = await followUpCallable(request);
     return result.data;
+  }
+
+  /** 串流版追問：SSE 即時回傳，支援卡牌名稱驗證重試 */
+  async followUpStream(
+    request: AIFollowUpRequest,
+    onDelta: StreamCallback,
+  ): Promise<AIInterpretationResponse> {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error('請先登入後再使用追問功能');
+
+    const idToken = await user.getIdToken();
+
+    const response = await fetch(STREAM_FOLLOW_UP_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      let errMsg = `AI 追問失敗 (${response.status})`;
+      try {
+        const parsed = JSON.parse(errBody);
+        if (parsed.error) errMsg = parsed.error;
+      } catch { /* ignore */ }
+      throw new Error(errMsg);
+    }
+
+    if (!response.body) {
+      throw new Error('瀏覽器不支援串流回應');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let accumulated = '';
+    let finalResponse: AIInterpretationResponse | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const payload = trimmed.slice(6);
+
+        try {
+          const data = JSON.parse(payload) as {
+            delta?: string;
+            done?: boolean;
+            error?: string;
+            retry?: boolean;
+            interpretation?: string;
+            summary?: string;
+            suggestedQuestions?: string[];
+          };
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          if (data.retry) {
+            // 卡牌名稱衝突，後端將重試 — 清空已累積文字
+            accumulated = '';
+            onDelta('', '');
+            continue;
+          }
+
+          if (data.delta) {
+            accumulated += data.delta;
+            onDelta(data.delta, accumulated);
+          }
+
+          if (data.done && data.interpretation) {
+            finalResponse = {
+              interpretation: data.interpretation,
+              summary: data.summary ?? '',
+              suggestedQuestions: data.suggestedQuestions,
+            };
+          }
+        } catch (e) {
+          if (e instanceof Error && e.message !== '串流中斷') throw e;
+        }
+      }
+    }
+
+    if (!finalResponse) {
+      finalResponse = {
+        interpretation: accumulated,
+        summary: '',
+        suggestedQuestions: [],
+      };
+    }
+
+    return finalResponse;
   }
 }

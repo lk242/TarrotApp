@@ -161,7 +161,7 @@ export function useTarotSession(spreadType: SpreadType) {
     }
   }, [lang, refreshCredits, spreadType, user]);
 
-  /** 追問 — 額外抽一張新牌，基於新牌延伸解讀 */
+  /** 追問 — 額外抽一張新牌，基於新牌延伸解讀（串流版） */
   const askFollowUp = useCallback(
     async (followUpQuestion: string) => {
       if (!originalRequestRef.current || isFollowingUp) return;
@@ -177,7 +177,7 @@ export function useTarotSession(spreadType: SpreadType) {
         const extraCard = drawExtraCard(allDrawnCardIdsRef.current);
         allDrawnCardIdsRef.current.push(extraCard.card.id);
 
-        const result = await provider.followUp({
+        const followUpRequest = {
           originalRequest: originalRequestRef.current,
           originalInterpretation: buildFollowUpContext(
             interpretationRef.current,
@@ -195,7 +195,44 @@ export function useTarotSession(spreadType: SpreadType) {
             position: extraCard.position,
           },
           locale: lang,
-        });
+        };
+
+        let result;
+
+        if (provider.followUpStream) {
+          // 串流版：即時顯示追問回覆
+          // 先建立暫存 entry 以便串流時即時更新 UI
+          const streamingEntry: FollowUpEntry = {
+            question: followUpQuestion,
+            answer: '',
+            drawnCard: extraCard,
+          };
+          const pendingFollowUps = [...followUpsRef.current, streamingEntry];
+          setFollowUps(pendingFollowUps);
+
+          let streamStarted = false;
+          let throttleTimer: ReturnType<typeof setTimeout> | null = null;
+          setIsStreaming(true);
+
+          result = await provider.followUpStream(followUpRequest, (_delta, accumulated) => {
+            streamingEntry.answer = accumulated;
+            if (!streamStarted) {
+              streamStarted = true;
+              setFollowUps([...followUpsRef.current, { ...streamingEntry }]);
+            } else if (!throttleTimer) {
+              throttleTimer = setTimeout(() => {
+                setFollowUps([...followUpsRef.current, { ...streamingEntry }]);
+                throttleTimer = null;
+              }, 80);
+            }
+          });
+
+          if (throttleTimer) clearTimeout(throttleTimer);
+          setIsStreaming(false);
+        } else {
+          // 非串流 fallback
+          result = await provider.followUp(followUpRequest);
+        }
 
         const newEntry: FollowUpEntry = {
           question: followUpQuestion,
@@ -222,6 +259,7 @@ export function useTarotSession(spreadType: SpreadType) {
         setError(err instanceof Error ? err.message : '追問失敗，請稍後再試');
       } finally {
         setIsFollowingUp(false);
+        setIsStreaming(false);
       }
     },
     [isFollowingUp, lang, refreshCredits, spreadType, user],

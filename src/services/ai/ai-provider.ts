@@ -54,6 +54,11 @@ export interface IAIProvider {
     onDelta: StreamCallback,
   ): Promise<AIInterpretationResponse>;
   followUp?(request: AIFollowUpRequest): Promise<AIInterpretationResponse>;
+  /** 串流版追問：每收到一小段文字就透過 onDelta 回呼即時更新 UI */
+  followUpStream?(
+    request: AIFollowUpRequest,
+    onDelta: StreamCallback,
+  ): Promise<AIInterpretationResponse>;
   isAvailable(): boolean;
 }
 

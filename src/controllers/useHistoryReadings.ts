@@ -38,6 +38,8 @@ export function useHistoryReadings() {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [loading, setLoading] = useState(true);
   const [followingUpId, setFollowingUpId] = useState<string | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   const loadReadings = useCallback(async () => {
@@ -88,6 +90,7 @@ export function useHistoryReadings() {
 
       setFollowingUpId(reading.id);
       setError('');
+      setSuggestedQuestions([]);
 
       try {
         const extraCard = drawExtraCard(collectUsedCardIds(reading));
@@ -98,7 +101,8 @@ export function useHistoryReadings() {
           locale: lang,
           querentSummary: reading.querentSummary,
         };
-        const result = await provider.followUp({
+
+        const followUpRequest = {
           originalRequest,
           originalInterpretation: buildFollowUpContext(reading),
           followUpQuestion,
@@ -113,26 +117,86 @@ export function useHistoryReadings() {
             position: extraCard.position,
           },
           locale: lang,
-        });
+        };
+
+        let result;
+
+        if (provider.followUpStream) {
+          // 串流版：即時顯示追問回覆
+          const streamingEntry: FollowUpEntry = {
+            question: followUpQuestion,
+            answer: '',
+            drawnCard: extraCard,
+          };
+
+          // 先把暫存 entry 加到 UI
+          const updateReadingsWithEntry = (entry: FollowUpEntry) => {
+            setReadings((prev) =>
+              prev.map((item) =>
+                item.id === reading.id
+                  ? { ...item, followUps: [...(reading.followUps ?? []), entry] }
+                  : item,
+              ),
+            );
+          };
+
+          let streamStarted = false;
+          let throttleTimer: ReturnType<typeof setTimeout> | null = null;
+          setIsStreaming(true);
+
+          result = await provider.followUpStream(followUpRequest, (_delta, accumulated) => {
+            streamingEntry.answer = accumulated;
+            if (!streamStarted) {
+              streamStarted = true;
+              updateReadingsWithEntry({ ...streamingEntry });
+            } else if (!throttleTimer) {
+              throttleTimer = setTimeout(() => {
+                updateReadingsWithEntry({ ...streamingEntry });
+                throttleTimer = null;
+              }, 80);
+            }
+          });
+
+          if (throttleTimer) clearTimeout(throttleTimer);
+          setIsStreaming(false);
+        } else {
+          // 非串流 fallback
+          result = await provider.followUp(followUpRequest);
+        }
+
+        const newSuggestedQuestions = result.suggestedQuestions || [];
         const newEntry: FollowUpEntry = {
           question: followUpQuestion,
           answer: result.interpretation,
           drawnCard: extraCard,
+          suggestedQuestions: newSuggestedQuestions,
         };
-        const updatedFollowUps = [...(reading.followUps ?? []), newEntry];
-        const storage = getStorageProvider(user.uid);
-        await storage.updateReading(reading.id, { followUps: updatedFollowUps });
 
+        // 先更新 UI（不等 storage）
+        const updatedFollowUps = [...(reading.followUps ?? []), newEntry];
         setReadings((prev) =>
           prev.map((item) =>
-            item.id === reading.id ? { ...item, followUps: updatedFollowUps } : item,
+            item.id === reading.id
+              ? { ...item, followUps: updatedFollowUps, suggestedQuestions: newSuggestedQuestions }
+              : item,
           ),
         );
+
+        setSuggestedQuestions(newSuggestedQuestions);
+
+        // 背景寫入 storage
+        const storage = getStorageProvider(user.uid);
+        storage.updateReading(reading.id, {
+          followUps: updatedFollowUps,
+          suggestedQuestions: newSuggestedQuestions,
+        }).catch(console.error);
+
         refreshCredits().catch(console.error);
       } catch (err) {
         setError(err instanceof Error ? err.message : '追問失敗，請稍後再試');
       } finally {
         setFollowingUpId(null);
+        setIsStreaming(false);
       }
     },
     [balance, lang, refreshCredits, user],
@@ -142,6 +206,8 @@ export function useHistoryReadings() {
     readings,
     loading,
     followingUpId,
+    isStreaming,
+    suggestedQuestions,
     error,
     reload: loadReadings,
     deleteReading,

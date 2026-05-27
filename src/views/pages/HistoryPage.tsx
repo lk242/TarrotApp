@@ -13,7 +13,7 @@ import CardFace from '../components/tarot/CardFace';
 import InterpretationSections from '../components/tarot/InterpretationSections';
 
 export default function HistoryPage() {
-  const { readings, loading, followingUpId, error, deleteReading, askFollowUp } = useHistoryReadings();
+  const { readings, loading, followingUpId, isStreaming: isHistoryStreaming, suggestedQuestions, error, deleteReading, askFollowUp } = useHistoryReadings();
   const { balance } = useCredits();
   const { t, lang } = useI18n();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -105,7 +105,14 @@ export default function HistoryPage() {
             onDelete={() => deleteReading(reading.id)}
             onFollowUp={(question) => askFollowUp(reading, question)}
             isFollowingUp={followingUpId === reading.id}
+            isStreaming={isHistoryStreaming && followingUpId === reading.id}
             canFollowUp={balance >= FOLLOW_UP_CREDIT_COST}
+            suggestedQuestions={
+              // 優先用 controller 最新的（追問剛完成時），否則讀 reading 儲存的
+              followingUpId === reading.id || (expandedId === reading.id && suggestedQuestions.length > 0)
+                ? suggestedQuestions
+                : reading.suggestedQuestions ?? []
+            }
           />
         ))}
       </div>
@@ -123,7 +130,9 @@ function HistoryCard({
   onDelete,
   onFollowUp,
   isFollowingUp,
+  isStreaming,
   canFollowUp,
+  suggestedQuestions,
 }: {
   reading: Reading;
   index: number;
@@ -134,7 +143,9 @@ function HistoryCard({
   onDelete: () => void;
   onFollowUp: (question: string) => void;
   isFollowingUp: boolean;
+  isStreaming: boolean;
   canFollowUp: boolean;
+  suggestedQuestions: string[];
 }) {
   const [followUpInput, setFollowUpInput] = useState('');
   const spread = SPREADS[reading.spreadType];
@@ -304,6 +315,28 @@ function HistoryCard({
             <p className="mb-3 text-center text-xs text-[var(--color-text-muted)]">
               {t.history.followUpCost.replace('{cost}', String(FOLLOW_UP_CREDIT_COST))}
             </p>
+
+            {/* 建議追問方向 */}
+            {suggestedQuestions.length > 0 && !isFollowingUp && !isStreaming && (
+              <div className="mb-4 animate-fade-in">
+                <p className="mb-2 text-center text-xs text-[var(--color-text-muted)]">
+                  ✦ {t.reading.suggestedHint} ✦
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {suggestedQuestions.map((sq, i) => (
+                    <button
+                      key={i}
+                      onClick={() => onFollowUp(sq)}
+                      disabled={!canFollowUp}
+                      className="cursor-pointer rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-xs text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {sq}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isFollowingUp ? (
               <MysticProgress title={t.history.followUpLoading} />
             ) : (

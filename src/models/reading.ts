@@ -5,6 +5,8 @@ export interface FollowUpEntry {
   question: string;
   answer: string;
   drawnCard: DrawnCard;
+  /** 該次追問後 AI 建議的追問方向 */
+  suggestedQuestions?: string[];
 }
 
 export interface Reading {
@@ -21,4 +23,6 @@ export interface Reading {
   locale?: 'zh-TW' | 'en' | 'ja';
   /** 占卜當下的問卜者狀態摘要，用於歷史紀錄追問延續記憶 */
   querentSummary?: string;
+  /** AI 建議的追問方向（初次解讀後產生） */
+  suggestedQuestions?: string[];
 }

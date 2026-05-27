@@ -145,6 +145,7 @@ export function useTarotSession(spreadType: SpreadType) {
         summary: result.summary,
         locale: lang,
         querentSummary: ctx?.querentSummary,
+        suggestedQuestions: result.suggestedQuestions,
       };
       storage.saveReading(reading).then((docId) => {
         savedReadingIdRef.current = docId;
@@ -234,22 +235,27 @@ export function useTarotSession(spreadType: SpreadType) {
           result = await provider.followUp(followUpRequest);
         }
 
+        const newSuggestedQuestions = result.suggestedQuestions || [];
         const newEntry: FollowUpEntry = {
           question: followUpQuestion,
           answer: result.interpretation,
           drawnCard: extraCard,
+          suggestedQuestions: newSuggestedQuestions,
         };
 
         const updatedFollowUps = [...followUpsRef.current, newEntry];
         followUpsRef.current = updatedFollowUps;
         setFollowUps(updatedFollowUps);
-        setSuggestedQuestions(result.suggestedQuestions || []);
+        setSuggestedQuestions(newSuggestedQuestions);
 
-        // 將追問紀錄更新到儲存
+        // 將追問紀錄更新到儲存（含建議方向）
         if (savedReadingIdRef.current) {
           const storage = getStorageProvider(user?.uid);
           storage
-            .updateReading(savedReadingIdRef.current, { followUps: updatedFollowUps })
+            .updateReading(savedReadingIdRef.current, {
+              followUps: updatedFollowUps,
+              suggestedQuestions: newSuggestedQuestions,
+            })
             .catch(console.error);
         }
 

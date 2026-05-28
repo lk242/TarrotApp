@@ -1,9 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, Timestamp, getFirestore, type DocumentData } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 
 initializeApp();
 
@@ -3045,6 +3047,113 @@ ${buildMayaQualityRules(locale, 'combo')}`;
     } catch (error) {
       await refundCredits(uid, MAYA_COMBO_COST, '瑪雅合盤解讀失敗退還');
       throw error;
+    }
+  },
+);
+
+// ========== 每日回顧推播 ==========
+
+/**
+ * 每日早上 9:00 (Asia/Taipei) 觸發，查詢昨天有占卜紀錄的用戶，
+ * 發送 FCM 推播提醒回顧。
+ */
+export const dailyReadingReview = onSchedule(
+  {
+    schedule: '0 9 * * *',
+    timeZone: 'Asia/Taipei',
+    region: REGION,
+  },
+  async () => {
+    const now = Date.now();
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+    const twoDaysAgo = now - 48 * 60 * 60 * 1000;
+
+    try {
+      // 查詢 24~48 小時前有占卜紀錄的用戶
+      const readingsSnapshot = await db
+        .collectionGroup('readings')
+        .where('timestamp', '>=', twoDaysAgo)
+        .where('timestamp', '<=', oneDayAgo)
+        .orderBy('timestamp', 'desc')
+        .get();
+
+      if (readingsSnapshot.empty) {
+        console.log('[dailyReview] 沒有符合條件的占卜紀錄');
+        return;
+      }
+
+      // 按 userId 分組，取每人最新的一筆
+      const userLatestReading = new Map<string, DocumentData>();
+      for (const doc of readingsSnapshot.docs) {
+        const data = doc.data();
+        const uid = doc.ref.parent.parent?.id;
+        if (!uid) continue;
+        if (!userLatestReading.has(uid)) {
+          userLatestReading.set(uid, { ...data, id: doc.id });
+        }
+      }
+
+      console.log(`[dailyReview] 找到 ${userLatestReading.size} 位用戶的昨日占卜`);
+
+      const messaging = getMessaging();
+      let sentCount = 0;
+      let failCount = 0;
+
+      for (const [uid, reading] of userLatestReading) {
+        // 取得該用戶的所有 FCM tokens
+        const tokensSnapshot = await db
+          .collection(`users/${uid}/fcmTokens`)
+          .get();
+
+        if (tokensSnapshot.empty) continue;
+
+        const tokens = tokensSnapshot.docs.map((d) => d.data().token as string);
+        const summary = reading.summary
+          ? (reading.summary as string).slice(0, 60)
+          : (reading.question as string)?.slice(0, 60) ?? '昨天的占卜';
+
+        const message = {
+          notification: {
+            title: '✦ 回顧昨天的指引',
+            body: summary + (summary.length >= 60 ? '…' : ''),
+          },
+          data: {
+            type: 'daily_review',
+            readingId: reading.id as string,
+            url: `${APP_BASE_URL}/history`,
+          },
+          tokens,
+        };
+
+        try {
+          const result = await messaging.sendEachForMulticast(message);
+          sentCount += result.successCount;
+          failCount += result.failureCount;
+
+          // 清除無效 tokens
+          for (let i = 0; i < result.responses.length; i++) {
+            if (!result.responses[i].success) {
+              const errorCode = result.responses[i].error?.code;
+              if (
+                errorCode === 'messaging/invalid-registration-token' ||
+                errorCode === 'messaging/registration-token-not-registered'
+              ) {
+                await db
+                  .doc(`users/${uid}/fcmTokens/${tokens[i]}`)
+                  .delete()
+                  .catch(() => {});
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`[dailyReview] 發送推播給 ${uid} 失敗:`, err);
+          failCount += tokens.length;
+        }
+      }
+
+      console.log(`[dailyReview] 完成：成功 ${sentCount}，失敗 ${failCount}`);
+    } catch (err) {
+      console.error('[dailyReview] 排程推播執行失敗:', err);
     }
   },
 );

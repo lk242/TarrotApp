@@ -51,11 +51,12 @@
 - [ ] 筆記內容可選擇性回饋給下次占卜的 `querentSummary` — 後續版本
 - [x] 三語系 i18n（notesLabel / notesPlaceholder / notesSaved）
 
-### 7. 每日回顧推播
-- [ ] Cloud Functions 定時任務（Cloud Scheduler）：每日早上 9 點觸發
-- [ ] 查詢 24 小時前有占卜紀錄的用戶，發送推播通知
-- [ ] 推播內容：占卜摘要 + 「回顧昨天的指引」CTA
-- [ ] 點擊推播跳轉到對應的歷史紀錄
+### 7. ✅ 每日回顧推播
+- [x] Cloud Functions 定時任務（Cloud Scheduler）：每日早上 9:00 Asia/Taipei
+- [x] 查詢 24~48 小時前有占卜紀錄的用戶，發送 FCM 推播
+- [x] 推播內容：占卜摘要前 60 字 + 「回顧昨天的指引」標題
+- [x] 點擊推播跳轉到歷史紀錄頁（透過既有 SW 的 notificationclick）
+- [x] 自動清除失效的 FCM tokens
 
 ---
 

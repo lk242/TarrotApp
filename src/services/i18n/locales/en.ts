@@ -65,6 +65,13 @@ const en: Locale = {
     revealingCards: 'Revealing the cards of fate...',
     revealComplete: '✦ All cards are revealed. Waiting for the oracle...',
     followUpGuidePosition: 'Guide',
+    // Follow-up mode
+    modeCard: 'Draw & Ask',
+    modeChat: 'Soul Talk',
+    modeCardHint: 'Draw an extra guide card for deeper insight',
+    modeChatHint: 'Chat directly with your reader, no cards drawn',
+    chatPlaceholder: 'What would you like to explore?',
+    chatButton: 'Chat',
   },
 
   auth: {

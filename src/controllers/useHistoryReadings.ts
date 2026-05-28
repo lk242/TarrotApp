@@ -12,13 +12,13 @@ import { useI18n } from './useI18n';
 function buildFollowUpContext(reading: Reading): string {
   const previousFollowUps = reading.followUps
     ?.map((entry, index) => {
-      const direction = entry.drawnCard.isReversed ? '逆位' : '正位';
-
-      return [
-        `追問 ${index + 1}：${entry.question}`,
-        `追問指引牌：${entry.drawnCard.card.name}（${entry.drawnCard.card.nameEn}）— ${direction}`,
-        `回覆：${entry.answer}`,
-      ].join('\n');
+      const lines = [`追問 ${index + 1}：${entry.question}`];
+      if (entry.drawnCard) {
+        const direction = entry.drawnCard.isReversed ? '逆位' : '正位';
+        lines.push(`追問指引牌：${entry.drawnCard.card.name}（${entry.drawnCard.card.nameEn}）— ${direction}`);
+      }
+      lines.push(`回覆：${entry.answer}`);
+      return lines.join('\n');
     })
     .join('\n\n');
 
@@ -27,7 +27,7 @@ function buildFollowUpContext(reading: Reading): string {
 
 function collectUsedCardIds(reading: Reading): string[] {
   const baseIds = reading.drawnCards.map((drawnCard) => drawnCard.card.id);
-  const followUpIds = reading.followUps?.map((entry) => entry.drawnCard.card.id) ?? [];
+  const followUpIds = reading.followUps?.flatMap((entry) => entry.drawnCard ? [entry.drawnCard.card.id] : []) ?? [];
   return [...baseIds, ...followUpIds];
 }
 

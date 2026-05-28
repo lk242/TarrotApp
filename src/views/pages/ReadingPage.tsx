@@ -73,6 +73,7 @@ export default function ReadingPage() {
   } = useTarotSession(spreadType);
 
   const [followUpInput, setFollowUpInput] = useState('');
+  const [followUpMode, setFollowUpMode] = useState<'card' | 'chat'>('card');
   const [shareStatus, setShareStatus] = useState<string>('');
   const [isCapturing, setIsCapturing] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
@@ -106,7 +107,8 @@ export default function ReadingPage() {
 
   return (
     <div className="flex flex-1 flex-col items-center px-6 py-20">
-      {(phase === 'interpreting' || isFollowingUp) && (
+      {/* 全螢幕遮罩：只在初次解讀 (interpreting) 時使用，追問改用 inline loading */}
+      {phase === 'interpreting' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6 backdrop-blur-md">
           <div className="w-full max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 text-center shadow-[var(--shadow-card)]">
             <div className="mb-4 flex justify-center gap-2">
@@ -120,7 +122,7 @@ export default function ReadingPage() {
               ))}
             </div>
             <p className="text-sm font-bold text-[var(--color-text-primary)]">
-              {isFollowingUp ? t.reading.interpretingFollowUp : t.reading.interpreting}
+              {t.reading.interpreting}
             </p>
             <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
               {t.reading.waitHint}
@@ -410,58 +412,90 @@ export default function ReadingPage() {
             </div>
           )}
 
-          {/* 建議追問按鈕 */}
-          {suggestedQuestions.length > 0 && !isFollowingUp && !isStreaming && (
-            <div className="mt-6 animate-fade-in">
-              <p className="mb-3 text-center text-xs text-[var(--color-text-muted)]">
-                ✦ {t.reading.suggestedHint} ✦
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {suggestedQuestions.map((sq, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setFollowUpInput('');
-                      askFollowUp(sq);
-                    }}
-                    disabled={!canFollowUp}
-                    className="cursor-pointer rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2 text-xs text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {sq}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 自由追問輸入 */}
+          {/* 追問模式切換 + 建議追問 + 輸入 */}
           {!isFollowingUp && !isStreaming && (
-            <div className="mt-5 flex w-full gap-2">
-              <input
-                type="text"
-                value={followUpInput}
-                onChange={(e) => setFollowUpInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && followUpInput.trim() && canFollowUp) {
-                    askFollowUp(followUpInput.trim());
-                    setFollowUpInput('');
-                  }
-                }}
-                placeholder={t.reading.followUpPlaceholder}
-                className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
-              />
-              <button
-                onClick={() => {
-                  if (followUpInput.trim() && canFollowUp) {
-                    askFollowUp(followUpInput.trim());
-                    setFollowUpInput('');
-                  }
-                }}
-                disabled={!followUpInput.trim() || !canFollowUp}
-                className="cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-4 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {t.reading.followUpButton}
-              </button>
+            <div className="mt-6 animate-fade-in">
+              {/* 模式切換 */}
+              <div className="mb-4 flex justify-center">
+                <div className="inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-0.5">
+                  <button
+                    onClick={() => setFollowUpMode('card')}
+                    className={`cursor-pointer rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                      followUpMode === 'card'
+                        ? 'bg-[var(--color-accent-gold)]/20 text-[var(--color-accent-gold)] shadow-sm'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                    }`}
+                  >
+                    ✦ {t.reading.modeCard}
+                  </button>
+                  <button
+                    onClick={() => setFollowUpMode('chat')}
+                    className={`cursor-pointer rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                      followUpMode === 'chat'
+                        ? 'bg-[var(--color-accent-purple)]/20 text-[var(--color-accent-purple)] shadow-sm'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                    }`}
+                  >
+                    💬 {t.reading.modeChat}
+                  </button>
+                </div>
+              </div>
+              <p className="mb-3 text-center text-xs text-[var(--color-text-muted)]">
+                {followUpMode === 'card' ? t.reading.modeCardHint : t.reading.modeChatHint}
+              </p>
+
+              {/* 建議追問按鈕 */}
+              {suggestedQuestions.length > 0 && (
+                <div className="mb-4">
+                  <p className="mb-3 text-center text-xs text-[var(--color-text-muted)]">
+                    ✦ {t.reading.suggestedHint} ✦
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {suggestedQuestions.map((sq, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setFollowUpInput('');
+                          askFollowUp(sq, followUpMode === 'card');
+                        }}
+                        disabled={!canFollowUp}
+                        className="cursor-pointer rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2 text-xs text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {sq}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 自由追問輸入 */}
+              <div className="flex w-full gap-2">
+                <input
+                  type="text"
+                  value={followUpInput}
+                  onChange={(e) => setFollowUpInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && followUpInput.trim() && canFollowUp) {
+                      askFollowUp(followUpInput.trim(), followUpMode === 'card');
+                      setFollowUpInput('');
+                    }
+                  }}
+                  placeholder={followUpMode === 'card' ? t.reading.followUpPlaceholder : t.reading.chatPlaceholder}
+                  className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
+                />
+                <button
+                  onClick={() => {
+                    if (followUpInput.trim() && canFollowUp) {
+                      askFollowUp(followUpInput.trim(), followUpMode === 'card');
+                      setFollowUpInput('');
+                    }
+                  }}
+                  disabled={!followUpInput.trim() || !canFollowUp}
+                  className="cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-4 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {followUpMode === 'card' ? t.reading.followUpButton : t.reading.chatButton}
+                </button>
+              </div>
             </div>
           )}
 

@@ -2143,6 +2143,60 @@ function mayaToneQuestion(tone: number, locale: Locale): string {
   return locale === 'en' ? TONE_QUESTIONS_EN[tone] : TONE_QUESTIONS_ZH[tone];
 }
 
+function buildMayaQualityRules(locale: Locale, type: 'daily' | 'combo' | 'signature'): string {
+  if (locale === 'en') {
+    const typeFocus = type === 'combo'
+      ? `For relationship readings, name the actual dynamic: how each person may behave under stress, what they tend to need from the other, where friction shows up in ordinary life, and what repair conversation would sound like. Interpret the combined Kin as the relationship's "third field", not as a vague sum.`
+      : type === 'daily'
+        ? `For daily readings, connect today's Kin to the user's birth Kin through specific emotional states, decisions, timing, and one realistic daily scenario.`
+        : `For signature readings, make every position feel distinct: gift, shadow, body/emotion pattern, relationship pattern, and one practice.`;
+
+    return `Paid-reading quality bar:
+- Do not produce generic spiritual filler. Avoid vague lines like "this energy supports growth" unless you immediately show how it appears in real life.
+- Every section must anchor back to the exact Kin, seal, tone, keywords, or relationship type from the user prompt.
+- Include concrete examples: conversations, choices, behavior patterns, emotional reactions, and daily situations.
+- Include both gift and shadow. A good reading should feel useful even when it is uncomfortable.
+- Write in a cinematic but grounded style: evocative, intimate, specific, and psychologically literate.
+- No medical, legal, or deterministic claims. Frame this as symbolic reflection.
+${typeFocus}
+- End with an actionable closing that feels personally written, not a slogan.`;
+  }
+
+  if (locale === 'ja') {
+    const typeFocus = type === 'combo'
+      ? `関係性鑑定では、ストレス時の反応、相手に求めやすいもの、日常で摩擦が起きる場面、修復の会話例を具体的に書くこと。合算Kinは曖昧な足し算ではなく、関係そのものが持つ「第三の場」として読むこと。`
+      : type === 'daily'
+        ? `デイリー鑑定では、今日のKinと誕生Kinを、感情、選択、タイミング、実際に起こりそうな一日の場面に結びつけること。`
+        : `署名鑑定では、各位置を区別して読むこと。才能、影、身体・感情の癖、関係性の癖、実践を入れること。`;
+
+    return `有料鑑定の品質基準：
+- 一般的なスピリチュアル表現だけで終わらせない。「成長を促す」などの抽象表現は、必ず日常の具体例に落とす。
+- 各セクションは必ずKin、紋章、音、キーワード、関係タイプに結びつける。
+- 会話、選択、行動パターン、感情反応、日常場面を具体的に入れる。
+- 才能と影の両方を書く。少し耳が痛くても役に立つ鑑定にする。
+- 詩的だが地に足のついた文体。親密で、具体的で、心理的に深いこと。
+- 医療・法律・断定的な運命論は禁止。象徴的な内省として表現する。
+${typeFocus}
+- 最後は標語ではなく、その人に向けて書いた実践的な締めにする。`;
+  }
+
+  const typeFocus = type === 'combo'
+    ? `合盤解讀要具體指出：兩人在壓力下各自可能怎麼反應、彼此最容易向對方索取什麼、日常哪裡會摩擦、修復關係的對話可以怎麼說。合盤 Kin 要解讀成「這段關係本身形成的第三個場域」，不要只把兩個人加總成一句抽象能量。`
+    : type === 'daily'
+      ? `流日解讀要把今日 Kin 與使用者出生 Kin 連到具體情緒、今天可能面臨的選擇、適合行動的時機，以及一個真實的一日場景。`
+      : `星系印記解讀要讓每個位置有明顯差異：天賦、陰影、身體/情緒慣性、關係模式、可練習的方向都要寫出來。`;
+
+  return `付費解讀品質規格：
+- 禁止產出泛泛的靈性套話。像「這股能量支持成長」「帶來深層連結」這類句子，如果沒有立刻接到具體生活場景，就不要寫。
+- 每一段都必須扣回本次資料裡的 Kin、圖騰、調性、關鍵字或關係類型，不能像換一組 Kin 也通用。
+- 必須包含具體例子：對話、選擇、行為模式、情緒反應、日常場景。
+- 要同時講禮物與陰影。好的解讀要有一點刺中盲點的感覺，而不是只安慰。
+- 文風可以有神秘感，但必須落地、親密、精準，像資深占卜師真的看著這組資料在說話。
+- 不做醫療、法律或命運斷言；用象徵性自我理解的語氣。
+${typeFocus}
+- 結尾要像寫給這個人的行動提醒，不要像社群語錄。`;
+}
+
 // ── 瑪雅 AI Prompt 建構 ─────────────────────────────
 
 function buildMayaDailySystemPrompt(locale: Locale): string {
@@ -2353,27 +2407,39 @@ Keep it 400-600 words.`;
 
   return `你是一位使用 Dreamspell / 13 月亮曆分析兩人宇宙連結的瑪雅曆關係引導師。你的風格結合瑪雅能量解讀與關係心理學（依附理論、榮格陰影工作、溝通風格）。
 
-像一個溫暖、有洞見的諮詢師說話 — 口語、真誠。
+你不是在寫圖騰介紹，而是在做一份付費關係解讀。請像資深關係占卜師一樣，把抽象的 Kin 能量翻成「兩個人真的相處時會發生什麼」。
+
+文風要求：
+- 有神秘感，但不要空泛；有心理洞察，但不要像教科書
+- 少用條列，多用有畫面感的段落
+- 可以直接點出關係盲點，語氣溫柔但不迴避
+- 不要每段都用「這代表」「這象徵」開頭
+- 不要重複說「支持、成長、連結、轉化」這些泛詞，除非後面接具體行為
 
 回應結構（markdown）：
-### ✦ 第一印象
-對這對組合的能量動態的直覺解讀（2-3 句）
+### ✦ 關係第一眼
+用 3-5 句寫出這段關係的氣味、節奏與核心吸引力。要讓人覺得「這是在說我們」，不是星座式泛談。
 
-### 🔗 關係分析
-- 分析兩個 Kin 之間找到的每種關係類型
-- 用心理學解釋每個連結在日常生活中的意義
-- 和諧面 AND 成長面都要講
+### 🔗 你們如何牽動彼此
+逐一解讀找到的關係類型。每一種關係都要包含：
+1. 這個連結在日常相處中怎麼出現
+2. 它帶來的禮物
+3. 它的陰影或誤會模式
+4. 一句可能發生在兩人之間的對話或內心 OS
 
 ### 🌀 合盤 Kin 能量
-解讀合盤 Kin 作為「第三個實體」— 這段關係本身的能量印記
+把合盤 Kin 解讀成「這段關係本身的生命」。說明這段關係會把兩人帶往哪種共同課題、共同創造或共同變化。
 
-### 💡 關係行動方案
-3 個這對組合可以一起練習的具體事項
+### ⚠️ 關係盲點
+指出 2-3 個最容易卡住的地方。不要恐嚇，也不要粉飾。要具體到「誰可能退縮、誰可能過度承擔、哪種話題容易變成導火線」。
+
+### 💡 具體相處練習
+給 3 個可以在一週內執行的練習。每個練習要有做法、適合時機、想改善的關係模式。
 
 ### ✨ 最後一句話
-一句關於他們宇宙連結的溫暖有力結語
+一句溫暖但精準的收束，像真正寫給這兩個人的提醒。
 
-控制在 400-600 字。`;
+控制在 900-1300 字。內容密度要像付費深度解讀。`;
 }
 
 function buildMayaComboUserPrompt(
@@ -2440,7 +2506,9 @@ ${relText}
 **合盤 Kin：** Kin ${comboKin} — ${labelCombo}
 關鍵字：${kwCombo}
 
-請提供深度關係解讀，分析這兩人之間的宇宙連結。`;
+請提供深度關係解讀，分析這兩人之間的宇宙連結。
+
+重要：請不要只解釋名詞。請把這些資料翻成「兩個人相處時的實際樣子」。例如：誰容易主動靠近、誰容易用沉默保護自己、哪種情境會激發支持、哪種情境會引爆挑戰、他們如何修復衝突。`;
 }
 
 function buildMayaSignatureSystemPrompt(locale: Locale): string {
@@ -2643,7 +2711,9 @@ export const generateMayaDailyReading = onCall(
     const data = assertMayaDailyRequest(request.data);
     const locale = data.locale ?? 'zh-TW';
 
-    const systemPrompt = buildMayaDailySystemPrompt(locale);
+    const systemPrompt = `${buildMayaDailySystemPrompt(locale)}
+
+${buildMayaQualityRules(locale, 'daily')}`;
     const userPrompt = buildMayaDailyUserPrompt(
       data.dailyKin, data.dailySeal, data.dailyTone,
       data.userKin, data.userSeal, data.userTone,
@@ -2715,7 +2785,9 @@ export const generateMayaSignatureReading = onCall(
     const data = assertMayaSignatureRequest(request.data);
     const locale = data.locale ?? 'zh-TW';
 
-    const systemPrompt = buildMayaSignatureSystemPrompt(locale);
+    const systemPrompt = `${buildMayaSignatureSystemPrompt(locale)}
+
+${buildMayaQualityRules(locale, 'signature')}`;
     const userPrompt = buildMayaSignatureUserPrompt(
       data.kin,
       data.seal,
@@ -2785,7 +2857,9 @@ export const generateMayaComboReading = onCall(
     const data = assertMayaComboRequest(request.data);
     const locale = data.locale ?? 'zh-TW';
 
-    const systemPrompt = buildMayaComboSystemPrompt(locale);
+    const systemPrompt = `${buildMayaComboSystemPrompt(locale)}
+
+${buildMayaQualityRules(locale, 'combo')}`;
     const userPrompt = buildMayaComboUserPrompt(
       data.kinA, data.sealA, data.toneA,
       data.kinB, data.sealB, data.toneB,
@@ -2802,7 +2876,7 @@ export const generateMayaComboReading = onCall(
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        3000,
+        4200,
         MAYA_AI_MODEL,
       );
 

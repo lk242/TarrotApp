@@ -1,6 +1,6 @@
 # 當前任務狀態
 
-> 最後更新：2026-05-27（追問串流化 SSE 實作）
+> 最後更新：2026-05-27（追問串流化 + 歷史紀錄追問修復 + 建議方向）
 
 ## 已完成（2026-05-22）
 
@@ -141,6 +141,27 @@
 - Endpoint URL：`https://asia-east1-mystic-tarot-2026.cloudfunctions.net/streamFollowUpReading`
 - ✅ 已部署上線（2026-05-27 functions + hosting deploy complete）
 
+### 歷史紀錄追問修復 + 串流化
+- **Bug 修復**：`useHistoryReadings.askFollowUp` 中 `storage.updateReading` 是 `await` 的，若寫入失敗會阻止 `setReadings` UI 更新 → 改為先更新 UI，storage 放背景
+- `useHistoryReadings` 也加入 `followUpStream` 串流支援，與正常占卜流程一致
+- 新增 `isStreaming` state 供 UI 顯示串流狀態
+- ✅ 已部署上線（2026-05-27 hosting deploy complete）
+
+### 歷史紀錄頁建議方向按鈕
+- `useHistoryReadings` 新增 `suggestedQuestions` state，追問完成後從 AI 回應取得
+- `HistoryCard` 追問區塊上方顯示建議方向按鈕（與正常流程 ReadingPage 一致）
+- 點擊建議按鈕可直接發起追問
+- ✅ 已部署上線（2026-05-27 hosting deploy complete）
+
+### 建議方向持久化儲存
+- `Reading` model 新增 `suggestedQuestions?: string[]` 欄位
+- `FollowUpEntry` model 新增 `suggestedQuestions?: string[]` 欄位
+- `useTarotSession`：初次占卜存檔時一併寫入 `suggestedQuestions`；追問也存入 FollowUpEntry
+- `useHistoryReadings`：追問完成後把 `suggestedQuestions` 寫入 reading + followUpEntry
+- `HistoryPage`：優先用 controller 最新狀態，否則讀 `reading.suggestedQuestions` 已儲存值
+- 舊紀錄無此欄位不影響（向下相容），新占卜 / 新追問會自動存入
+- ✅ 已部署上線（2026-05-27 hosting deploy complete）
+
 ## 已完成（2026-05-26）
 
 ### 追問牌名不一致根因修復
@@ -187,6 +208,33 @@
 - `createCreditPurchase` 和 `ecpayNotify` 加上 `secrets: [ecpayHashKey, ecpayHashIV]`
 - Secrets 已透過 `firebase-tools functions:secrets:set` 寫入
 - ✅ 已部署上線（2026-05-22 hosting + functions deploy complete）
+
+### 瑪雅網站全站視覺升級
+- 新增 `CosmicProgress` 載入元件（星塵動畫 + 進度條）
+- CSS 新增 float / shimmer / glow-pulse / fade-in 動畫 keyframes
+- 所有頁面加入 Framer Motion stagger / spring 入場動畫
+- SealCard hover 旋轉圖騰 + 發光脈衝效果
+- GalacticSignatureView 十字佈局 CSS 連線 + Kin 數字發光
+- Navbar 活動連結發光底線 + logo hover 效果
+- 卡片 hover 漸層邊框 + 光暈效果
+- 涵蓋：HomePage、DailyPage、ComboPage、AboutPage、BillingPage、Navbar、SealCard、GalacticSignatureView
+- ✅ 已部署上線（2026-05-27 stellar-maya-2026.web.app）
+
+## 已完成（2026-05-28）
+
+### 追問遮罩 Bug 修復 + 純對話模式
+- **Bug 修復**：追問時全螢幕 loading 遮罩遮住串流文字 → 遮罩條件從 `phase === 'interpreting' || isFollowingUp` 改為僅 `phase === 'interpreting'`，追問用 inline loading dots
+- **純對話模式（chat mode）**：追問區新增「抽牌追問 / 心靈對話」模式切換
+  - `FollowUpEntry.drawnCard` 改為 optional（reading.ts）
+  - `AIFollowUpRequest.followUpCard` 改為 optional（ai-provider.ts）
+  - `useTarotSession.askFollowUp` 新增 `withCard` 參數，`false` 時跳過抽牌
+  - `buildFollowUpContext` 和 `collectUsedCardIds`（useTarotSession.ts / useHistoryReadings.ts）支援 optional drawnCard
+  - ReadingPage 新增 `followUpMode` state + toggle UI（pill 按鈕切換）
+  - 建議追問按鈕和自由輸入都依據模式傳 `withCard` 參數
+  - 三語系 i18n 新增 7 個 key：modeCard / modeChat / modeCardHint / modeChatHint / chatPlaceholder / chatButton
+  - HistoryPage 已有 optional guard，不需修改
+  - 後端 Cloud Functions 已原生支援 optional followUpCard
+- ✅ build 通過，待部署
 
 ## 待處理
 

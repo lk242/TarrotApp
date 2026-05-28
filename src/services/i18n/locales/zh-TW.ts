@@ -71,6 +71,13 @@ const zhTW = {
     revealComplete: '✦ 所有牌已翻開，靜候神諭...',
     // 追問指引
     followUpGuidePosition: '追問指引',
+    // 追問模式
+    modeCard: '抽牌追問',
+    modeChat: '心靈對話',
+    modeCardHint: '額外抽一張指引牌，結合牌義深入解讀',
+    modeChatHint: '不抽牌，直接與占卜師對話探索內心',
+    chatPlaceholder: '想聊聊什麼？',
+    chatButton: '對話',
   },
 
   // 登入

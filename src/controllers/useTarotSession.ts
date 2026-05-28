@@ -25,13 +25,13 @@ export type { FollowUpEntry } from '../models/reading';
 function buildFollowUpContext(originalInterpretation: string, followUps: FollowUpEntry[]): string {
   const previousFollowUps = followUps
     .map((entry, index) => {
-      const direction = entry.drawnCard.isReversed ? '逆位' : '正位';
-
-      return [
-        `追問 ${index + 1}：${entry.question}`,
-        `追問指引牌：${entry.drawnCard.card.name}（${entry.drawnCard.card.nameEn}）— ${direction}`,
-        `回覆：${entry.answer}`,
-      ].join('\n');
+      const lines = [`追問 ${index + 1}：${entry.question}`];
+      if (entry.drawnCard) {
+        const direction = entry.drawnCard.isReversed ? '逆位' : '正位';
+        lines.push(`追問指引牌：${entry.drawnCard.card.name}（${entry.drawnCard.card.nameEn}）— ${direction}`);
+      }
+      lines.push(`回覆：${entry.answer}`);
+      return lines.join('\n');
     })
     .join('\n\n');
 
@@ -162,21 +162,24 @@ export function useTarotSession(spreadType: SpreadType) {
     }
   }, [lang, refreshCredits, spreadType, user]);
 
-  /** 追問 — 額外抽一張新牌，基於新牌延伸解讀（串流版） */
+  /**
+   * 追問 — 可選擇是否額外抽牌。
+   * @param withCard true = 傳統追問（抽一張指引牌），false = 純對話模式（不抽牌）
+   */
   const askFollowUp = useCallback(
-    async (followUpQuestion: string) => {
+    async (followUpQuestion: string, withCard = true) => {
       if (!originalRequestRef.current || isFollowingUp) return;
       setIsFollowingUp(true);
       setError('');
-      trackEvent('follow_up_start', { spread_type: spreadType });
+      trackEvent(withCard ? 'follow_up_start' : 'chat_start', { spread_type: spreadType });
 
       try {
         const provider = getConfiguredProvider();
         if (!provider.followUp) return;
 
-        // 抽一張不重複的新牌
-        const extraCard = drawExtraCard(allDrawnCardIdsRef.current);
-        allDrawnCardIdsRef.current.push(extraCard.card.id);
+        // 抽牌模式才抽新牌
+        const extraCard = withCard ? drawExtraCard(allDrawnCardIdsRef.current) : undefined;
+        if (extraCard) allDrawnCardIdsRef.current.push(extraCard.card.id);
 
         const followUpRequest = {
           originalRequest: originalRequestRef.current,
@@ -185,16 +188,18 @@ export function useTarotSession(spreadType: SpreadType) {
             followUpsRef.current,
           ),
           followUpQuestion,
-          followUpCard: {
-            card: {
-              name: extraCard.card.name,
-              nameEn: extraCard.card.nameEn,
-              keywords: extraCard.card.keywords,
-              reversedKeywords: extraCard.card.reversedKeywords,
+          ...(extraCard ? {
+            followUpCard: {
+              card: {
+                name: extraCard.card.name,
+                nameEn: extraCard.card.nameEn,
+                keywords: extraCard.card.keywords,
+                reversedKeywords: extraCard.card.reversedKeywords,
+              },
+              isReversed: extraCard.isReversed,
+              position: extraCard.position,
             },
-            isReversed: extraCard.isReversed,
-            position: extraCard.position,
-          },
+          } : {}),
           locale: lang,
         };
 
@@ -202,7 +207,6 @@ export function useTarotSession(spreadType: SpreadType) {
 
         if (provider.followUpStream) {
           // 串流版：即時顯示追問回覆
-          // 先建立暫存 entry 以便串流時即時更新 UI
           const streamingEntry: FollowUpEntry = {
             question: followUpQuestion,
             answer: '',

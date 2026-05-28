@@ -4,7 +4,8 @@ import type { SpreadType } from './spread';
 export interface FollowUpEntry {
   question: string;
   answer: string;
-  drawnCard: DrawnCard;
+  /** 追問抽到的指引牌；純對話模式 (chat mode) 不抽牌時為 undefined */
+  drawnCard?: DrawnCard;
   /** 該次追問後 AI 建議的追問方向 */
   suggestedQuestions?: string[];
 }

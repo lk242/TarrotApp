@@ -65,6 +65,13 @@ const ja: Locale = {
     revealingCards: '運命のカードを明かしています...',
     revealComplete: '✦ すべてのカードが開かれました。神託をお待ちください...',
     followUpGuidePosition: 'ガイド',
+    // 追加質問モード
+    modeCard: 'カードを引く',
+    modeChat: '心の対話',
+    modeCardHint: 'ガイドカードを追加で引いて深く読み解きます',
+    modeChatHint: 'カードを引かずにリーダーと直接対話します',
+    chatPlaceholder: '何について話したいですか？',
+    chatButton: '対話',
   },
 
   auth: {

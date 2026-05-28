@@ -83,6 +83,13 @@ export function useTarotSession(spreadType: SpreadType) {
   const onCutComplete = useCallback(() => setPhase('drawing'), []);
 
   const onDrawComplete = useCallback(async (ctx?: { topic?: string; querentSummary?: string }) => {
+    // 未登入用戶：顯示牌面但不呼叫 AI，提示登入
+    if (!user) {
+      setPhase('complete');
+      setInterpretation('');
+      return;
+    }
+
     setPhase('interpreting');
     const provider = getConfiguredProvider();
 

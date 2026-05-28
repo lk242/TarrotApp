@@ -165,7 +165,7 @@ export default function ReadingPage() {
         )}
       </div>
 
-      {(blockedReason || error) && (
+      {(error || (blockedReason && user)) && (
         <div className="mb-6 w-full max-w-xl rounded-lg border border-[var(--color-accent-gold)]/30 bg-[var(--color-accent-gold)]/10 p-4 text-center text-sm text-[var(--color-text-secondary)]">
           <p>{error || blockedReason}</p>
           {error && phase === 'idle' ? (
@@ -233,10 +233,13 @@ export default function ReadingPage() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             onClick={startReading}
-            disabled={!canAsk || creditLoading}
+            disabled={user ? (!canAsk || creditLoading) : false}
             className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/30 bg-gradient-to-r from-[var(--color-accent-gold)]/20 via-[var(--color-accent-gold)]/10 to-[var(--color-accent-purple)]/20 px-6 py-3.5 text-base font-bold tracking-wider text-[var(--color-accent-gold)] shadow-[var(--shadow-glow)] transition-all hover:border-[var(--color-accent-gold)]/50 hover:shadow-[var(--shadow-card-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            ☉ {t.reading.startButton.replace('{cost}', String(readingCost))}
+            {user
+              ? `☉ ${t.reading.startButton.replace('{cost}', String(readingCost))}`
+              : `✦ ${(t.reading as Record<string, string>).freeTrialButton ?? '免費體驗抽牌'}`
+            }
           </motion.button>
         </div>
       )}
@@ -293,6 +296,60 @@ export default function ReadingPage() {
               ))}
             </div>
             <p className="text-sm text-[var(--color-text-secondary)]">{t.reading.oracleInterpreting}</p>
+          </div>
+        </div>
+      )}
+
+      {/* === free trial：未登入用戶抽完牌，顯示牌面 + 登入 CTA === */}
+      {phase === 'complete' && !interpretation && !user && (
+        <div key="trial" className="w-full max-w-2xl animate-fade-in-up">
+          {/* 問題回顯 */}
+          {question && (
+            <div className="mb-6 text-center animate-fade-in">
+              <span className="text-xs tracking-wider text-[var(--color-text-muted)] uppercase">{t.reading.yourQuestion}</span>
+              <p className="mt-1 text-base text-[var(--color-text-primary)]">「{question}」</p>
+            </div>
+          )}
+
+          {/* 牌面 */}
+          <div className="mb-8 flex flex-wrap justify-center gap-4">
+            {drawnCards.map((dc) => (
+              <CardFace key={dc.card.id} drawnCard={dc} className="!w-28" positionLabel={
+                (t.positions as Record<string, string[]>)?.[SPREAD_I18N_KEY[spreadType]]?.[
+                  drawnCards.indexOf(dc)
+                ] ?? dc.position
+              } />
+            ))}
+          </div>
+
+          {/* 登入 CTA */}
+          <div className="rounded-xl border border-[var(--color-accent-gold)]/30 bg-gradient-to-b from-[var(--color-accent-gold)]/10 to-transparent p-8 text-center">
+            <div className="mb-3 text-3xl">✦</div>
+            <h3 className="mb-2 text-lg font-bold text-[var(--color-accent-gold)]">
+              {(t.reading as Record<string, string>).trialTitle ?? '你的牌已翻開'}
+            </h3>
+            <p className="mb-5 text-sm text-[var(--color-text-secondary)]">
+              {(t.reading as Record<string, string>).trialDesc ?? '登入或註冊即可獲得免費 AI 解讀額度，解鎖完整的塔羅指引'}
+            </p>
+            <Link
+              to="/billing"
+              className="inline-block rounded-lg bg-[var(--color-accent-gold)] px-8 py-3 text-sm font-bold text-[var(--color-bg-primary)] no-underline shadow-[var(--shadow-glow)] transition-all hover:brightness-110"
+            >
+              {(t.reading as Record<string, string>).trialCTA ?? '免費註冊，解鎖解讀'}
+            </Link>
+            <p className="mt-3 text-xs text-[var(--color-text-muted)]">
+              {(t.reading as Record<string, string>).trialHint ?? '新會員自動獲得 200 解讀額度'}
+            </p>
+          </div>
+
+          {/* 重新抽牌 */}
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => { reset(); resetSignals(); selectedTopicLabel.current = ''; }}
+              className="cursor-pointer rounded-lg border border-[var(--color-border)] bg-transparent px-5 py-2 text-sm text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-accent-gold)]/40 hover:text-[var(--color-accent-gold)]"
+            >
+              ↻ {t.reading.readAgain}
+            </button>
           </div>
         </div>
       )}

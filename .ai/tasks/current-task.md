@@ -234,9 +234,37 @@
   - 三語系 i18n 新增 7 個 key：modeCard / modeChat / modeCardHint / modeChatHint / chatPlaceholder / chatButton
   - HistoryPage 已有 optional guard，不需修改
   - 後端 Cloud Functions 已原生支援 optional followUpCard
-- ✅ build 通過，待部署
+- ✅ build 通過，已 commit (cafaa1b)、push、hosting + functions 部署完成
+- **追加修正**：純對話模式 prompt 不再提及抽牌（commit 05a1322）
+  - 三語系 `buildFollowUpPrompts` 依 `followUpCard` 是否存在分兩套 prompt
+  - 有牌：原追問 prompt（以指引牌為核心）
+  - 無牌：對話導向 prompt（不提新牌，以原始牌陣為基礎，心理師口吻）
+  - ✅ functions 已部署
+
+### 歷史紀錄頁同步支援心靈對話模式（commit 6b4a605）
+- `useHistoryReadings.askFollowUp` 新增 `withCard` 參數
+- HistoryCard 追問區加入模式切換 UI（與 ReadingPage 一致）
+- ✅ hosting 已部署
+
+### AI 記憶跨占卜延續（commit f22d65d）
+- `useQuerentSignals.buildContext` 強化：讀取最近 5 筆占卜摘要 + 高頻牌統計
+- AI 可據此延續跨占卜脈絡，提升「被理解」感
+- ✅ hosting 已部署
 
 ## 待處理
+
+### 功能強化 TODO（見 TODO.md）
+- 下一步：#4 占卜結果分享卡片優化
+- 後續：#5 是非牌陣、#6 占卜日記、#7 每日推播
+
+### 綠界金流審核重新送審
+- **狀態**：已準備好產品展示間截圖，待使用者上傳送審
+- **退件項目**：金流-非信用卡收款、金流-信用卡收款（兩項皆審核不通過）
+- **已準備**：`C:\Users\forst899\billing-screenshot-hd.png`（2x 高清 BillingPage 全頁截圖，含所有方案及 NT$ 價格）
+- **需使用者處理**：
+  1. 產品展示間照片：刪除舊圖，上傳 `billing-screenshot-hd.png`
+  2. 營業場所照片：確認現有照片清晰可辨（使用者表示已是工作環境照）
+  3. 兩項金流服務都要更新後分別送出
 
 ### LINE 內建瀏覽器登入時序問題
 - **狀態**：部分修復，需進一步測試

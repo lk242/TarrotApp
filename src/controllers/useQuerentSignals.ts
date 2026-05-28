@@ -113,12 +113,38 @@ export function useQuerentSignals(uid: string | undefined) {
           if (recentQuestions.length > 0) {
             memoryLines.push(`- 近期曾問過：${recentQuestions.join('；')}`);
           }
-          if (lastReading.summary) {
-            const summary = lastReading.summary.length > 90
-              ? `${lastReading.summary.slice(0, 90)}...`
-              : lastReading.summary;
-            memoryLines.push(`- 上次占卜摘要：${summary}`);
+
+          // 最近 5 筆占卜摘要（建立跨占卜記憶）
+          const recentSummaries = sorted
+            .slice(0, 5)
+            .filter((r) => r.summary)
+            .map((r, i) => {
+              const daysAgo = Math.floor((Date.now() - r.timestamp) / (1000 * 60 * 60 * 24));
+              const timeLabel = daysAgo === 0 ? '今天' : daysAgo === 1 ? '昨天' : `${daysAgo} 天前`;
+              const summary = r.summary.length > 80 ? `${r.summary.slice(0, 80)}...` : r.summary;
+              return `  ${i + 1}. [${timeLabel}] ${summary}`;
+            });
+          if (recentSummaries.length > 0) {
+            memoryLines.push(`- 近期占卜脈絡（從新到舊）：\n${recentSummaries.join('\n')}`);
           }
+
+          // 高頻牌統計（最近 10 筆中出現 2 次以上的牌）
+          const cardCounts = new Map<string, number>();
+          for (const r of sorted.slice(0, 10)) {
+            for (const dc of r.drawnCards) {
+              cardCounts.set(dc.card.name, (cardCounts.get(dc.card.name) ?? 0) + 1);
+            }
+          }
+          const recurringCards = Array.from(cardCounts.entries())
+            .filter(([, count]) => count >= 2)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+          if (recurringCards.length > 0) {
+            memoryLines.push(
+              `- 反覆出現的牌：${recurringCards.map(([name, count]) => `${name}(${count}次)`).join('、')}，這些牌代表的主題可能是問卜者持續面對的核心課題`,
+            );
+          }
+
           if (followUpCount > 0) {
             memoryLines.push(`- 過去累計追問 ${followUpCount} 次，使用者可能重視連續對話與深入釐清`);
           }

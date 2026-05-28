@@ -19,12 +19,12 @@
 - [x] 後端 prompt 已在 TODO #1 中支援 chat mode 分支（共用同一組 Cloud Functions）
 - [x] i18n 共用 ReadingPage 已新增的 key（modeCard / modeChat / chatPlaceholder / chatButton）
 
-### 3. AI 記憶跨占卜延續
-- [ ] 新增 Firestore `users/{uid}/readingSummaries` 子集合，存最近 5 次占卜摘要
-- [ ] `useTarotSession.onDrawComplete` 儲存時同步寫入摘要
-- [ ] `useQuerentSignals.buildContext` 讀取歷史摘要，注入 AI prompt
-- [ ] Cloud Functions prompt 新增「歷史脈絡」區塊（三語系）
-- [ ] 舊用戶無摘要時 graceful fallback（不影響現有流程）
+### 3. ✅ AI 記憶跨占卜延續
+- [x] `useQuerentSignals.buildContext` 強化記憶：讀取最近 5 筆占卜摘要（含時間標記）
+- [x] 新增高頻牌統計：最近 10 筆中出現 2 次以上的牌自動標記為核心課題
+- [x] 記憶內容直接注入 AI prompt 的 querentSummary（不需新增 Firestore 子集合）
+- [x] 舊用戶無摘要時 graceful fallback（不影響現有流程）
+- [x] 不需修改 Cloud Functions（querentSummary 已在 prompt 中使用）
 
 ### 4. 占卜結果分享卡片優化
 - [ ] `ReadingShareCard` 加入牌面圖片（目前只有文字摘要）

@@ -8,10 +8,12 @@ import { useI18n } from '../../controllers/useI18n';
 const spreadList = Object.values(SPREADS);
 
 /** 牌陣對應的背景圖與透明度（暗圖需更高透明度） */
-const SPREAD_CONFIG: Record<number, { image: string; opacity: number; hoverOpacity: number }> = {
-  1:  { image: '/images/theme/spread-single.webp', opacity: 0.4, hoverOpacity: 0.55 },
-  3:  { image: '/images/theme/spread-three.webp',  opacity: 0.4, hoverOpacity: 0.55 },
-  10: { image: '/images/theme/spread-celtic.webp',  opacity: 0.7, hoverOpacity: 0.85 },
+/** 牌陣卡片配置：以 spreadType 為 key，含背景圖與透明度 */
+const SPREAD_CONFIG: Record<string, { image: string; opacity: number; hoverOpacity: number }> = {
+  single:        { image: '/images/theme/spread-single.webp', opacity: 0.4, hoverOpacity: 0.55 },
+  'three-card':  { image: '/images/theme/spread-three.webp',  opacity: 0.4, hoverOpacity: 0.55 },
+  'celtic-cross': { image: '/images/theme/spread-celtic.webp',  opacity: 0.7, hoverOpacity: 0.85 },
+  'yes-no':      { image: '/images/theme/spread-single.webp', opacity: 0.4, hoverOpacity: 0.55 },
 };
 
 export default function HomePage() {
@@ -84,7 +86,7 @@ export default function HomePage() {
       </motion.div>
 
       {/* ===== 牌陣選擇 ===== */}
-      <div className="grid w-full max-w-3xl gap-6 md:grid-cols-3">
+      <div className="grid w-full max-w-4xl gap-6 sm:grid-cols-2 md:grid-cols-4">
         {spreadList.map((spread, i) => (
           <SpreadCard key={spread.type} spread={spread} delay={0.5 + i * 0.15} t={t} />
         ))}
@@ -111,14 +113,15 @@ export default function HomePage() {
 }
 
 /** spread.type → i18n key 映射 */
-const SPREAD_I18N_KEY: Record<string, 'single' | 'threeCard' | 'celticCross'> = {
+const SPREAD_I18N_KEY: Record<string, 'single' | 'threeCard' | 'celticCross' | 'yesNo'> = {
   single: 'single',
   'three-card': 'threeCard',
   'celtic-cross': 'celticCross',
+  'yes-no': 'yesNo',
 };
 
 function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]; delay: number; t: import('../../services/i18n').Locale }) {
-  const config = SPREAD_CONFIG[spread.cardCount] || { image: '', opacity: 0.4, hoverOpacity: 0.55 };
+  const config = SPREAD_CONFIG[spread.type] || { image: '', opacity: 0.4, hoverOpacity: 0.55 };
   const i18nKey = SPREAD_I18N_KEY[spread.type] || 'single';
   const spreadT = t.spreads[i18nKey];
 
@@ -163,6 +166,11 @@ function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]
           {spread.type === 'celtic-cross' && (
             <span className="mb-2 inline-block rounded-full bg-[var(--color-accent-purple)]/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-[var(--color-accent-purple-light)]">
               {t.home.deepAnalysis}
+            </span>
+          )}
+          {spread.type === 'yes-no' && (
+            <span className="mb-2 inline-block rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-emerald-400">
+              {t.home.quickAnswer}
             </span>
           )}
           <h2 className="mb-2 text-lg font-bold tracking-wider text-[var(--color-text-primary)]">

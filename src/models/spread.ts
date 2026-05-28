@@ -1,4 +1,4 @@
-export type SpreadType = 'single' | 'three-card' | 'celtic-cross';
+export type SpreadType = 'single' | 'three-card' | 'celtic-cross' | 'yes-no';
 
 export interface SpreadPosition {
   index: number;
@@ -51,6 +51,15 @@ export const SPREADS: Record<SpreadType, Spread> = {
       { index: 7, name: '環境', description: '周圍人事物的影響' },
       { index: 8, name: '希望與恐懼', description: '內心的期盼或擔憂' },
       { index: 9, name: '最終結果', description: '事件的最終走向' },
+    ],
+  },
+  'yes-no': {
+    type: 'yes-no',
+    name: '是非占卜',
+    description: '一張牌快速回答 Yes 或 No',
+    cardCount: 1,
+    positions: [
+      { index: 0, name: '神諭', description: '宇宙對你問題的直接回應' },
     ],
   },
 };

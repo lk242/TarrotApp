@@ -21,6 +21,7 @@ const OPENAI_FOLLOW_UP_MODEL = process.env.OPENAI_FOLLOW_UP_MODEL ?? 'gpt-4o-min
 const REGION = 'asia-east1';
 const WELCOME_CREDITS = 200;
 const QUESTION_CREDIT_COST = 20;
+const YES_NO_CREDIT_COST = 10;
 const FOLLOW_UP_CREDIT_COST = 5;
 const APP_BASE_URL = 'https://mystic-tarot-2026.web.app';
 const ECPAY_CHECKOUT_URL = 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5';
@@ -34,7 +35,7 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? 'lukewolf899@gmail.com')
 const db = getFirestore();
 const adminAuth = getAuth();
 
-type SpreadType = 'single' | 'three-card' | 'celtic-cross';
+type SpreadType = 'single' | 'three-card' | 'celtic-cross' | 'yes-no';
 type Locale = 'zh-TW' | 'en' | 'ja';
 type CreditPackageId = 'starter' | 'standard' | 'deep';
 type SubscriptionTier = 'none' | 'monthly_light' | 'monthly_plus' | 'monthly_pro';
@@ -1080,7 +1081,77 @@ function assertFollowUpRequest(data: unknown): AIFollowUpRequest {
   };
 }
 
-function buildSystemPrompt(locale: Locale): string {
+function buildYesNoSystemPrompt(locale: Locale): string {
+  if (locale === 'zh-TW') {
+    return `你是「Mystica」——一位經驗豐富的塔羅占卜師，擅長快速是非判斷。
+
+這是一次「是非占卜」——問卜者問了一個 Yes/No 問題，你抽出了一張牌來回應。
+
+回應格式（約 200-300 字，簡潔有力）：
+
+## ✦ 神諭
+用一個大大的 **Yes ✓** 或 **No ✗** 開頭（根據牌面判斷），接著用 1-2 句話點出核心判斷依據。
+
+## 🃏 牌面解讀
+簡潔描述這張牌在這個問題脈絡下的含義。正位傾向 Yes，逆位傾向 No，但也要看牌義本身。比如正位的「塔」仍可能偏 No。用白話解釋，像跟朋友聊天。
+
+## 💡 小提醒
+一個具體的建議或提醒，讓問卜者知道在這個 Yes/No 之後可以怎麼行動。
+
+規則：
+- 使用繁體中文
+- 語氣口語自然
+- 不要空泛的靈性話語
+- 整體回應控制在 200-300 字`;
+  }
+  if (locale === 'ja') {
+    return `あなたは「Mystica」——経験豊富なタロットリーダーで、素早いイエス・ノー判断を得意としています。
+
+これは「イエス・ノー占い」です。相談者がYes/Noの質問をし、あなたが1枚のカードを引きました。
+
+回答フォーマット（約200〜300字、簡潔で力強く）：
+
+## ✦ 神託
+大きく **Yes ✓** または **No ✗** で始めて、1〜2文で核心的な判断根拠を述べてください。
+
+## 🃏 カード解読
+この質問の文脈でこのカードが意味することを簡潔に説明してください。正位置はYes寄り、逆位置はNo寄りですが、カードの意味自体も考慮してください。
+
+## 💡 アドバイス
+具体的なアドバイスを1つ。
+
+ルール：
+- 日本語で回答
+- 口語的で自然な語調
+- 200〜300字に収める`;
+  }
+  // en
+  return `You are "Mystica" — an experienced tarot reader skilled at quick Yes/No judgments.
+
+This is a "Yes/No Reading." The querent asked a Yes/No question and you drew one card.
+
+Response format (about 200-300 words, concise and powerful):
+
+## ✦ Oracle
+Start with a big **Yes ✓** or **No ✗** (based on the card), then 1-2 sentences explaining the core reasoning.
+
+## 🃏 Card Insight
+Briefly explain what this card means in the context of this question. Upright leans Yes, reversed leans No, but consider the card's inherent meaning too. Speak casually, like talking to a friend.
+
+## 💡 Quick Tip
+One specific, actionable suggestion.
+
+Rules:
+- Respond in English
+- Casual, natural tone
+- Keep it 200-300 words total`;
+}
+
+function buildSystemPrompt(locale: Locale, spreadType?: string): string {
+  // 是非占卜使用精簡專屬 prompt
+  if (spreadType === 'yes-no') {
+    return buildYesNoSystemPrompt(locale);
+  }
   if (locale === 'zh-TW') {
     return `你是「Mystica」——一位融合塔羅占卜與心理諮詢的療癒師。你師承歐洲韋特體系，同時深諳榮格心理學的原型理論、依附理論、以及認知行為的框架。你不是那種故弄玄虛的算命師，而更像一位「用塔羅牌當工具的心理師朋友」。
 
@@ -1219,9 +1290,9 @@ Rules:
 /* ── User Prompt i18n 資料 ── */
 
 const SPREAD_NAMES: Record<string, Record<string, string>> = {
-  'zh-TW': { single: '單牌占卜', 'three-card': '三牌占卜（過去／現在／未來）', 'celtic-cross': '凱爾特十字（十牌全面解析）' },
-  en:       { single: 'Single Card Reading', 'three-card': 'Three-Card Spread (Past / Present / Future)', 'celtic-cross': 'Celtic Cross (10-Card Full Analysis)' },
-  ja:       { single: '一枚引き', 'three-card': 'スリーカード（過去／現在／未来）', 'celtic-cross': 'ケルト十字（10枚総合分析）' },
+  'zh-TW': { single: '單牌占卜', 'three-card': '三牌占卜（過去／現在／未來）', 'celtic-cross': '凱爾特十字（十牌全面解析）', 'yes-no': '是非占卜（Yes / No）' },
+  en:       { single: 'Single Card Reading', 'three-card': 'Three-Card Spread (Past / Present / Future)', 'celtic-cross': 'Celtic Cross (10-Card Full Analysis)', 'yes-no': 'Yes / No Reading' },
+  ja:       { single: '一枚引き', 'three-card': 'スリーカード（過去／現在／未来）', 'celtic-cross': 'ケルト十字（10枚総合分析）', 'yes-no': 'イエス・ノー占い' },
 };
 
 const CELTIC_POSITIONS: Record<string, string[]> = {
@@ -1242,13 +1313,21 @@ const SINGLE_POSITIONS: Record<string, string[]> = {
   ja:       ['ガイダンス'],
 };
 
+const YES_NO_POSITIONS: Record<string, string[]> = {
+  'zh-TW': ['神諭'],
+  en:       ['Oracle'],
+  ja:       ['神託'],
+};
+
 function translatePosition(zhPosition: string, locale: string, spreadType: string): string {
   if (locale === 'zh-TW') return zhPosition;
   const zhPositions =
+    spreadType === 'yes-no' ? YES_NO_POSITIONS['zh-TW'] :
     spreadType === 'celtic-cross' ? CELTIC_POSITIONS['zh-TW'] :
     spreadType === 'three-card' ? THREE_POSITIONS['zh-TW'] :
     SINGLE_POSITIONS['zh-TW'];
   const targetPositions =
+    spreadType === 'yes-no' ? YES_NO_POSITIONS[locale] :
     spreadType === 'celtic-cross' ? CELTIC_POSITIONS[locale] :
     spreadType === 'three-card' ? THREE_POSITIONS[locale] :
     SINGLE_POSITIONS[locale];
@@ -1475,7 +1554,7 @@ export const streamTarotReading = onRequest(
       const data = assertInterpretationRequest(req.body);
       const todayContext = getTaipeiNowContext();
       const systemPrompt =
-        buildSystemPrompt(data.locale) +
+        buildSystemPrompt(data.locale, data.spreadType) +
         `\n\n${todayContext}` +
         `\n\n在解讀結束後，請額外用以下格式附上 3 個建議追問，用 HTML 註解包起來：
 <!-- SUGGESTED_QUESTIONS:
@@ -1484,11 +1563,12 @@ export const streamTarotReading = onRequest(
 - 問題三
 -->`;
       const userPrompt = `${todayContext}\n\n${buildUserPrompt(data)}`;
-      await chargeQuestionCredits(uid, `全新占卜：${data.spreadType}`);
+      const creditCost = data.spreadType === 'yes-no' ? YES_NO_CREDIT_COST : QUESTION_CREDIT_COST;
+      await chargeCredits(uid, creditCost, `全新占卜：${data.spreadType}`);
 
       const apiKey = openAIKey.value();
       if (!apiKey) {
-        await refundQuestionCredits(uid, 'API key 未設定退還服務額度');
+        await refundCredits(uid, creditCost, 'API key 未設定退還服務額度');
         res.status(500).json({ error: 'OPENAI_API_KEY 尚未設定' });
         return;
       }
@@ -1512,7 +1592,7 @@ export const streamTarotReading = onRequest(
 
       if (!openaiRes.ok || !openaiRes.body) {
         const body = await openaiRes.text();
-        await refundQuestionCredits(uid, 'AI 解讀失敗退還服務額度');
+        await refundCredits(uid, creditCost, 'AI 解讀失敗退還服務額度');
         res.status(openaiRes.status).json({ error: body });
         return;
       }
@@ -1560,7 +1640,7 @@ export const streamTarotReading = onRequest(
         }
       } catch {
         if (!fullText) {
-          await refundQuestionCredits(uid, 'AI 串流中斷退還服務額度');
+          await refundCredits(uid, creditCost, 'AI 串流中斷退還服務額度');
         }
         res.write(`data: ${JSON.stringify({ error: '串流中斷' })}\n\n`);
         res.end();
@@ -1746,7 +1826,7 @@ export const generateTarotReading = onCall(
     const data = assertInterpretationRequest(request.data);
     const todayContext = getTaipeiNowContext();
     const systemPrompt =
-      buildSystemPrompt(data.locale) +
+      buildSystemPrompt(data.locale, data.spreadType) +
       `\n\n${todayContext}` +
       `\n\n在解讀結束後，請額外用以下格式附上 3 個建議追問，用 HTML 註解包起來：
 <!-- SUGGESTED_QUESTIONS:
@@ -1755,7 +1835,8 @@ export const generateTarotReading = onCall(
 - 問題三
 -->`;
     const userPrompt = `${todayContext}\n\n${buildUserPrompt(data)}`;
-    await chargeQuestionCredits(uid, `全新占卜：${data.spreadType}`);
+    const creditCost = data.spreadType === 'yes-no' ? YES_NO_CREDIT_COST : QUESTION_CREDIT_COST;
+    await chargeCredits(uid, creditCost, `全新占卜：${data.spreadType}`);
 
     try {
       const result = await chat(
@@ -1769,7 +1850,7 @@ export const generateTarotReading = onCall(
 
       return toResponse(result.text, result.usage);
     } catch (error) {
-      await refundQuestionCredits(uid, 'AI 解讀失敗退還服務額度');
+      await refundCredits(uid, creditCost, 'AI 解讀失敗退還服務額度');
       throw error;
     }
   },

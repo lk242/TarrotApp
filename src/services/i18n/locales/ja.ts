@@ -23,6 +23,7 @@ const ja: Locale = {
     subtitle: '古代のタロットの知恵があなたの運命を導きます',
     beginner: '初心者向け',
     deepAnalysis: '深層分析',
+    quickAnswer: 'クイック回答',
   },
 
   reading: {
@@ -242,12 +243,14 @@ const ja: Locale = {
     single: { name: 'シングルカード', description: 'クイックガイダンス、初心者向け' },
     threeCard: { name: 'スリーカード', description: '過去・現在・未来のリーディング' },
     celticCross: { name: 'ケルト十字', description: '10枚のカードで深層分析' },
+    yesNo: { name: 'イエス・ノー', description: '1枚のカードで即答 Yes / No' },
   },
 
   positions: {
     single: ['ガイダンス'],
     threeCard: ['過去', '現在', '未来'],
     celticCross: ['現状', '課題', '潜在意識', '過去', '可能性', '近い未来', '自己', '環境', '希望と恐れ', '最終結果'],
+    yesNo: ['神託'],
   },
 };
 

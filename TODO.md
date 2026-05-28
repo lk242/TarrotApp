@@ -36,13 +36,13 @@
 
 ## Phase 2：中期功能（下週）
 
-### 5. 「是非牌陣」快速占卜
-- [ ] `src/models/spread.ts` 新增 `yes-no` 牌陣定義（單牌，專屬位置名）
-- [ ] 新增專屬 AI prompt（簡短回答 Yes/No + 200 字解析）
-- [ ] 消耗 10 點（低門檻）
-- [ ] 首頁 / 牌陣選擇加入入口
-- [ ] Cloud Functions 新增 `YES_NO_CREDIT_COST = 10`
-- [ ] 三語系 i18n
+### 5. ✅ 「是非牌陣」快速占卜
+- [x] `src/models/spread.ts` 新增 `yes-no` 牌陣定義（單牌，位置名「神諭」）
+- [x] 新增專屬 AI prompt（簡短回答 Yes/No + 200-300 字解析，三語系）
+- [x] 消耗 10 點（低門檻）
+- [x] 首頁 / 牌陣選擇加入入口（綠色「快問快答」標籤）
+- [x] Cloud Functions 新增 `YES_NO_CREDIT_COST = 10` + 退款邏輯
+- [x] 三語系 i18n（zh-TW / en / ja）
 
 ### 6. 占卜日記功能
 - [ ] `Reading` model 新增 `userNotes?: string` 欄位

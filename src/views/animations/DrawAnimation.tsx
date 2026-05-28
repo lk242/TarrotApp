@@ -9,10 +9,11 @@ import { useI18n } from '../../controllers/useI18n';
 import type { SpreadType } from '../../models/spread';
 
 /** SpreadType → positions locale key */
-const SPREAD_POS_KEY: Record<SpreadType, 'single' | 'threeCard' | 'celticCross'> = {
+const SPREAD_POS_KEY: Record<SpreadType, 'single' | 'threeCard' | 'celticCross' | 'yesNo'> = {
   single: 'single',
   'three-card': 'threeCard',
   'celtic-cross': 'celticCross',
+  'yes-no': 'yesNo',
 };
 
 interface Props {

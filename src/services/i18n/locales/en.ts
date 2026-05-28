@@ -23,6 +23,7 @@ const en: Locale = {
     subtitle: 'Let the ancient wisdom of Tarot reveal your destiny',
     beginner: 'Recommended',
     deepAnalysis: 'Deep Analysis',
+    quickAnswer: 'Quick Answer',
   },
 
   reading: {
@@ -242,12 +243,14 @@ const en: Locale = {
     single: { name: 'Single Card', description: 'Quick guidance, perfect for beginners' },
     threeCard: { name: 'Three Cards', description: 'Past, present, and future reading' },
     celticCross: { name: 'Celtic Cross', description: 'Ten-card deep analysis' },
+    yesNo: { name: 'Yes / No', description: 'One card, quick Yes or No answer' },
   },
 
   positions: {
     single: ['Guidance'],
     threeCard: ['Past', 'Present', 'Future'],
     celticCross: ['Present', 'Challenge', 'Subconscious', 'Past', 'Potential', 'Near Future', 'Self', 'Environment', 'Hopes & Fears', 'Outcome'],
+    yesNo: ['Oracle'],
   },
 };
 

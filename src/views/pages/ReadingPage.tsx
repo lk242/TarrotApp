@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { marked } from 'marked';
 import type { SpreadType } from '../../models/spread';
 import { SPREADS } from '../../models/spread';
-import { FOLLOW_UP_CREDIT_COST, QUESTION_CREDIT_COST } from '../../models/credits';
+import { FOLLOW_UP_CREDIT_COST, QUESTION_CREDIT_COST, YES_NO_CREDIT_COST } from '../../models/credits';
 import { useTarotSession } from '../../controllers/useTarotSession';
 import { useAuth } from '../../controllers/useAuth';
 import { useCredits } from '../../controllers/useCredits';
@@ -37,10 +37,11 @@ const TOPIC_KEYS: { key: TopicKey; image: string }[] = [
 ];
 
 /** SpreadType → locale key 對照 */
-const SPREAD_I18N_KEY: Record<SpreadType, 'single' | 'threeCard' | 'celticCross'> = {
+const SPREAD_I18N_KEY: Record<SpreadType, 'single' | 'threeCard' | 'celticCross' | 'yesNo'> = {
   single: 'single',
   'three-card': 'threeCard',
   'celtic-cross': 'celticCross',
+  'yes-no': 'yesNo',
 };
 
 /**
@@ -78,11 +79,12 @@ export default function ReadingPage() {
   const [isCapturing, setIsCapturing] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
   const followUpEndRef = useRef<HTMLDivElement>(null);
-  const canAsk = Boolean(user) && balance >= QUESTION_CREDIT_COST;
+  const readingCost = spreadType === 'yes-no' ? YES_NO_CREDIT_COST : QUESTION_CREDIT_COST;
+  const canAsk = Boolean(user) && balance >= readingCost;
   const canFollowUp = Boolean(user) && balance >= FOLLOW_UP_CREDIT_COST;
   const blockedReason = !user
     ? t.credits.loginRequired
-    : balance < QUESTION_CREDIT_COST
+    : balance < readingCost
       ? t.credits.notEnough
       : '';
 
@@ -149,7 +151,7 @@ export default function ReadingPage() {
             {creditLoading ? t.credits.loadingPoints : t.credits.currentPoints.replace('{points}', String(balance))}
             {', '}
             {t.credits.costSummary
-              .replace('{readingCost}', String(QUESTION_CREDIT_COST))
+              .replace('{readingCost}', String(readingCost))
               .replace('{followUpCost}', String(FOLLOW_UP_CREDIT_COST))}
           </>
         ) : (
@@ -157,7 +159,7 @@ export default function ReadingPage() {
             {t.credits.loginHint}
             {', '}
             {t.credits.costSummary
-              .replace('{readingCost}', String(QUESTION_CREDIT_COST))
+              .replace('{readingCost}', String(readingCost))
               .replace('{followUpCost}', String(FOLLOW_UP_CREDIT_COST))}
           </>
         )}
@@ -173,7 +175,7 @@ export default function ReadingPage() {
             >
               {t.retry}
             </button>
-          ) : !user || balance < QUESTION_CREDIT_COST ? (
+          ) : !user || balance < readingCost ? (
             <Link
               to="/billing"
               className="mt-2 inline-block font-bold text-[var(--color-accent-gold)] no-underline"
@@ -234,7 +236,7 @@ export default function ReadingPage() {
             disabled={!canAsk || creditLoading}
             className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/30 bg-gradient-to-r from-[var(--color-accent-gold)]/20 via-[var(--color-accent-gold)]/10 to-[var(--color-accent-purple)]/20 px-6 py-3.5 text-base font-bold tracking-wider text-[var(--color-accent-gold)] shadow-[var(--shadow-glow)] transition-all hover:border-[var(--color-accent-gold)]/50 hover:shadow-[var(--shadow-card-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            ☉ {t.reading.startButton.replace('{cost}', String(QUESTION_CREDIT_COST))}
+            ☉ {t.reading.startButton.replace('{cost}', String(readingCost))}
           </motion.button>
         </div>
       )}

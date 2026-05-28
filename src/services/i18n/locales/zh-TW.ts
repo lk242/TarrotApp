@@ -24,6 +24,7 @@ const zhTW = {
     subtitle: '讓古老的塔羅智慧，為你揭示命運的指引',
     beginner: '新手推薦',
     deepAnalysis: '深度解析',
+    quickAnswer: '快問快答',
   },
 
   // 占卜頁
@@ -259,6 +260,7 @@ const zhTW = {
     single: { name: '單牌占卜', description: '快速獲得指引，適合新手' },
     threeCard: { name: '三牌占卜', description: '過去、現在、未來的全面解讀' },
     celticCross: { name: '凱爾特十字', description: '十張牌深度解析，全方位洞察' },
+    yesNo: { name: '是非占卜', description: '一張牌快速回答 Yes / No' },
   },
 
   // 牌陣位置名稱
@@ -266,6 +268,7 @@ const zhTW = {
     single: ['指引'],
     threeCard: ['過去', '現在', '未來'],
     celticCross: ['現況', '挑戰', '潛意識', '過去', '可能性', '近未來', '自我', '環境', '希望與恐懼', '最終結果'],
+    yesNo: ['神諭'],
   },
 } as const;
 

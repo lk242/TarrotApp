@@ -204,6 +204,20 @@ export function useHistoryReadings() {
     [balance, lang, refreshCredits, user],
   );
 
+  /** 更新占卜筆記 */
+  const updateNotes = useCallback(
+    async (readingId: string, notes: string) => {
+      // 先更新 UI
+      setReadings((prev) =>
+        prev.map((r) => (r.id === readingId ? { ...r, userNotes: notes } : r)),
+      );
+      // 背景寫入 storage
+      const storage = getStorageProvider(user?.uid);
+      storage.updateReading(readingId, { userNotes: notes }).catch(console.error);
+    },
+    [user],
+  );
+
   return {
     readings,
     loading,
@@ -214,5 +228,6 @@ export function useHistoryReadings() {
     reload: loadReadings,
     deleteReading,
     askFollowUp,
+    updateNotes,
   };
 }

@@ -173,6 +173,9 @@ const ja: Locale = {
     last7Days: '過去7日間',
     topTopic: '人気テーマ',
     topCard: '最頻出カード',
+    notesLabel: '占いノート',
+    notesPlaceholder: '感想やインスピレーション、その後の展開を書き留めましょう...',
+    notesSaved: '保存済み',
   },
 
   billing: {

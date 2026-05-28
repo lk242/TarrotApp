@@ -173,6 +173,9 @@ const en: Locale = {
     last7Days: 'Last 7 Days',
     topTopic: 'Top Topic',
     topCard: 'Top Card',
+    notesLabel: 'Reading Notes',
+    notesPlaceholder: 'Write down your thoughts, insights, or how things unfolded...',
+    notesSaved: 'Saved',
   },
 
   billing: {

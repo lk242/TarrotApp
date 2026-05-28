@@ -187,6 +187,9 @@ const zhTW = {
     last7Days: '近 7 天',
     topTopic: '最常問的主題',
     topCard: '最常出現的牌',
+    notesLabel: '占卜筆記',
+    notesPlaceholder: '寫下你的感想、靈感或後續發展...',
+    notesSaved: '已儲存',
   },
 
   // 解讀服務購買頁

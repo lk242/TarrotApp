@@ -44,12 +44,12 @@
 - [x] Cloud Functions 新增 `YES_NO_CREDIT_COST = 10` + 退款邏輯
 - [x] 三語系 i18n（zh-TW / en / ja）
 
-### 6. 占卜日記功能
-- [ ] `Reading` model 新增 `userNotes?: string` 欄位
-- [ ] HistoryPage 每筆紀錄下方加入「寫筆記」展開區域
-- [ ] Firestore 儲存 / 讀取筆記
-- [ ] 筆記內容可選擇性回饋給下次占卜的 `querentSummary`
-- [ ] 三語系 i18n
+### 6. ✅ 占卜日記功能
+- [x] `Reading` model 新增 `userNotes?: string` 欄位
+- [x] HistoryPage 每筆紀錄下方加入「寫筆記」展開摺疊區域
+- [x] Firestore 儲存 / 讀取筆記（防抖 1.5 秒自動儲存 + 離開自動存）
+- [ ] 筆記內容可選擇性回饋給下次占卜的 `querentSummary` — 後續版本
+- [x] 三語系 i18n（notesLabel / notesPlaceholder / notesSaved）
 
 ### 7. 每日回顧推播
 - [ ] Cloud Functions 定時任務（Cloud Scheduler）：每日早上 9 點觸發

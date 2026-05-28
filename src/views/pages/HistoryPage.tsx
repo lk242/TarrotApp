@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import { marked } from 'marked';
@@ -13,7 +13,7 @@ import CardFace from '../components/tarot/CardFace';
 import InterpretationSections from '../components/tarot/InterpretationSections';
 
 export default function HistoryPage() {
-  const { readings, loading, followingUpId, isStreaming: isHistoryStreaming, suggestedQuestions, error, deleteReading, askFollowUp } = useHistoryReadings();
+  const { readings, loading, followingUpId, isStreaming: isHistoryStreaming, suggestedQuestions, error, deleteReading, askFollowUp, updateNotes } = useHistoryReadings();
   const { balance } = useCredits();
   const { t, lang } = useI18n();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -104,6 +104,7 @@ export default function HistoryPage() {
             }
             onDelete={() => deleteReading(reading.id)}
             onFollowUp={(question, withCard) => askFollowUp(reading, question, withCard)}
+            onUpdateNotes={(notes) => updateNotes(reading.id, notes)}
             isFollowingUp={followingUpId === reading.id}
             isStreaming={isHistoryStreaming && followingUpId === reading.id}
             canFollowUp={balance >= FOLLOW_UP_CREDIT_COST}
@@ -129,6 +130,7 @@ function HistoryCard({
   onToggle,
   onDelete,
   onFollowUp,
+  onUpdateNotes,
   isFollowingUp,
   isStreaming,
   canFollowUp,
@@ -142,6 +144,7 @@ function HistoryCard({
   onToggle: () => void;
   onDelete: () => void;
   onFollowUp: (question: string, withCard?: boolean) => void;
+  onUpdateNotes: (notes: string) => void;
   isFollowingUp: boolean;
   isStreaming: boolean;
   canFollowUp: boolean;
@@ -149,9 +152,12 @@ function HistoryCard({
 }) {
   const [followUpInput, setFollowUpInput] = useState('');
   const [followUpMode, setFollowUpMode] = useState<'card' | 'chat'>('card');
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [notesValue, setNotesValue] = useState(reading.userNotes ?? '');
+  const [notesSaved, setNotesSaved] = useState(false);
   const spread = SPREADS[reading.spreadType];
   // SpreadType → locale key 對照
-  const spreadLocaleKey: Record<string, string> = { single: 'single', 'three-card': 'threeCard', 'celtic-cross': 'celticCross' };
+  const spreadLocaleKey: Record<string, string> = { single: 'single', 'three-card': 'threeCard', 'celtic-cross': 'celticCross', 'yes-no': 'yesNo' };
   const spreadI18nName = (t.spreads as Record<string, { name: string }>)[spreadLocaleKey[reading.spreadType] ?? '']?.name;
   const readingLocale = reading.locale ?? 'zh-TW';
   const isForeignLang = readingLocale !== currentLang;
@@ -265,6 +271,23 @@ function HistoryCard({
           {_interpretationReady && (
             <InterpretationSections markdown={reading.interpretation} animated={false} />
           )}
+
+          {/* 占卜筆記 */}
+          <NotesSection
+            notes={notesValue}
+            expanded={notesExpanded}
+            saved={notesSaved}
+            t={t}
+            onToggle={() => setNotesExpanded(!notesExpanded)}
+            onChange={(val) => {
+              setNotesValue(val);
+              setNotesSaved(false);
+            }}
+            onSave={() => {
+              onUpdateNotes(notesValue);
+              setNotesSaved(true);
+            }}
+          />
 
           {/* 追問紀錄 */}
           {reading.followUps && reading.followUps.length > 0 && (
@@ -401,6 +424,75 @@ function HistoryCard({
         </div>
       )}
     </motion.div>
+  );
+}
+
+/** 占卜筆記區塊 */
+function NotesSection({
+  notes,
+  expanded,
+  saved,
+  t,
+  onToggle,
+  onChange,
+  onSave,
+}: {
+  notes: string;
+  expanded: boolean;
+  saved: boolean;
+  t: import('../../services/i18n').Locale;
+  onToggle: () => void;
+  onChange: (val: string) => void;
+  onSave: () => void;
+}) {
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const historyT = t.history as Record<string, unknown>;
+
+  const handleChange = useCallback(
+    (val: string) => {
+      onChange(val);
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => onSave(), 1500);
+    },
+    [onChange, onSave],
+  );
+
+  return (
+    <div className="mt-5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+      <button
+        onClick={onToggle}
+        className="flex w-full cursor-pointer items-center gap-2 bg-transparent px-4 py-3 text-left text-sm font-medium text-[var(--color-accent-gold)] transition-colors hover:bg-[var(--color-accent-gold)]/5"
+      >
+        <span>📝</span>
+        <span>{historyT.notesLabel as string}</span>
+        {notes && !expanded && (
+          <span className="ml-auto truncate max-w-[200px] text-xs text-[var(--color-text-muted)]">
+            {notes.slice(0, 50)}{notes.length > 50 ? '…' : ''}
+          </span>
+        )}
+        {saved && expanded && (
+          <span className="ml-auto text-xs text-emerald-400">{historyT.notesSaved as string}</span>
+        )}
+        <span
+          className="text-xs text-[var(--color-text-muted)] transition-transform duration-200"
+          style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', marginLeft: saved || (notes && !expanded) ? 0 : 'auto' }}
+        >
+          ▾
+        </span>
+      </button>
+      {expanded && (
+        <div className="border-t border-[var(--color-border)] px-4 py-3 animate-fade-in">
+          <textarea
+            value={notes}
+            onChange={(e) => handleChange(e.target.value)}
+            onBlur={onSave}
+            placeholder={historyT.notesPlaceholder as string}
+            rows={4}
+            className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

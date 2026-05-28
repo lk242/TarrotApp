@@ -26,4 +26,6 @@ export interface Reading {
   querentSummary?: string;
   /** AI 建議的追問方向（初次解讀後產生） */
   suggestedQuestions?: string[];
+  /** 使用者筆記（占卜日記） */
+  userNotes?: string;
 }

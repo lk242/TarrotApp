@@ -26,11 +26,11 @@
 - [x] 舊用戶無摘要時 graceful fallback（不影響現有流程）
 - [x] 不需修改 Cloud Functions（querentSummary 已在 prompt 中使用）
 
-### 4. 占卜結果分享卡片優化
-- [ ] `ReadingShareCard` 加入牌面圖片（目前只有文字摘要）
-- [ ] 重新設計排版：牌面 + 問題 + 解讀摘要 + 品牌 logo
-- [ ] 確保 html2canvas 正確渲染牌面圖片
-- [ ] 測試社群分享預覽（LINE / Facebook OG meta）
+### 4. ✅ 占卜結果分享卡片優化
+- [x] `ReadingShareCard` 加入牌面圖片（目前只有文字摘要）
+- [x] 重新設計排版：牌面 + 問題 + 解讀摘要 + 品牌 logo
+- [x] 確保 html2canvas 正確渲染牌面圖片（inline style + crossOrigin + useCORS）
+- [ ] 測試社群分享預覽（LINE / Facebook OG meta）— 需實際占卜後驗證
 
 ---
 

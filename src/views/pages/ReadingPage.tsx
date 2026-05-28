@@ -514,6 +514,9 @@ export default function ReadingPage() {
                 .trim()
                 .slice(0, 200) + '…'
             }
+            brandName={t.appName}
+            uprightLabel={t.reading.upright}
+            reversedLabel={t.reading.reversed}
           />
 
           {/* 底部操作（串流進行中隱藏） */}

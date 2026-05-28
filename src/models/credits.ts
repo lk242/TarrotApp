@@ -2,6 +2,7 @@ export const WELCOME_CREDITS = 200;
 export const QUESTION_CREDIT_COST = 20;
 export const YES_NO_CREDIT_COST = 10;
 export const FOLLOW_UP_CREDIT_COST = 5;
+export const REFERRAL_REWARD = 50;
 
 export interface CreditProfile {
   userId: string;

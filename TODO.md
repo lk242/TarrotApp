@@ -62,11 +62,12 @@
 
 ## Phase 3：長期方向（規劃中）
 
-### 8. 邀請制 + 社群裂變
-- [ ] `users/{uid}` 新增 `referralCode` 欄位
-- [ ] 邀請連結產生 + 分享 UI
-- [ ] 被邀請者註冊時雙方各得 50 點
-- [ ] Cloud Functions 處理邀請獎勵發放 + 防作弊
+### 8. ✅ 邀請制 + 社群裂變
+- [x] `users/{uid}` 新增 `referralCode` 欄位 + `referralCodes/{code}` 反查索引
+- [x] 邀請連結產生 + 分享 UI（BillingPage 底部區塊）
+- [x] 被邀請者兌換邀請碼時雙方各得 50 點
+- [x] Cloud Functions：getReferralCode + applyReferralCode（含防作弊）
+- [x] 三語系 i18n
 
 ### 9. 塔羅 × 瑪雅跨系統解讀
 - [ ] 占卜時讀取使用者的瑪雅 Kin（若已設定）

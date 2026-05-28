@@ -206,6 +206,14 @@ const en: Locale = {
       monthly_plus: { name: 'Starlight Plan', description: 'About 64 new readings/month, or 256 follow-ups.' },
       monthly_pro: { name: 'Oracle Plan', description: 'About 127 new readings/month, or 510 follow-ups.' },
     },
+    referralTitle: 'Invite Friends, Earn Rewards',
+    referralDesc: 'Share your invite link — both you and your friend get {reward} credits!',
+    referralCode: 'Your Invite Code',
+    referralCopy: 'Copy Invite Link',
+    referralCopied: 'Copied!',
+    referralInput: "Enter a friend's invite code",
+    referralApply: 'Redeem',
+    referralApplied: 'Success! You earned {reward} credits',
   },
 
   about: {

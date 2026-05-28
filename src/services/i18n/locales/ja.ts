@@ -206,6 +206,14 @@ const ja: Locale = {
       monthly_plus: { name: '星辰プラン', description: '月約64回の新規占い、または256回の追加質問。' },
       monthly_pro: { name: '神託プラン', description: '月約127回の新規占い、または510回の追加質問。' },
     },
+    referralTitle: '友達を招待して報酬をゲット',
+    referralDesc: '招待リンクをシェアすると、お互いに {reward} クレジットがもらえます！',
+    referralCode: 'あなたの招待コード',
+    referralCopy: '招待リンクをコピー',
+    referralCopied: 'コピーしました！',
+    referralInput: '友達の招待コードを入力',
+    referralApply: '引き換え',
+    referralApplied: '成功！{reward} クレジットを獲得しました',
   },
 
   about: {

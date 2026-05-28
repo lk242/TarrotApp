@@ -25,6 +25,7 @@ const WELCOME_CREDITS = 200;
 const QUESTION_CREDIT_COST = 20;
 const YES_NO_CREDIT_COST = 10;
 const FOLLOW_UP_CREDIT_COST = 5;
+const REFERRAL_REWARD = 50;
 const APP_BASE_URL = 'https://mystic-tarot-2026.web.app';
 const ECPAY_CHECKOUT_URL = 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5';
 const ECPAY_MERCHANT_ID = '3501280';
@@ -3157,3 +3158,107 @@ export const dailyReadingReview = onSchedule(
     }
   },
 );
+
+// ========== 邀請制 + 社群裂變 ==========
+
+/** 從 uid 生成簡短邀請碼（取前 8 碼大寫） */
+function generateReferralCode(uid: string): string {
+  return uid.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
+}
+
+/**
+ * 取得或生成使用者的邀請碼。
+ * 若 Firestore 尚無 referralCode 欄位，自動生成並寫入。
+ */
+export const getReferralCode = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', '需要登入');
+
+  const userRef = db.doc(`users/${uid}`);
+  const snapshot = await userRef.get();
+  const data = snapshot.data();
+
+  if (data?.referralCode) {
+    return { code: data.referralCode as string };
+  }
+
+  const code = generateReferralCode(uid);
+  await userRef.update({ referralCode: code });
+
+  // 建立反查索引：referralCodes/{code} → uid
+  await db.doc(`referralCodes/${code}`).set({ uid, createdAt: FieldValue.serverTimestamp() });
+
+  return { code };
+});
+
+/**
+ * 兌換邀請碼（新用戶輸入邀請碼後呼叫）。
+ * 雙方各得 REFERRAL_REWARD 點。防重複兌換。
+ */
+export const applyReferralCode = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', '需要登入');
+
+  const code = (request.data?.code as string)?.trim().toUpperCase();
+  if (!code || code.length < 4) {
+    throw new HttpsError('invalid-argument', '無效的邀請碼');
+  }
+
+  const userRef = db.doc(`users/${uid}`);
+  const userData = (await userRef.get()).data();
+
+  // 檢查是否已兌換過邀請碼
+  if (userData?.referredBy) {
+    throw new HttpsError('already-exists', '你已經使用過邀請碼了');
+  }
+
+  // 不能用自己的邀請碼
+  if (userData?.referralCode === code) {
+    throw new HttpsError('invalid-argument', '不能使用自己的邀請碼');
+  }
+
+  // 查找邀請人
+  const codeDoc = await db.doc(`referralCodes/${code}`).get();
+  if (!codeDoc.exists) {
+    throw new HttpsError('not-found', '邀請碼不存在');
+  }
+
+  const referrerUid = codeDoc.data()?.uid as string;
+  if (referrerUid === uid) {
+    throw new HttpsError('invalid-argument', '不能使用自己的邀請碼');
+  }
+
+  const referrerRef = db.doc(`users/${referrerUid}`);
+
+  // 交易式更新：雙方加點
+  await db.runTransaction(async (transaction) => {
+    // 被邀請者
+    transaction.update(userRef, {
+      referredBy: referrerUid,
+      referredByCode: code,
+      balance: FieldValue.increment(REFERRAL_REWARD),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(userRef.collection('creditTransactions').doc(), {
+      amount: REFERRAL_REWARD,
+      type: 'referral' as string,
+      reason: `使用邀請碼 ${code} 獲得獎勵`,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    // 邀請人
+    transaction.update(referrerRef, {
+      balance: FieldValue.increment(REFERRAL_REWARD),
+      referralCount: FieldValue.increment(1),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.create(referrerRef.collection('creditTransactions').doc(), {
+      amount: REFERRAL_REWARD,
+      type: 'referral' as string,
+      reason: `被邀請者加入獎勵（${uid.slice(0, 6)}）`,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { reward: REFERRAL_REWARD };
+});

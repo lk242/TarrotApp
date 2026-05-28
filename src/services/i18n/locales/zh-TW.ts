@@ -221,6 +221,14 @@ const zhTW = {
       monthly_plus: { name: '星辰解讀月方案', description: 'AI 塔羅解讀月方案，每月約 64 次全新占卜，或 256 次追問。' },
       monthly_pro: { name: '神諭解讀月方案', description: 'AI 塔羅解讀月方案，每月約 127 次全新占卜，或 510 次追問。' },
     },
+    referralTitle: '邀請好友，一起獲得獎勵',
+    referralDesc: '分享你的邀請連結，好友註冊後雙方各得 {reward} 服務額度！',
+    referralCode: '你的邀請碼',
+    referralCopy: '複製邀請連結',
+    referralCopied: '已複製！',
+    referralInput: '輸入好友的邀請碼',
+    referralApply: '兌換',
+    referralApplied: '兌換成功！你獲得了 {reward} 服務額度',
   },
 
   // 關於頁

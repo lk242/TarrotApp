@@ -4,6 +4,7 @@ import {
   CREDIT_PACKAGES,
   FOLLOW_UP_CREDIT_COST,
   QUESTION_CREDIT_COST,
+  REFERRAL_REWARD,
   SUBSCRIPTION_PLANS,
   type CreditPackageId,
   type SubscriptionTier,
@@ -12,6 +13,7 @@ import { useAuth } from '../../controllers/useAuth';
 import { useCredits } from '../../controllers/useCredits';
 import { useI18n } from '../../controllers/useI18n';
 import { useExchangeRate } from '../../controllers/useExchangeRate';
+import { useReferral } from '../../controllers/useReferral';
 import {
   createCreditPurchaseCallable,
   createSubscriptionCallable,
@@ -258,7 +260,85 @@ export default function BillingPage() {
             ))}
           </div>
         </section>
+
+        {/* 邀請碼區塊 */}
+        {user && <ReferralSection t={t} />}
       </div>
     </div>
+  );
+}
+
+/** 邀請好友區塊 */
+function ReferralSection({ t }: { t: import('../../services/i18n').Locale }) {
+  const { referralCode, referralLink, loading, applying, error, applied, reward, applyCode, copyLink } = useReferral();
+  const [copied, setCopied] = useState(false);
+  const [inputCode, setInputCode] = useState('');
+  const billingT = t.billing as Record<string, unknown>;
+
+  const handleCopy = async () => {
+    const ok = await copyLink();
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <section className="ornate-card mt-8 rounded-xl p-6">
+      <h2 className="mb-2 text-lg font-bold text-[var(--color-accent-gold)]">
+        ✦ {billingT.referralTitle as string}
+      </h2>
+      <p className="mb-5 text-sm text-[var(--color-text-secondary)]">
+        {(billingT.referralDesc as string).replace('{reward}', String(REFERRAL_REWARD))}
+      </p>
+
+      {/* 我的邀請碼 + 複製 */}
+      <div className="mb-5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
+        <p className="mb-2 text-xs text-[var(--color-text-muted)]">{billingT.referralCode as string}</p>
+        <div className="flex items-center gap-3">
+          <code className="flex-1 rounded bg-[var(--color-bg-primary)] px-3 py-2 text-center text-lg font-bold tracking-[0.3em] text-[var(--color-accent-gold)]">
+            {loading ? '...' : referralCode ?? '—'}
+          </code>
+          <button
+            onClick={handleCopy}
+            disabled={!referralLink}
+            className="cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/10 px-4 py-2 text-sm font-bold text-[var(--color-accent-gold)] transition-all hover:bg-[var(--color-accent-gold)]/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {copied ? (billingT.referralCopied as string) : (billingT.referralCopy as string)}
+          </button>
+        </div>
+      </div>
+
+      {/* 兌換邀請碼 */}
+      {!applied ? (
+        <div>
+          <p className="mb-2 text-xs text-[var(--color-text-muted)]">{billingT.referralInput as string}</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+              maxLength={12}
+              placeholder="XXXXXXXX"
+              className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm tracking-[0.15em] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
+            />
+            <button
+              onClick={() => applyCode(inputCode)}
+              disabled={!inputCode.trim() || applying}
+              className="cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-5 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {applying ? '...' : (billingT.referralApply as string)}
+            </button>
+          </div>
+          {error && (
+            <p className="mt-2 text-xs text-red-400">{error}</p>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-sm font-medium text-emerald-400">
+          ✓ {(billingT.referralApplied as string).replace('{reward}', String(reward))}
+        </div>
+      )}
+    </section>
   );
 }

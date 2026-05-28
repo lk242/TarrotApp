@@ -103,7 +103,7 @@ export default function HistoryPage() {
               setExpandedId(expandedId === reading.id ? null : reading.id)
             }
             onDelete={() => deleteReading(reading.id)}
-            onFollowUp={(question) => askFollowUp(reading, question)}
+            onFollowUp={(question, withCard) => askFollowUp(reading, question, withCard)}
             isFollowingUp={followingUpId === reading.id}
             isStreaming={isHistoryStreaming && followingUpId === reading.id}
             canFollowUp={balance >= FOLLOW_UP_CREDIT_COST}
@@ -141,13 +141,14 @@ function HistoryCard({
   isExpanded: boolean;
   onToggle: () => void;
   onDelete: () => void;
-  onFollowUp: (question: string) => void;
+  onFollowUp: (question: string, withCard?: boolean) => void;
   isFollowingUp: boolean;
   isStreaming: boolean;
   canFollowUp: boolean;
   suggestedQuestions: string[];
 }) {
   const [followUpInput, setFollowUpInput] = useState('');
+  const [followUpMode, setFollowUpMode] = useState<'card' | 'chat'>('card');
   const spread = SPREADS[reading.spreadType];
   // SpreadType → locale key 對照
   const spreadLocaleKey: Record<string, string> = { single: 'single', 'three-card': 'threeCard', 'celtic-cross': 'celticCross' };
@@ -316,6 +317,34 @@ function HistoryCard({
               {t.history.followUpCost.replace('{cost}', String(FOLLOW_UP_CREDIT_COST))}
             </p>
 
+            {/* 模式切換 */}
+            {!isFollowingUp && !isStreaming && (
+              <div className="mb-3 flex justify-center">
+                <div className="inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-0.5">
+                  <button
+                    onClick={() => setFollowUpMode('card')}
+                    className={`cursor-pointer rounded-full px-3 py-1 text-xs font-bold transition-all ${
+                      followUpMode === 'card'
+                        ? 'bg-[var(--color-accent-gold)]/20 text-[var(--color-accent-gold)] shadow-sm'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                    }`}
+                  >
+                    ✦ {t.reading.modeCard}
+                  </button>
+                  <button
+                    onClick={() => setFollowUpMode('chat')}
+                    className={`cursor-pointer rounded-full px-3 py-1 text-xs font-bold transition-all ${
+                      followUpMode === 'chat'
+                        ? 'bg-[var(--color-accent-purple)]/20 text-[var(--color-accent-purple)] shadow-sm'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                    }`}
+                  >
+                    💬 {t.reading.modeChat}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* 建議追問方向 */}
             {suggestedQuestions.length > 0 && !isFollowingUp && !isStreaming && (
               <div className="mb-4 animate-fade-in">
@@ -326,7 +355,7 @@ function HistoryCard({
                   {suggestedQuestions.map((sq, i) => (
                     <button
                       key={i}
-                      onClick={() => onFollowUp(sq)}
+                      onClick={() => onFollowUp(sq, followUpMode === 'card')}
                       disabled={!canFollowUp}
                       className="cursor-pointer rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-xs text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -347,24 +376,24 @@ function HistoryCard({
                   onChange={(event) => setFollowUpInput(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && followUpInput.trim() && canFollowUp) {
-                      onFollowUp(followUpInput.trim());
+                      onFollowUp(followUpInput.trim(), followUpMode === 'card');
                       setFollowUpInput('');
                     }
                   }}
-                  placeholder={t.history.followUpPlaceholder}
+                  placeholder={followUpMode === 'card' ? t.history.followUpPlaceholder : (t.reading.chatPlaceholder ?? t.history.followUpPlaceholder)}
                   className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
                 />
                 <button
                   onClick={() => {
                     if (followUpInput.trim() && canFollowUp) {
-                      onFollowUp(followUpInput.trim());
+                      onFollowUp(followUpInput.trim(), followUpMode === 'card');
                       setFollowUpInput('');
                     }
                   }}
                   disabled={!followUpInput.trim() || !canFollowUp}
                   className="cursor-pointer rounded-lg bg-[var(--color-accent-gold)] px-4 py-2.5 text-sm font-bold text-[var(--color-bg-primary)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {t.history.followUpButton}
+                  {followUpMode === 'card' ? t.history.followUpButton : (t.reading.chatButton ?? t.history.followUpButton)}
                 </button>
               </div>
             )}

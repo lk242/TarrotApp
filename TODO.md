@@ -13,11 +13,11 @@
 - [x] 後端 prompt 依模式分流（有牌 vs 無牌）
 - [x] 三語系 i18n 支援
 
-### 2. 歷史紀錄頁同步支援心靈對話模式
-- [ ] `useHistoryReadings.askFollowUp` 加入 `withCard` 參數
-- [ ] HistoryPage 追問區加入模式切換 UI（與 ReadingPage 一致）
-- [ ] 歷史頁後端 prompt 也需走 chat mode 分支
-- [ ] 三語系 i18n 新增歷史頁 chat mode 文案
+### 2. ✅ 歷史紀錄頁同步支援心靈對話模式
+- [x] `useHistoryReadings.askFollowUp` 加入 `withCard` 參數
+- [x] HistoryPage 追問區加入模式切換 UI（與 ReadingPage 一致）
+- [x] 後端 prompt 已在 TODO #1 中支援 chat mode 分支（共用同一組 Cloud Functions）
+- [x] i18n 共用 ReadingPage 已新增的 key（modeCard / modeChat / chatPlaceholder / chatButton）
 
 ### 3. AI 記憶跨占卜延續
 - [ ] 新增 Firestore `users/{uid}/readingSummaries` 子集合，存最近 5 次占卜摘要

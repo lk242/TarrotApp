@@ -71,7 +71,7 @@ export function useHistoryReadings() {
   );
 
   const askFollowUp = useCallback(
-    async (reading: Reading, followUpQuestion: string) => {
+    async (reading: Reading, followUpQuestion: string, withCard = true) => {
       if (!user) {
         setError('請先登入後再追問紀錄。');
         return;
@@ -93,7 +93,7 @@ export function useHistoryReadings() {
       setSuggestedQuestions([]);
 
       try {
-        const extraCard = drawExtraCard(collectUsedCardIds(reading));
+        const extraCard = withCard ? drawExtraCard(collectUsedCardIds(reading)) : undefined;
         const originalRequest: AIInterpretationRequest = {
           spreadType: reading.spreadType,
           drawnCards: reading.drawnCards,
@@ -106,16 +106,18 @@ export function useHistoryReadings() {
           originalRequest,
           originalInterpretation: buildFollowUpContext(reading),
           followUpQuestion,
-          followUpCard: {
-            card: {
-              name: extraCard.card.name,
-              nameEn: extraCard.card.nameEn,
-              keywords: extraCard.card.keywords,
-              reversedKeywords: extraCard.card.reversedKeywords,
+          ...(extraCard ? {
+            followUpCard: {
+              card: {
+                name: extraCard.card.name,
+                nameEn: extraCard.card.nameEn,
+                keywords: extraCard.card.keywords,
+                reversedKeywords: extraCard.card.reversedKeywords,
+              },
+              isReversed: extraCard.isReversed,
+              position: extraCard.position,
             },
-            isReversed: extraCard.isReversed,
-            position: extraCard.position,
-          },
+          } : {}),
           locale: lang,
         };
 
@@ -126,7 +128,7 @@ export function useHistoryReadings() {
           const streamingEntry: FollowUpEntry = {
             question: followUpQuestion,
             answer: '',
-            drawnCard: extraCard,
+            ...(extraCard ? { drawnCard: extraCard } : {}),
           };
 
           // 先把暫存 entry 加到 UI
@@ -168,7 +170,7 @@ export function useHistoryReadings() {
         const newEntry: FollowUpEntry = {
           question: followUpQuestion,
           answer: result.interpretation,
-          drawnCard: extraCard,
+          ...(extraCard ? { drawnCard: extraCard } : {}),
           suggestedQuestions: newSuggestedQuestions,
         };
 

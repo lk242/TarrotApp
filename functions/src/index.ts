@@ -1084,6 +1084,136 @@ function assertFollowUpRequest(data: unknown): AIFollowUpRequest {
   };
 }
 
+// ── 瑪雅曆資料（跨系統解讀用） ──────────────────────────
+
+const MAYA_SEAL_NAMES: Record<number, { zh: string; en: string; ja: string }> = {
+  1:  { zh: '紅龍',     en: 'Red Dragon',          ja: '赤い竜' },
+  2:  { zh: '白風',     en: 'White Wind',           ja: '白い風' },
+  3:  { zh: '藍夜',     en: 'Blue Night',           ja: '青い夜' },
+  4:  { zh: '黃種子',   en: 'Yellow Seed',          ja: '黄色い種' },
+  5:  { zh: '紅蛇',     en: 'Red Serpent',          ja: '赤い蛇' },
+  6:  { zh: '白世界橋', en: 'White World-Bridger',  ja: '白い世界の橋渡し' },
+  7:  { zh: '藍手',     en: 'Blue Hand',            ja: '青い手' },
+  8:  { zh: '黃星星',   en: 'Yellow Star',          ja: '黄色い星' },
+  9:  { zh: '紅月',     en: 'Red Moon',             ja: '赤い月' },
+  10: { zh: '白狗',     en: 'White Dog',            ja: '白い犬' },
+  11: { zh: '藍猴',     en: 'Blue Monkey',          ja: '青い猿' },
+  12: { zh: '黃人',     en: 'Yellow Human',         ja: '黄色い人' },
+  13: { zh: '紅天行者', en: 'Red Skywalker',        ja: '赤い空歩く者' },
+  14: { zh: '白巫師',   en: 'White Wizard',         ja: '白い魔法使い' },
+  15: { zh: '藍鷹',     en: 'Blue Eagle',           ja: '青い鷲' },
+  16: { zh: '黃戰士',   en: 'Yellow Warrior',       ja: '黄色い戦士' },
+  17: { zh: '紅地球',   en: 'Red Earth',            ja: '赤い地球' },
+  18: { zh: '白鏡',     en: 'White Mirror',         ja: '白い鏡' },
+  19: { zh: '藍風暴',   en: 'Blue Storm',           ja: '青い嵐' },
+  20: { zh: '黃太陽',   en: 'Yellow Sun',           ja: '黄色い太陽' },
+};
+
+const MAYA_TONE_NAMES: Record<number, { zh: string; en: string; ja: string }> = {
+  1:  { zh: '磁性',     en: 'Magnetic',      ja: '磁気の' },
+  2:  { zh: '月亮',     en: 'Lunar',          ja: '月の' },
+  3:  { zh: '電力',     en: 'Electric',       ja: '電気の' },
+  4:  { zh: '自我存在', en: 'Self-Existing',  ja: '自己存在の' },
+  5:  { zh: '超頻',     en: 'Overtone',       ja: '倍音の' },
+  6:  { zh: '韻律',     en: 'Rhythmic',       ja: '律動の' },
+  7:  { zh: '共鳴',     en: 'Resonant',       ja: '共振の' },
+  8:  { zh: '銀河星系', en: 'Galactic',       ja: '銀河の' },
+  9:  { zh: '太陽',     en: 'Solar',          ja: '太陽の' },
+  10: { zh: '行星',     en: 'Planetary',      ja: '惑星の' },
+  11: { zh: '光譜',     en: 'Spectral',       ja: 'スペクトルの' },
+  12: { zh: '水晶',     en: 'Crystal',        ja: '水晶の' },
+  13: { zh: '宇宙',     en: 'Cosmic',         ja: '宇宙の' },
+};
+
+const MAYA_SEAL_KEYWORDS: Record<number, { zh: string[]; en: string[] }> = {
+  1:  { zh: ['誕生', '滋養', '存在'],       en: ['Birth', 'Nurtures', 'Being'] },
+  2:  { zh: ['精神', '溝通', '呼吸'],       en: ['Spirit', 'Communicates', 'Breath'] },
+  3:  { zh: ['豐盛', '夢想', '直覺'],       en: ['Abundance', 'Dreams', 'Intuition'] },
+  4:  { zh: ['開花', '目標', '覺察'],       en: ['Flowering', 'Targets', 'Awareness'] },
+  5:  { zh: ['生命力', '本能', '生存'],     en: ['Life Force', 'Instinct', 'Survival'] },
+  6:  { zh: ['死亡', '等化', '機會'],       en: ['Death', 'Equalizes', 'Opportunity'] },
+  7:  { zh: ['完成', '知曉', '療癒'],       en: ['Accomplishment', 'Knows', 'Healing'] },
+  8:  { zh: ['優雅', '藝術', '美'],         en: ['Elegance', 'Art', 'Beauty'] },
+  9:  { zh: ['淨化', '流動', '宇宙之水'],   en: ['Purifies', 'Flow', 'Universal Water'] },
+  10: { zh: ['愛', '忠誠', '心'],           en: ['Love', 'Loyalty', 'Heart'] },
+  11: { zh: ['魔法', '幻象', '遊戲'],       en: ['Magic', 'Illusion', 'Play'] },
+  12: { zh: ['自由意志', '智慧', '影響'],   en: ['Free Will', 'Wisdom', 'Influence'] },
+  13: { zh: ['空間', '探索', '覺醒'],       en: ['Space', 'Explores', 'Wakefulness'] },
+  14: { zh: ['永恆', '魅力', '接受'],       en: ['Timelessness', 'Enchants', 'Receptivity'] },
+  15: { zh: ['視野', '創造', '心智'],       en: ['Vision', 'Creates', 'Mind'] },
+  16: { zh: ['智能', '勇氣', '提問'],       en: ['Intelligence', 'Fearlessness', 'Questioning'] },
+  17: { zh: ['進化', '導航', '同步'],       en: ['Evolution', 'Navigation', 'Synchronicity'] },
+  18: { zh: ['無限', '秩序', '反射'],       en: ['Endlessness', 'Order', 'Reflects'] },
+  19: { zh: ['催化', '能量', '自我轉化'],   en: ['Catalyzes', 'Energy', 'Self-Generation'] },
+  20: { zh: ['啟蒙', '生命', '宇宙之火'],   en: ['Enlightens', 'Life', 'Universal Fire'] },
+};
+
+interface MayaProfileData {
+  kin: number;
+  signature: {
+    kin: number;
+    seal: number;
+    tone: number;
+    guide: number;
+    support: number;
+    challenge: number;
+    hidden: number;
+    color: string;
+    wavespell: number;
+    wavespellSeal: number;
+  };
+  birthDate: string;
+}
+
+/**
+ * 從 Firestore 讀取使用者的瑪雅檔案，建構跨系統解讀脈絡。
+ * 若無瑪雅資料則回傳空字串，不影響原有流程。
+ */
+async function buildMayaContext(uid: string, locale: Locale): Promise<string> {
+  try {
+    const userDoc = await db.collection('users').doc(uid).get();
+    const profile = userDoc.data()?.mayaProfile as MayaProfileData | undefined;
+    if (!profile?.signature) return '';
+
+    const { signature } = profile;
+    const lang = locale === 'en' ? 'en' : locale === 'ja' ? 'ja' : 'zh';
+    const sealName = MAYA_SEAL_NAMES[signature.seal]?.[lang] ?? `Seal ${signature.seal}`;
+    const toneName = MAYA_TONE_NAMES[signature.tone]?.[lang] ?? `Tone ${signature.tone}`;
+    const guideName = MAYA_SEAL_NAMES[signature.guide]?.[lang] ?? '';
+    const supportName = MAYA_SEAL_NAMES[signature.support]?.[lang] ?? '';
+    const challengeName = MAYA_SEAL_NAMES[signature.challenge]?.[lang] ?? '';
+    const hiddenName = MAYA_SEAL_NAMES[signature.hidden]?.[lang] ?? '';
+    const keywords = MAYA_SEAL_KEYWORDS[signature.seal]?.[locale === 'en' ? 'en' : 'zh']?.join('、') ?? '';
+
+    if (locale === 'en') {
+      return `\n\n**Querent's Mayan Galactic Signature (Dreamspell):**
+Kin ${signature.kin} — ${toneName} ${sealName}
+Core energy keywords: ${keywords}
+Five directions: Guide=${MAYA_SEAL_NAMES[signature.guide]?.en ?? ''}, Support=${MAYA_SEAL_NAMES[signature.support]?.en ?? ''}, Challenge=${MAYA_SEAL_NAMES[signature.challenge]?.en ?? ''}, Hidden=${MAYA_SEAL_NAMES[signature.hidden]?.en ?? ''}
+(Subtly weave the querent's Mayan energy archetype into your Tarot interpretation — for example, how their innate ${sealName} energy interacts with the cards drawn. Do NOT lecture about Mayan calendar theory; just let it color your psychological insight naturally, as if you sense a deeper layer of their soul pattern.)`;
+    }
+
+    if (locale === 'ja') {
+      return `\n\n**相談者のマヤ銀河の署名（ドリームスペル）：**
+Kin ${signature.kin} — ${toneName}${sealName}
+エネルギーキーワード：${keywords}
+五方位：引導=${guideName}、支持=${supportName}、挑戦=${challengeName}、隠された=${hiddenName}
+（相談者のマヤのエネルギー原型をタロット解読に自然に織り込んでください。例えば、${sealName}の本質的なエネルギーが引いたカードとどう共鳴するか。マヤ暦の理論を説明する必要はありません。心理的洞察に自然に反映させ、魂のより深い層を感じ取るように。）`;
+    }
+
+    // zh-TW
+    return `\n\n**問卜者的瑪雅星系印記（13月亮曆）：**
+Kin ${signature.kin} — ${toneName}${sealName}
+核心能量關鍵字：${keywords}
+五方位：引導=${guideName}、支持=${supportName}、挑戰=${challengeName}、隱藏=${hiddenName}
+（請將問卜者的瑪雅能量原型自然融入塔羅解讀中——例如，他們與生俱來的${sealName}能量如何與抽到的牌產生共鳴或張力。不需要講解瑪雅曆理論，只要讓它自然地為你的心理學洞察增添一層更深的靈魂維度，彷彿你感應到了他們更深層的生命藍圖。）`;
+  } catch (error) {
+    // 瑪雅資料讀取失敗不應影響占卜流程
+    console.warn('讀取瑪雅檔案失敗（不影響占卜）:', error);
+    return '';
+  }
+}
+
 function buildYesNoSystemPrompt(locale: Locale): string {
   if (locale === 'zh-TW') {
     return `你是「Mystica」——一位經驗豐富的塔羅占卜師，擅長快速是非判斷。
@@ -1556,6 +1686,7 @@ export const streamTarotReading = onRequest(
       checkRateLimit(uid);
       const data = assertInterpretationRequest(req.body);
       const todayContext = getTaipeiNowContext();
+      const mayaContext = await buildMayaContext(uid, data.locale);
       const systemPrompt =
         buildSystemPrompt(data.locale, data.spreadType) +
         `\n\n${todayContext}` +
@@ -1565,7 +1696,7 @@ export const streamTarotReading = onRequest(
 - 問題二
 - 問題三
 -->`;
-      const userPrompt = `${todayContext}\n\n${buildUserPrompt(data)}`;
+      const userPrompt = `${todayContext}\n\n${buildUserPrompt(data)}${mayaContext}`;
       const creditCost = data.spreadType === 'yes-no' ? YES_NO_CREDIT_COST : QUESTION_CREDIT_COST;
       await chargeCredits(uid, creditCost, `全新占卜：${data.spreadType}`);
 
@@ -1684,10 +1815,12 @@ export const streamFollowUpReading = onRequest(
       const locale = data.locale ?? 'zh-TW';
       const followUpCard = data.followUpCard;
       const todayContext = getTaipeiNowContext();
+      const mayaContext = await buildMayaContext(uid, locale);
 
-      const { systemPrompt, userPrompt } = buildFollowUpPrompts(
+      const { systemPrompt, userPrompt: baseUserPrompt } = buildFollowUpPrompts(
         data, followUpCard, todayContext, locale,
       );
+      const userPrompt = `${baseUserPrompt}${mayaContext}`;
 
       await chargeFollowUpCredits(uid, '占卜追問');
 
@@ -1828,6 +1961,7 @@ export const generateTarotReading = onCall(
     checkRateLimit(uid);
     const data = assertInterpretationRequest(request.data);
     const todayContext = getTaipeiNowContext();
+    const mayaContext = await buildMayaContext(uid, data.locale);
     const systemPrompt =
       buildSystemPrompt(data.locale, data.spreadType) +
       `\n\n${todayContext}` +
@@ -1837,7 +1971,7 @@ export const generateTarotReading = onCall(
 - 問題二
 - 問題三
 -->`;
-    const userPrompt = `${todayContext}\n\n${buildUserPrompt(data)}`;
+    const userPrompt = `${todayContext}\n\n${buildUserPrompt(data)}${mayaContext}`;
     const creditCost = data.spreadType === 'yes-no' ? YES_NO_CREDIT_COST : QUESTION_CREDIT_COST;
     await chargeCredits(uid, creditCost, `全新占卜：${data.spreadType}`);
 
@@ -1872,10 +2006,12 @@ export const followUpReading = onCall(
     // 追問新牌描述（locale-aware）
     const followUpCard = data.followUpCard;
     const todayContext = getTaipeiNowContext();
+    const mayaContext = await buildMayaContext(uid, locale);
 
-    const { systemPrompt, userPrompt } = buildFollowUpPrompts(
+    const { systemPrompt, userPrompt: baseUserPrompt } = buildFollowUpPrompts(
       data, followUpCard, todayContext, locale,
     );
+    const userPrompt = `${baseUserPrompt}${mayaContext}`;
 
     await chargeFollowUpCredits(uid, '占卜追問');
 

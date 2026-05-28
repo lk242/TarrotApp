@@ -69,10 +69,13 @@
 - [x] Cloud Functions：getReferralCode + applyReferralCode（含防作弊）
 - [x] 三語系 i18n
 
-### 9. 塔羅 × 瑪雅跨系統解讀
-- [ ] 占卜時讀取使用者的瑪雅 Kin（若已設定）
-- [ ] AI prompt 融合瑪雅圖騰能量 + 塔羅牌義
-- [ ] 需 maya-app 和 tarot-app 共用 Firestore 資料
+### 9. ✅ 塔羅 × 瑪雅跨系統解讀
+- [x] Cloud Functions 讀取 `users/{uid}.mayaProfile`（瑪雅 app 存的 Firestore 資料）
+- [x] 若有瑪雅資料，自動注入 AI prompt：Kin 編號、圖騰、調性、五方位、關鍵字
+- [x] AI 自然融合瑪雅能量原型 + 塔羅牌義（不說教，作為心理學洞察的深層維度）
+- [x] 四個端點全覆蓋：streamTarotReading / generateTarotReading / streamFollowUpReading / followUpReading
+- [x] 三語系 prompt 指引（zh-TW / en / ja）
+- [x] 無瑪雅資料時 graceful fallback（回傳空字串，不影響原流程）
 
 ### 10. ✅ 首頁引導優化 / 免費體驗流程
 - [x] 未登入用戶可進行免費抽牌體驗（洗牌/切牌/抽牌動畫完整播放）

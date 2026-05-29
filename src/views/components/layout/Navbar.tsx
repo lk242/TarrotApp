@@ -30,7 +30,10 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)]/90 backdrop-blur-md">
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--color-border)] backdrop-blur-md"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--color-bg-primary) 92%, transparent)', transition: 'background-color 0.25s, border-color 0.25s' }}
+      >
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <Link to="/" className="group flex items-center gap-2 text-[var(--color-accent-gold)] no-underline">
             <img src={`/images/theme/${theme}/logo.png`} alt="" className="h-8 w-8 transition-transform group-hover:scale-110" />
@@ -144,7 +147,7 @@ export default function Navbar() {
 
         {/* 手機端選單 */}
         {open && (
-          <div className="border-t border-[var(--color-border)] bg-[var(--color-bg-primary)] px-6 py-3 md:hidden">
+          <div className="border-t border-[var(--color-border)] px-6 py-3 md:hidden" style={{ backgroundColor: 'var(--color-bg-primary)', transition: 'background-color 0.25s' }}>
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.path}

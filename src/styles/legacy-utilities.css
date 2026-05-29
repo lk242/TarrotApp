@@ -116,8 +116,8 @@
 [class~="border-[var(--color-border)]"] { border-color: var(--color-border); }
 [class~="border-[var(--color-border-ornate)]"] { border-color: var(--color-border-ornate); }
 [class~="border-[var(--color-accent-gold)]"] { border-color: var(--color-accent-gold); }
-[class~="bg-[var(--color-bg-primary)]"],
-[class~="bg-[var(--color-bg-primary)]/90"] { background-color: rgba(240, 238, 245, 0.9); }
+[class~="bg-[var(--color-bg-primary)]"] { background-color: var(--color-bg-primary); transition: background-color 0.25s; }
+[class~="bg-[var(--color-bg-primary)]/90"] { background-color: color-mix(in srgb, var(--color-bg-primary) 90%, transparent); transition: background-color 0.25s; }
 [class~="bg-[var(--color-bg-card)]"] { background-color: var(--color-bg-card); }
 [class~="bg-[var(--color-bg-secondary)]"] { background-color: var(--color-bg-secondary); }
 [class~="bg-[var(--color-bg-parchment)]"] { background-color: var(--color-bg-parchment); }

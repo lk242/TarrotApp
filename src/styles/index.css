@@ -15,7 +15,7 @@ body {
   color: var(--color-text-primary);
   font-family: 'Noto Serif TC', 'Georgia', 'Palatino Linotype', serif;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.4s ease, color 0.3s ease;
+  transition: background-color 0.25s ease, color 0.2s ease;
 }
 
 /* 背景紋理 */

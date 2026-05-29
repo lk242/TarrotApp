@@ -173,17 +173,35 @@ function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]
           <div className="mb-10" />
           {/* 新手推薦 / 深度解析標籤 */}
           {spread.type === 'single' && (
-            <span className="mb-2 inline-block rounded-full bg-[var(--color-accent-gold)]/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-[var(--color-accent-gold)]">
+            <span
+              className="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider"
+              style={{
+                backgroundColor: theme === 'light' ? 'rgba(139,110,192,0.18)' : 'rgba(201,168,76,0.2)',
+                color: theme === 'light' ? '#6d4ec0' : 'var(--color-accent-gold)',
+              }}
+            >
               {t.home.beginner}
             </span>
           )}
           {spread.type === 'celtic-cross' && (
-            <span className="mb-2 inline-block rounded-full bg-[var(--color-accent-purple)]/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-[var(--color-accent-purple-light)]">
+            <span
+              className="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider"
+              style={{
+                backgroundColor: theme === 'light' ? 'rgba(99,102,241,0.15)' : 'rgba(123,94,167,0.2)',
+                color: theme === 'light' ? '#4f46e5' : 'var(--color-accent-purple-light)',
+              }}
+            >
               {t.home.deepAnalysis}
             </span>
           )}
           {spread.type === 'yes-no' && (
-            <span className="mb-2 inline-block rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-emerald-400">
+            <span
+              className="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider"
+              style={{
+                backgroundColor: theme === 'light' ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.2)',
+                color: theme === 'light' ? '#059669' : '#34d399',
+              }}
+            >
               {t.home.quickAnswer}
             </span>
           )}

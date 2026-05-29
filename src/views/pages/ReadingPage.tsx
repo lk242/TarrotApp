@@ -20,6 +20,7 @@ import CelticCrossLayout from '../components/tarot/CelticCrossLayout';
 import InterpretationSections from '../components/tarot/InterpretationSections';
 import ReadingShareCard from '../components/tarot/ReadingShareCard';
 import PushPrompt from '../components/notification/PushPrompt';
+import AutoGrowTextarea from '../components/ui/AutoGrowTextarea';
 import { usePushNotification } from '../../controllers/usePushNotification';
 import { useI18n } from '../../controllers/useI18n';
 import { useTheme } from '../../controllers/useTheme';
@@ -215,12 +216,14 @@ export default function ReadingPage() {
           </div>
 
           {/* 自由輸入 */}
-          <textarea
+          <AutoGrowTextarea
             value={question}
-            onChange={(e) => { setQuestion(e.target.value); onTypingStart(); }}
+            onChange={(v) => { setQuestion(v); onTypingStart(); }}
             placeholder={t.reading.inputPlaceholder}
+            maxLength={500}
+            minRows={2}
+            maxRows={6}
             className="mb-5 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
-            rows={2}
           />
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -521,19 +524,21 @@ export default function ReadingPage() {
               )}
 
               {/* 自由追問輸入 */}
-              <div className="flex w-full gap-2">
-                <input
-                  type="text"
+              <div className="flex w-full items-end gap-2">
+                <AutoGrowTextarea
                   value={followUpInput}
-                  onChange={(e) => setFollowUpInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && followUpInput.trim() && canFollowUp) {
+                  onChange={setFollowUpInput}
+                  onSubmit={() => {
+                    if (followUpInput.trim() && canFollowUp) {
                       askFollowUp(followUpInput.trim(), followUpMode === 'card');
                       setFollowUpInput('');
                     }
                   }}
                   placeholder={followUpMode === 'card' ? t.reading.followUpPlaceholder : t.reading.chatPlaceholder}
-                  className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
+                  maxLength={300}
+                  minRows={1}
+                  maxRows={4}
+                  className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
                 />
                 <button
                   onClick={() => {

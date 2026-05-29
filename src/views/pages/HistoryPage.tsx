@@ -11,6 +11,7 @@ import { useI18n } from '../../controllers/useI18n';
 import { stripFollowUpCardHeading } from '../../utils/follow-up';
 import CardFace from '../components/tarot/CardFace';
 import InterpretationSections from '../components/tarot/InterpretationSections';
+import AutoGrowTextarea from '../components/ui/AutoGrowTextarea';
 
 export default function HistoryPage() {
   const { readings, loading, followingUpId, isStreaming: isHistoryStreaming, suggestedQuestions, error, deleteReading, askFollowUp, updateNotes } = useHistoryReadings();
@@ -392,18 +393,20 @@ function HistoryCard({
             {isFollowingUp ? (
               <MysticProgress title={t.history.followUpLoading} />
             ) : (
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <input
-                  type="text"
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <AutoGrowTextarea
                   value={followUpInput}
-                  onChange={(event) => setFollowUpInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && followUpInput.trim() && canFollowUp) {
+                  onChange={setFollowUpInput}
+                  onSubmit={() => {
+                    if (followUpInput.trim() && canFollowUp) {
                       onFollowUp(followUpInput.trim(), followUpMode === 'card');
                       setFollowUpInput('');
                     }
                   }}
                   placeholder={followUpMode === 'card' ? t.history.followUpPlaceholder : (t.reading.chatPlaceholder ?? t.history.followUpPlaceholder)}
+                  maxLength={300}
+                  minRows={1}
+                  maxRows={4}
                   className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
                 />
                 <button

@@ -94,14 +94,40 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* 主題切換 */}
+            {/* 主題切換 — iOS 風格 toggle */}
             <button
               onClick={toggleTheme}
-              className="cursor-pointer rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-gold)]/40 hover:text-[var(--color-text-secondary)]"
+              className="relative cursor-pointer rounded-full border-none outline-none"
               aria-label="切換深淺主題"
               title={theme === 'light' ? '切換深色模式' : '切換淺色模式'}
+              style={{
+                width: 44,
+                height: 24,
+                backgroundColor: theme === 'dark' ? '#6d5a99' : '#d4d0e0',
+                transition: 'background-color 0.25s',
+                flexShrink: 0,
+              }}
             >
-              {theme === 'light' ? '🌙' : '☀️'}
+              {/* 滑動圓球 */}
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  left: theme === 'dark' ? 22 : 2,
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  backgroundColor: '#fff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 11,
+                }}
+              >
+                {theme === 'light' ? '☀️' : '🌙'}
+              </span>
             </button>
 
             {/* 登入/使用者：桌面端直接顯示頭像與{t.nav.logout}；手機端在下方抽屜顯示。 */}

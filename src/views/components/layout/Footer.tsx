@@ -1,13 +1,15 @@
 import { useI18n } from '../../../controllers/useI18n';
+import { useTheme } from '../../../controllers/useTheme';
 
 export default function Footer() {
   const { t } = useI18n();
+  const { theme, themeImageBase } = useTheme();
+  const ext = theme === 'light' ? 'png' : 'webp';
 
   return (
     <footer className="mt-auto border-t border-[var(--color-border)] py-8 text-center">
-      {/* 煉金術裝飾分隔圖 */}
       <img
-        src="/images/theme/divider.webp"
+        src={`${themeImageBase}/divider.${ext}`}
         alt=""
         className="mx-auto mb-4 h-5 w-auto opacity-40"
       />
@@ -18,7 +20,7 @@ export default function Footer() {
         {t.footer.tagline}
       </p>
       <p className="mt-3 text-xs tracking-wide text-[var(--color-text-muted)]">
-        客服聯絡：lukewolf899@gmail.com
+        {(t.footer as Record<string, string>).contact}
       </p>
     </footer>
   );

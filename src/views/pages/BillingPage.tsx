@@ -163,17 +163,10 @@ export default function BillingPage() {
         )}
 
         <section className="ornate-card mb-8 rounded-xl p-5 text-sm leading-7 text-[var(--color-text-secondary)]">
-          <h2 className="mb-3 text-lg font-bold text-[var(--color-text-primary)]">AI 塔羅解讀服務說明</h2>
-          <p>
-            本頁銷售內容為「神秘塔羅」線上 AI 塔羅解讀服務額度，可用於啟動全新牌陣解讀與同一輪解讀後的延伸追問服務。
-            服務額度僅限本站帳戶本人於本站使用，不具貨幣價值，不得轉讓、兌換現金或用於其他平台商品交易。
-          </p>
-          <p className="mt-2">
-            服務提供方式：付款完成後，系統會自動將可使用的解讀服務額度加入會員帳戶，使用者可在本站輸入問題、抽牌並取得 AI 產生的塔羅文字解讀。
-          </p>
-          <p className="mt-2 font-medium text-[var(--color-accent-gold)]">
-            客服聯絡 Email：lukewolf899@gmail.com
-          </p>
+          <h2 className="mb-3 text-lg font-bold text-[var(--color-text-primary)]">{(t as Record<string, any>).serviceInfo?.billingTitle}</h2>
+          <p>{(t as Record<string, any>).serviceInfo?.billingDesc}</p>
+          <p className="mt-2">{(t as Record<string, any>).serviceInfo?.billingHow}</p>
+          <p className="mt-2 font-medium text-[var(--color-accent-gold)]">{(t as Record<string, any>).serviceInfo?.contactEmail}</p>
         </section>
 
         <section className="mb-10">

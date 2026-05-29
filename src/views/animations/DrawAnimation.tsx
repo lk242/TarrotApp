@@ -83,6 +83,8 @@ function DesktopFan({
   t: Locale;
 }) {
   const [picked, setPicked] = useState<Set<number>>(new Set());
+  /** 正在飛起的牌 index → 動畫階段 */
+  const [flying, setFlying] = useState<Map<number, 'rising' | 'exiting'>>(new Map());
   const [revealCount, setRevealCount] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [particlePos, setParticlePos] = useState<{ x: number; y: number } | null>(null);
@@ -118,29 +120,40 @@ function DesktopFan({
 
   const handlePick = useCallback(
     (fanIndex: number, e: React.MouseEvent) => {
-      if (picked.has(fanIndex) || revealCount >= totalNeeded) return;
+      if (picked.has(fanIndex) || flying.has(fanIndex) || revealCount >= totalNeeded) return;
 
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
       setParticlePos({ x: rect.left + rect.width / 2, y: rect.top });
       setTimeout(() => setParticlePos(null), 800);
 
-      // 讓附近的牌也消失
-      // 消失範圍代表使用者已從牌陣中抽出一張牌，視覺上要留下被抽走的空隙。
-      const newPicked = new Set(picked);
-      for (let d = -2; d <= 2; d++) {
-        const n = fanIndex + d;
-        if (n >= 0 && n < FAN_TOTAL) newPicked.add(n);
-      }
-      setPicked(newPicked);
+      // 階段 1：牌先往上飛起（rising）
+      setFlying((prev) => new Map(prev).set(fanIndex, 'rising'));
 
-      const newCount = revealCount + 1;
-      setRevealCount(newCount);
+      // 階段 2：飛到頂部後縮小消失（exiting）+ 附近牌留出空隙
+      setTimeout(() => {
+        setFlying((prev) => new Map(prev).set(fanIndex, 'exiting'));
 
-      if (newCount >= totalNeeded) {
-        setTimeout(onAllPicked, 600);
-      }
+        // 附近牌留出被抽走的空隙
+        const newPicked = new Set(picked);
+        for (let d = -2; d <= 2; d++) {
+          const n = fanIndex + d;
+          if (n >= 0 && n < FAN_TOTAL) newPicked.add(n);
+        }
+        setPicked(newPicked);
+
+        const newCount = revealCount + 1;
+        setRevealCount(newCount);
+
+        // 階段 3：完全消失後清除飛行狀態
+        setTimeout(() => {
+          setFlying((prev) => { const m = new Map(prev); m.delete(fanIndex); return m; });
+          if (newCount >= totalNeeded) {
+            setTimeout(onAllPicked, 400);
+          }
+        }, 350);
+      }, 450);
     },
-    [picked, revealCount, totalNeeded, onAllPicked],
+    [picked, flying, revealCount, totalNeeded, onAllPicked],
   );
 
   return (
@@ -166,6 +179,50 @@ function DesktopFan({
           const x = bottomX - cardW / 2;
           const y = bottomY - cardH;
 
+          const flyState = flying.get(i);
+          const isFlying = !!flyState;
+
+          // 飛起動畫的 transform
+          let cardTransform: string;
+          let cardOpacity: number;
+          let cardFilter: string;
+          let cardZIndex: number;
+          let cardTransition: string;
+
+          if (flyState === 'rising') {
+            // 階段 1：牌從扇形中飛起，往上方移動 + 放大 + 旋轉歸零
+            cardTransform = `rotate(0deg) translateY(-${areaHeight + 40}px) scale(1.15)`;
+            cardOpacity = 1;
+            cardFilter = 'drop-shadow(0 0 30px rgba(139,110,192,0.8)) drop-shadow(0 8px 24px rgba(0,0,0,0.3)) brightness(1.15)';
+            cardZIndex = 500;
+            cardTransition = 'transform 0.45s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.3s, filter 0.3s';
+          } else if (flyState === 'exiting') {
+            // 階段 2：縮小淡出
+            cardTransform = `rotate(0deg) translateY(-${areaHeight + 80}px) scale(0.6)`;
+            cardOpacity = 0;
+            cardFilter = 'drop-shadow(0 0 40px rgba(167,139,250,0.6)) brightness(1.3)';
+            cardZIndex = 500;
+            cardTransition = 'transform 0.35s ease-in, opacity 0.3s ease-in, filter 0.3s';
+          } else if (isPicked) {
+            // 已被抽走的空隙牌
+            cardTransform = `rotate(${angle}deg) translateY(-10px) scale(0.85)`;
+            cardOpacity = 0;
+            cardFilter = 'none';
+            cardZIndex = i + 1;
+            cardTransition = 'transform 0.4s ease-out, opacity 0.5s ease-out';
+          } else {
+            // 普通牌
+            cardTransform = `rotate(${angle}deg) translateY(${isHovered ? '-22px' : '0'}) scale(${isHovered ? 1.08 : 1})`;
+            cardOpacity = entered ? 1 : 0;
+            cardFilter = isHovered
+              ? 'drop-shadow(0 0 20px rgba(139,110,192,0.7)) drop-shadow(0 0 40px rgba(167,139,250,0.3)) brightness(1.1)'
+              : 'none';
+            cardZIndex = isHovered ? 200 : i + 1;
+            cardTransition = entered
+              ? 'transform 0.2s ease-out, opacity 0.3s, filter 0.15s'
+              : `opacity 0.3s ${i * 15}ms, transform 0.4s ${i * 15}ms ease-out`;
+          }
+
           return (
             <div
               key={i}
@@ -173,27 +230,19 @@ function DesktopFan({
               style={{
                 left: x,
                 top: y,
-                zIndex: isHovered ? 200 : i + 1,
-                cursor: isPicked ? 'default' : 'pointer',
-                // 入場動畫用 CSS transition
-                transform: `rotate(${angle}deg) translateY(${
-                  isPicked ? '-54px' : isHovered ? '-22px' : '0'
-                }) scale(${isPicked ? 0.4 : isHovered ? 1.08 : 1})`,
-                opacity: isPicked ? 0 : entered ? 1 : 0,
-                filter:
-                  !isPicked && isHovered
-                    ? 'drop-shadow(0 0 20px rgba(139,110,192,0.7)) drop-shadow(0 0 40px rgba(167,139,250,0.3)) brightness(1.1)'
-                    : 'none',
-                transition: entered
-                  ? 'transform 0.2s ease-out, opacity 0.3s, filter 0.15s'
-                  : `opacity 0.3s ${i * 15}ms, transform 0.4s ${i * 15}ms ease-out`,
-                pointerEvents: isPicked ? 'none' : 'auto',
+                zIndex: cardZIndex,
+                cursor: isPicked || isFlying ? 'default' : 'pointer',
+                transform: cardTransform,
+                opacity: cardOpacity,
+                filter: cardFilter,
+                transition: cardTransition,
+                pointerEvents: isPicked || isFlying ? 'none' : 'auto',
               }}
-              onMouseEnter={() => !isPicked && setHoveredIndex(i)}
+              onMouseEnter={() => !isPicked && !isFlying && setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
-              onClick={(e) => !isPicked && handlePick(i, e)}
+              onClick={(e) => !isPicked && !isFlying && handlePick(i, e)}
             >
-              <CardBack width={cardW} height={cardH} glowing={isHovered && !isPicked} />
+              <CardBack width={cardW} height={cardH} glowing={(isHovered && !isPicked) || isFlying} />
             </div>
           );
         })}

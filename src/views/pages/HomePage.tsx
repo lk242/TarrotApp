@@ -17,7 +17,7 @@ const SPREAD_IMAGE_MAP: Record<string, string> = {
 };
 
 const SPREAD_OPACITY = {
-  light: { opacity: 0.65, hoverOpacity: 0.85 },
+  light: { opacity: 0.9, hoverOpacity: 1 },
   dark:  { opacity: 0.4, hoverOpacity: 0.55 },
 };
 
@@ -158,8 +158,8 @@ function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]
               ? (spread.cardCount === 10
                 ? 'linear-gradient(to bottom, rgba(8,8,16,0.1) 0%, rgba(8,8,16,0.7) 100%)'
                 : 'linear-gradient(to bottom, rgba(8,8,16,0.3) 0%, rgba(8,8,16,0.85) 100%)')
-              : 'linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.82) 100%)',
-            backdropFilter: theme === 'light' ? 'blur(2px)' : 'none',
+              : 'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.55) 100%)',
+            backdropFilter: theme === 'light' ? 'blur(1px)' : 'none',
           }}
         />
         {/* 內容 */}

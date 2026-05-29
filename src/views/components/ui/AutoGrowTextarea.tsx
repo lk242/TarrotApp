@@ -43,8 +43,7 @@ export default function AutoGrowTextarea({
     el.style.height = 'auto';
     const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
     const minHeight = lineHeight * minRows;
-    const maxHeight = lineHeight * maxRows;
-    el.style.height = `${Math.min(Math.max(el.scrollHeight, minHeight), maxHeight)}px`;
+    el.style.height = `${Math.max(el.scrollHeight, minHeight)}px`;
   }, [minRows, maxRows]);
 
   useEffect(() => {
@@ -83,7 +82,7 @@ export default function AutoGrowTextarea({
         placeholder={placeholder}
         disabled={disabled}
         rows={minRows}
-        className={`resize-none overflow-y-auto ${className}`}
+        className={`resize-none overflow-hidden ${className}`}
         style={{ lineHeight: '1.6' }}
       />
       {maxLength && (

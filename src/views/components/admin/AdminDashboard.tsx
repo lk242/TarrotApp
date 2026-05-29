@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { AdminUserListItem } from '../../../services/admin/admin-service';
+import { useTheme } from '../../../controllers/useTheme';
 
 interface Props {
   users: AdminUserListItem[];
@@ -105,22 +106,25 @@ export default function AdminDashboard({ users }: Props) {
     return { total, newThisMonth, activeRecently, totalCredits, providers, dailyNew, creditDist };
   }, [users]);
 
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
   return (
     <div className="space-y-6">
       {/* 四大指標卡片 */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: '總用戶數', value: stats.total, color: 'text-[var(--color-accent-gold)]' },
-          { label: '本月新增', value: stats.newThisMonth, color: 'text-green-300' },
-          { label: '近 7 天活躍', value: stats.activeRecently, color: 'text-blue-300' },
-          { label: '全站總點數', value: stats.totalCredits, color: 'text-purple-300' },
+          { label: '總用戶數', value: stats.total, color: 'var(--color-accent-gold)' },
+          { label: '本月新增', value: stats.newThisMonth, color: isLight ? '#059669' : '#86efac' },
+          { label: '近 7 天活躍', value: stats.activeRecently, color: isLight ? '#2563eb' : '#93c5fd' },
+          { label: '全站總點數', value: stats.totalCredits, color: isLight ? '#7c3aed' : '#d8b4fe' },
         ].map((card) => (
           <div
             key={card.label}
             className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 shadow-[var(--shadow-card)]"
           >
             <p className="text-xs text-[var(--color-text-muted)]">{card.label}</p>
-            <p className={`mt-1 text-2xl font-bold ${card.color}`}>{card.value.toLocaleString()}</p>
+            <p className="mt-1 text-2xl font-bold" style={{ color: card.color }}>{card.value.toLocaleString()}</p>
           </div>
         ))}
       </div>

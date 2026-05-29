@@ -364,13 +364,14 @@ export default function AdminPage() {
                             </div>
                           </td>
                           <td className="hidden px-4 py-3 sm:table-cell">
-                            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                              u.providerId.includes('google')
-                                ? 'bg-blue-500/20 text-blue-300'
-                                : u.providerId.includes('password')
-                                  ? 'bg-gray-500/20 text-gray-300'
-                                  : 'bg-green-500/20 text-green-300'
-                            }`}>
+                            <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium" style={{
+                              backgroundColor: u.providerId.includes('google')
+                                ? 'rgba(59,130,246,0.15)' : u.providerId.includes('password')
+                                  ? 'rgba(107,114,128,0.15)' : 'rgba(16,185,129,0.15)',
+                              color: u.providerId.includes('google')
+                                ? 'var(--color-accent-mystic)' : u.providerId.includes('password')
+                                  ? 'var(--color-text-secondary)' : '#059669',
+                            }}>
                               {providerLabel(u.providerId)}
                             </span>
                           </td>
@@ -491,11 +492,8 @@ export default function AdminPage() {
                         >
                           <div className="mb-1 flex items-center justify-between gap-3">
                             <span
-                              className={
-                                transaction.amount > 0
-                                  ? 'font-bold text-green-300'
-                                  : 'font-bold text-red-300'
-                              }
+                              className="font-bold"
+                              style={{ color: transaction.amount > 0 ? '#059669' : '#dc2626' }}
                             >
                               {transaction.amount > 0 ? '+' : ''}
                               {transaction.amount}

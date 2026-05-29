@@ -4,21 +4,28 @@ import { useRef, useCallback } from 'react';
 import { SPREADS } from '../../models/spread';
 import type { SpreadType } from '../../models/spread';
 import { useI18n } from '../../controllers/useI18n';
+import { useTheme } from '../../controllers/useTheme';
 
 const spreadList = Object.values(SPREADS);
 
-/** 牌陣對應的背景圖與透明度（暗圖需更高透明度） */
-/** 牌陣卡片配置：以 spreadType 為 key，含背景圖與透明度 */
-const SPREAD_CONFIG: Record<string, { image: string; opacity: number; hoverOpacity: number }> = {
-  single:        { image: '/images/theme/spread-single.webp', opacity: 0.4, hoverOpacity: 0.55 },
-  'three-card':  { image: '/images/theme/spread-three.webp',  opacity: 0.4, hoverOpacity: 0.55 },
-  'celtic-cross': { image: '/images/theme/spread-celtic.webp',  opacity: 0.7, hoverOpacity: 0.85 },
-  'yes-no':      { image: '/images/theme/spread-single.webp', opacity: 0.4, hoverOpacity: 0.55 },
+/** 牌陣卡片配置：圖片檔名 + 透明度（依主題不同） */
+const SPREAD_IMAGE_MAP: Record<string, string> = {
+  single:         'spread-single',
+  'three-card':   'spread-three',
+  'celtic-cross': 'spread-celtic',
+  'yes-no':       'spread-single',
+};
+
+const SPREAD_OPACITY = {
+  light: { opacity: 0.65, hoverOpacity: 0.85 },
+  dark:  { opacity: 0.4, hoverOpacity: 0.55 },
 };
 
 export default function HomePage() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { theme, themeImageBase } = useTheme();
+  const ext = theme === 'light' ? 'png' : 'webp';
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -43,7 +50,7 @@ export default function HomePage() {
         className="relative mb-12 w-full max-w-4xl overflow-hidden rounded-2xl"
       >
         <img
-          src="/images/theme/hero.webp"
+          src={`${themeImageBase}/hero.${ext}`}
           alt="神秘塔羅"
           className="block w-full"
           style={{ aspectRatio: '21/9', objectFit: 'cover' }}
@@ -65,7 +72,7 @@ export default function HomePage() {
         className="mb-14 text-center"
       >
         <img
-          src="/images/theme/logo.webp"
+          src={`${themeImageBase}/logo.${ext}`}
           alt=""
           className="mx-auto mb-5 h-16 w-16 animate-candle cursor-default select-none"
           onClick={handleLogoTap}
@@ -76,7 +83,7 @@ export default function HomePage() {
         </h1>
         {/* 裝飾分隔線 */}
         <img
-          src="/images/theme/divider.webp"
+          src={`${themeImageBase}/divider.${ext}`}
           alt=""
           className="mx-auto my-4 h-6 w-auto opacity-70"
         />
@@ -121,7 +128,11 @@ const SPREAD_I18N_KEY: Record<string, 'single' | 'threeCard' | 'celticCross' | '
 };
 
 function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]; delay: number; t: import('../../services/i18n').Locale }) {
-  const config = SPREAD_CONFIG[spread.type] || { image: '', opacity: 0.4, hoverOpacity: 0.55 };
+  const { theme, themeImageBase } = useTheme();
+  const ext = theme === 'light' ? 'png' : 'webp';
+  const opacityCfg = SPREAD_OPACITY[theme];
+  const imageName = SPREAD_IMAGE_MAP[spread.type] || 'spread-single';
+  const config = { image: `${themeImageBase}/${imageName}.${ext}`, ...opacityCfg };
   const i18nKey = SPREAD_I18N_KEY[spread.type] || 'single';
   const spreadT = t.spreads[i18nKey];
 

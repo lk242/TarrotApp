@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router';
 import { AuthContext, useAuthState } from './controllers/useAuth';
 import { CreditsContext, useCreditState } from './controllers/useCredits';
 import { I18nContext, useI18nProvider } from './controllers/useI18n';
+import { ThemeContext, useThemeProvider } from './controllers/useTheme';
 import Navbar from './views/components/layout/Navbar';
 import Footer from './views/components/layout/Footer';
 import MysticBackground from './views/components/layout/MysticBackground';
@@ -66,15 +67,18 @@ export default function App() {
   const authState = useAuthState();
   const creditState = useCreditState(authState.user);
   const i18n = useI18nProvider();
+  const themeState = useThemeProvider();
 
   return (
-    /* 全站唯一 Provider 層：Auth → Credits → I18n */
-    <AuthContext.Provider value={authState}>
-      <CreditsContext.Provider value={creditState}>
-        <I18nContext.Provider value={i18n}>
-          <AppContent />
-        </I18nContext.Provider>
-      </CreditsContext.Provider>
-    </AuthContext.Provider>
+    /* 全站唯一 Provider 層：Theme → Auth → Credits → I18n */
+    <ThemeContext.Provider value={themeState}>
+      <AuthContext.Provider value={authState}>
+        <CreditsContext.Provider value={creditState}>
+          <I18nContext.Provider value={i18n}>
+            <AppContent />
+          </I18nContext.Provider>
+        </CreditsContext.Provider>
+      </AuthContext.Provider>
+    </ThemeContext.Provider>
   );
 }

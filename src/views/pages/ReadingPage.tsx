@@ -22,19 +22,11 @@ import ReadingShareCard from '../components/tarot/ReadingShareCard';
 import PushPrompt from '../components/notification/PushPrompt';
 import { usePushNotification } from '../../controllers/usePushNotification';
 import { useI18n } from '../../controllers/useI18n';
+import { useTheme } from '../../controllers/useTheme';
 
 /** 主題卡片靜態資料（label 和 prompt 都從 i18n 取） */
 type TopicKey = 'love' | 'career' | 'wealth' | 'fortune' | 'spirit' | 'social' | 'study' | 'free';
-const TOPIC_KEYS: { key: TopicKey; image: string }[] = [
-  { key: 'love', image: '/images/theme/icons/love.webp' },
-  { key: 'career', image: '/images/theme/icons/career.webp' },
-  { key: 'wealth', image: '/images/theme/icons/wealth.webp' },
-  { key: 'fortune', image: '/images/theme/icons/fortune.webp' },
-  { key: 'spirit', image: '/images/theme/icons/spirit.webp' },
-  { key: 'social', image: '/images/theme/icons/social.webp' },
-  { key: 'study', image: '/images/theme/icons/study.webp' },
-  { key: 'free', image: '/images/theme/icons/free.webp' },
-];
+const TOPIC_KEYS: TopicKey[] = ['love', 'career', 'wealth', 'fortune', 'spirit', 'social', 'study', 'free'];
 
 /** SpreadType → locale key 對照 */
 const SPREAD_I18N_KEY: Record<SpreadType, 'single' | 'threeCard' | 'celticCross' | 'yesNo'> = {
@@ -61,6 +53,8 @@ export default function ReadingPage() {
   const posKey = SPREAD_I18N_KEY[spreadType] ?? 'single';
   const positionNames = (t.positions as Record<string, string[]>)?.[posKey] ?? [];
   const { onTopicChange, onTypingStart, resetSignals, buildContext } = useQuerentSignals(user?.uid);
+  const { theme, themeImageBase } = useTheme();
+  const iconExt = theme === 'light' ? 'png' : 'webp';
   const push = usePushNotification(user?.uid ?? null);
   /** 記錄使用者選擇的主題標籤（非 prompt 文字） */
   const selectedTopicLabel = useRef('');
@@ -194,12 +188,12 @@ export default function ReadingPage() {
             {t.reading.topicPrompt}
           </p>
           <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {TOPIC_KEYS.map((topic) => {
-              const label = t.topics[topic.key];
-              const prompt = (t.topicPrompts as Record<string, string>)[topic.key] ?? '';
+            {TOPIC_KEYS.map((key) => {
+              const label = t.topics[key];
+              const prompt = (t.topicPrompts as Record<string, string>)[key] ?? '';
               return (
                 <button
-                  key={topic.key}
+                  key={key}
                   onClick={() => { setQuestion(prompt); selectedTopicLabel.current = label; onTopicChange(label); }}
                   className={`group flex cursor-pointer flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
                     question === prompt
@@ -208,10 +202,9 @@ export default function ReadingPage() {
                   }`}
                 >
                   <img
-                    src={topic.image}
+                    src={`${themeImageBase}/icons/${key}.${iconExt}`}
                     alt={label}
                     className="h-14 w-14 object-contain transition-transform group-hover:scale-110"
-                    style={{ mixBlendMode: 'lighten' }}
                   />
                   <span className="text-xs font-bold tracking-wider text-[var(--color-text-primary)]">
                     {label}

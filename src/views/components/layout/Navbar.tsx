@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router';
 import { useAuth } from '../../../controllers/useAuth';
 import { useCredits } from '../../../controllers/useCredits';
 import { useI18n } from '../../../controllers/useI18n';
+import { useTheme } from '../../../controllers/useTheme';
 import { LANG_LABELS } from '../../../services/i18n';
 import type { LangCode } from '../../../services/i18n';
 import AuthModal from '../auth/AuthModal';
@@ -12,6 +13,7 @@ export default function Navbar() {
   const { user, loading, logout } = useAuth();
   const { balance } = useCredits();
   const { t, lang, setLang } = useI18n();
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const NAV_ITEMS = [
     { path: '/', label: t.nav.home },
@@ -31,7 +33,7 @@ export default function Navbar() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)]/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <Link to="/" className="group flex items-center gap-2 text-[var(--color-accent-gold)] no-underline">
-            <img src="/images/theme/logo.webp" alt="" className="h-8 w-8 transition-transform group-hover:scale-110" />
+            <img src={`/images/theme/${theme}/logo.png`} alt="" className="h-8 w-8 transition-transform group-hover:scale-110" />
             <span className="text-lg font-bold tracking-[0.15em]" style={{ fontVariant: 'small-caps' }}>{t.appName}</span>
           </Link>
 
@@ -88,6 +90,16 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+
+            {/* 主題切換 */}
+            <button
+              onClick={toggleTheme}
+              className="cursor-pointer rounded border border-[var(--color-border)] bg-transparent px-2 py-1 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-gold)]/40 hover:text-[var(--color-text-secondary)]"
+              aria-label="切換深淺主題"
+              title={theme === 'light' ? '切換深色模式' : '切換淺色模式'}
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
 
             {/* 登入/使用者：桌面端直接顯示頭像與{t.nav.logout}；手機端在下方抽屜顯示。 */}
             <div className="ml-3 border-l border-[var(--color-border)] pl-3">

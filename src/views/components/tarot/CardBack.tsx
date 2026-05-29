@@ -1,3 +1,5 @@
+import { useTheme } from '../../../controllers/useTheme';
+
 interface Props {
   width?: number;
   height?: number;
@@ -7,6 +9,7 @@ interface Props {
 }
 
 export default function CardBack({ width = 112, height = 176, glowing = false, className = '', style }: Props) {
+  const { themeImageBase } = useTheme();
   return (
     <div
       className={className}
@@ -16,15 +19,15 @@ export default function CardBack({ width = 112, height = 176, glowing = false, c
         borderRadius: 8,
         overflow: 'hidden',
         boxShadow: glowing
-          ? '0 0 15px 3px rgba(201, 168, 76, 0.4), 0 0 30px 6px rgba(201, 168, 76, 0.2)'
-          : '0 2px 8px rgba(0,0,0,0.4)',
-        border: glowing ? '1.5px solid #c9a84c' : '1px solid rgba(123, 94, 167, 0.5)',
+          ? '0 0 15px 3px var(--shadow-glow-color, rgba(139,110,192,0.4)), 0 0 30px 6px var(--shadow-glow-color-dim, rgba(139,110,192,0.2))'
+          : '0 2px 8px rgba(0,0,0,0.15)',
+        border: glowing ? '1.5px solid var(--color-accent-gold)' : '1px solid var(--color-border)',
         flexShrink: 0,
         ...style,
       }}
     >
       <img
-        src="/images/theme/card-back.png"
+        src={`${themeImageBase}/card-back.png`}
         alt="牌背"
         width={width}
         height={height}

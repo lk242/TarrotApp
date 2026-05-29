@@ -10,13 +10,15 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--gradient-page);
+  background-color: var(--body-bg-color);
+  background-image: var(--gradient-page);
   color: var(--color-text-primary);
   font-family: 'Noto Serif TC', 'Georgia', 'Palatino Linotype', serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.4s ease, color 0.3s ease;
 }
 
-/* 背景紋理：淺色水晶折射紋 */
+/* 背景紋理 */
 body::after {
   content: '';
   position: fixed;
@@ -24,8 +26,8 @@ body::after {
   pointer-events: none;
   z-index: 0;
   background: url('/images/theme/bg-texture.webp') center / 800px repeat;
-  mix-blend-mode: multiply;
-  opacity: 0.03;
+  mix-blend-mode: var(--body-texture-blend);
+  opacity: var(--body-texture-opacity);
 }
 
 /* 柔光暈染 */
@@ -50,9 +52,9 @@ body::before {
 .ornate-card {
   position: relative;
   background: var(--gradient-card);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
+  border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-card), var(--shadow-inner-glow);
 }
 .ornate-card::before,

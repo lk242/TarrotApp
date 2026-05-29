@@ -156,13 +156,16 @@ function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]
           onMouseEnter={(e) => { e.currentTarget.style.opacity = String(config.hoverOpacity); }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = String(config.opacity); }}
         />
-        {/* 漸層疊加：凱爾特十字較淡讓法陣更清楚 */}
+        {/* 漸層疊加：依主題調整 */}
         <div
           className="absolute inset-0"
           style={{
-            background: spread.cardCount === 10
-              ? 'linear-gradient(to bottom, rgba(8,8,16,0.1) 0%, rgba(8,8,16,0.7) 100%)'
-              : 'linear-gradient(to bottom, rgba(8,8,16,0.3) 0%, rgba(8,8,16,0.85) 100%)',
+            background: theme === 'dark'
+              ? (spread.cardCount === 10
+                ? 'linear-gradient(to bottom, rgba(8,8,16,0.1) 0%, rgba(8,8,16,0.7) 100%)'
+                : 'linear-gradient(to bottom, rgba(8,8,16,0.3) 0%, rgba(8,8,16,0.85) 100%)')
+              : 'linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.82) 100%)',
+            backdropFilter: theme === 'light' ? 'blur(2px)' : 'none',
           }}
         />
         {/* 內容 */}

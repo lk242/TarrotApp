@@ -10,13 +10,13 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #080810;
+  background: var(--gradient-page);
   color: var(--color-text-primary);
   font-family: 'Noto Serif TC', 'Georgia', 'Palatino Linotype', serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* 背景紋理獨立層：原圖很暗，用 screen 混合模式提亮符文 */
+/* 背景紋理：淺色水晶折射紋 */
 body::after {
   content: '';
   position: fixed;
@@ -24,11 +24,11 @@ body::after {
   pointer-events: none;
   z-index: 0;
   background: url('/images/theme/bg-texture.webp') center / 800px repeat;
-  mix-blend-mode: screen;
-  opacity: 0.6;
+  mix-blend-mode: multiply;
+  opacity: 0.03;
 }
 
-/* 全頁暗角：營造燭光照射中央的氛圍 */
+/* 柔光暈染 */
 body::before {
   content: '';
   position: fixed;
@@ -46,11 +46,13 @@ body::before {
   z-index: 2;
 }
 
-/* ── 全域卡片裝飾邊角 ── */
+/* ── 全域卡片：毛玻璃效果 ── */
 .ornate-card {
   position: relative;
   background: var(--gradient-card);
-  border: 1px solid var(--color-border);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: var(--shadow-card), var(--shadow-inner-glow);
 }
 .ornate-card::before,
@@ -59,7 +61,7 @@ body::before {
   position: absolute;
   font-size: 8px;
   color: var(--color-accent-gold-dim);
-  opacity: 0.5;
+  opacity: 0.35;
   pointer-events: none;
 }
 .ornate-card::before { top: 6px; left: 8px; }
@@ -122,7 +124,7 @@ body::before {
   font-weight: 700;
   margin: 2rem 0 0.75rem;
   padding-bottom: 0.4rem;
-  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+  border-bottom: 1px solid rgba(139, 110, 192, 0.15);
 }
 .interpretation-panel h2:first-child {
   margin-top: 0;
@@ -168,8 +170,8 @@ body::before {
   border-left: 3px solid var(--color-accent-gold);
   margin: 1.25rem 0;
   padding: 0.75rem 1rem;
-  background: rgba(201, 168, 76, 0.05);
-  border-radius: 0 8px 8px 0;
+  background: rgba(139, 110, 192, 0.06);
+  border-radius: 0 12px 12px 0;
   font-style: italic;
-  color: var(--color-accent-gold-light);
+  color: var(--color-accent-gold);
 }

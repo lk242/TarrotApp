@@ -36,11 +36,19 @@ const PARTICLE_PATTERN = Array.from({ length: PARTICLE_TOTAL }, (_, i) => {
   };
 });
 
-/** 金色粒子爆發 */
+/** 水晶光芒粒子爆發 */
 function Particles({ x, y }: { x: number; y: number }) {
+  const colors = [
+    'rgba(139,110,192,0.9)',
+    'rgba(167,139,250,0.7)',
+    'rgba(96,165,250,0.7)',
+    'rgba(192,132,252,0.8)',
+    'rgba(129,140,248,0.7)',
+  ];
   return (
     <div className="pointer-events-none fixed z-[999]" style={{ left: x, top: y }}>
       {PARTICLE_PATTERN.map(({ px, py, size }, i) => {
+        const color = colors[i % colors.length];
         return (
           <div
             key={i}
@@ -48,8 +56,8 @@ function Particles({ x, y }: { x: number; y: number }) {
             style={{
               width: size,
               height: size,
-              background: 'radial-gradient(circle, rgba(201,168,76,0.9), rgba(232,212,139,0.5))',
-              boxShadow: '0 0 6px rgba(201,168,76,0.6)',
+              background: `radial-gradient(circle, ${color}, rgba(255,255,255,0.4))`,
+              boxShadow: `0 0 8px ${color}`,
               animation: 'particle-burst 0.7s ease-out forwards',
               animationDelay: `${i * 0.02}s`,
               ['--px' as string]: `${px}px`,
@@ -174,7 +182,7 @@ function DesktopFan({
                 opacity: isPicked ? 0 : entered ? 1 : 0,
                 filter:
                   !isPicked && isHovered
-                    ? 'drop-shadow(0 0 20px rgba(201,168,76,0.8)) brightness(1.2)'
+                    ? 'drop-shadow(0 0 20px rgba(139,110,192,0.7)) drop-shadow(0 0 40px rgba(167,139,250,0.3)) brightness(1.1)'
                     : 'none',
                 transition: entered
                   ? 'transform 0.2s ease-out, opacity 0.3s, filter 0.15s'
@@ -294,9 +302,9 @@ function MobileSwipeDraw({
               height={160}
               style={{ transform: 'rotate(-90deg)', opacity: swipeProgress > 0 ? 1 : 0, transition: 'opacity 0.2s' }}
             >
-              <circle cx={80} cy={80} r={70} fill="none" stroke="rgba(201,168,76,0.15)" strokeWidth={2} />
+              <circle cx={80} cy={80} r={70} fill="none" stroke="rgba(139,110,192,0.15)" strokeWidth={2} />
               <circle
-                cx={80} cy={80} r={70} fill="none" stroke="rgba(201,168,76,0.8)"
+                cx={80} cy={80} r={70} fill="none" stroke="rgba(139,110,192,0.8)"
                 strokeWidth={2.5}
                 strokeDasharray={2 * Math.PI * 70}
                 strokeDashoffset={2 * Math.PI * 70 * (1 - swipeProgress)}
@@ -330,7 +338,7 @@ function MobileSwipeDraw({
                 <motion.div
                   className="pointer-events-none absolute inset-0 rounded-xl"
                   animate={{ opacity: swipeProgress > 0 ? swipeProgress * 0.6 : 0 }}
-                  style={{ background: 'radial-gradient(circle at 50% 30%, rgba(201,168,76,0.3), transparent 70%)' }}
+                  style={{ background: 'radial-gradient(circle at 50% 30%, rgba(139,110,192,0.3), transparent 70%)' }}
                 />
               </div>
             </motion.div>
@@ -412,10 +420,26 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
             className="flex flex-col items-center gap-2"
           >
             <span className="text-xs text-[var(--color-text-muted)]">{positionNames[i] ?? spread.positions[i]?.name}</span>
-            <div style={{ perspective: '800px' }}>
+            <div style={{ perspective: '800px' }} className="relative">
+              {/* 光芒綻放效果 — 翻牌瞬間擴散 */}
+              <AnimatePresence>
+                {flipped[i] && (
+                  <motion.div
+                    initial={{ opacity: 0.8, scale: 0.5 }}
+                    animate={{ opacity: 0, scale: 2.2 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="pointer-events-none absolute inset-0 z-10"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(167,139,250,0.5), rgba(96,165,250,0.2), transparent 70%)',
+                      borderRadius: '50%',
+                    }}
+                  />
+                )}
+              </AnimatePresence>
               <motion.div
                 animate={{ rotateY: flipped[i] ? 180 : 0 }}
-                transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+                transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
                 style={{ transformStyle: 'preserve-3d', position: 'relative', width: FLIP_W, height: FLIP_H }}
               >
                 <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0 }}>

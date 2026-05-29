@@ -117,15 +117,15 @@
 [class~="border-[var(--color-border-ornate)]"] { border-color: var(--color-border-ornate); }
 [class~="border-[var(--color-accent-gold)]"] { border-color: var(--color-accent-gold); }
 [class~="bg-[var(--color-bg-primary)]"],
-[class~="bg-[var(--color-bg-primary)]/90"] { background-color: rgba(10, 10, 26, 0.9); }
+[class~="bg-[var(--color-bg-primary)]/90"] { background-color: rgba(240, 238, 245, 0.9); }
 [class~="bg-[var(--color-bg-card)]"] { background-color: var(--color-bg-card); }
 [class~="bg-[var(--color-bg-secondary)]"] { background-color: var(--color-bg-secondary); }
 [class~="bg-[var(--color-bg-parchment)]"] { background-color: var(--color-bg-parchment); }
 [class~="bg-[var(--color-bg-glass)]"] { background-color: var(--color-bg-glass); }
 .bg-transparent { background-color: transparent; }
-.bg-black\/25 { background-color: rgba(0, 0, 0, 0.25); }
-.bg-black\/30 { background-color: rgba(0, 0, 0, 0.3); }
-.bg-red-950\/75 { background-color: rgba(69, 10, 10, 0.75); }
+.bg-black\/25 { background-color: rgba(0, 0, 0, 0.08); }
+.bg-black\/30 { background-color: rgba(0, 0, 0, 0.1); }
+.bg-red-950\/75 { background-color: rgba(220, 38, 38, 0.12); }
 .bg-gradient-to-r { background-image: linear-gradient(to right, var(--tw-gradient-from), var(--tw-gradient-to)); }
 [class~="from-[var(--color-accent-purple)]"] { --tw-gradient-from: var(--color-accent-purple); }
 [class~="to-[var(--color-accent-mystic)]"] { --tw-gradient-to: var(--color-accent-mystic); }

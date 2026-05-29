@@ -7,15 +7,28 @@
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* 字體變數：標題襯線 + 內文無襯線 */
+:root {
+  --font-heading: 'Playfair Display', 'Noto Serif TC', 'Georgia', serif;
+  --font-body: 'Noto Sans TC', 'Helvetica Neue', 'Arial', sans-serif;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
   background-color: var(--body-bg-color);
   background-image: var(--gradient-page);
   color: var(--color-text-primary);
-  font-family: 'Noto Serif TC', 'Georgia', 'Palatino Linotype', serif;
+  font-family: var(--font-body);
+  font-weight: 400;
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.25s ease, color 0.2s ease;
+}
+
+/* 標題用襯線字體 */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
 }
 
 /* 背景紋理 */

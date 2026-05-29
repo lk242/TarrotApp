@@ -175,6 +175,47 @@ export default function Navbar() {
                 {item.label}
               </Link>
             ))}
+            {/* 手機端語系 + 主題切換 */}
+            <div className="mt-2 flex items-center justify-between border-t border-[var(--color-border)] px-4 pt-3 pb-2">
+              {/* 語系 */}
+              <div className="flex gap-1">
+                {(Object.keys(LANG_LABELS) as LangCode[]).map((code) => (
+                  <button
+                    key={code}
+                    onClick={() => setLang(code)}
+                    className={`cursor-pointer rounded px-2.5 py-1.5 text-xs transition-colors ${
+                      lang === code
+                        ? 'bg-[var(--color-accent-gold)]/15 font-bold text-[var(--color-accent-gold)]'
+                        : 'bg-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                    }`}
+                  >
+                    {code === 'zh-TW' ? '中文' : code === 'en' ? 'EN' : '日本語'}
+                  </button>
+                ))}
+              </div>
+              {/* 主題 */}
+              <button
+                onClick={toggleTheme}
+                className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-xs text-[var(--color-text-muted)] transition-all hover:border-[var(--color-accent-gold)]/40"
+                aria-label="切換深淺主題"
+              >
+                {theme === 'light' ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                  </svg>
+                )}
+                {theme === 'light' ? '深色' : '淺色'}
+              </button>
+            </div>
+
             {/* 手機端登入 */}
             <div className="mt-2 border-t border-[var(--color-border)] pt-3">
               {user ? (

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useI18n } from '../../controllers/useI18n';
+import { useTheme } from '../../controllers/useTheme';
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 24 },
@@ -7,23 +8,22 @@ const fadeUp = (delay = 0) => ({
   transition: { duration: 0.6, delay },
 });
 
-const SPREAD_IMAGES = [
-  '/images/theme/spread-single.webp',
-  '/images/theme/spread-three.webp',
-  '/images/theme/spread-celtic.webp',
-];
+const SPREAD_IMAGE_NAMES = ['spread-single', 'spread-three', 'spread-celtic'];
 
 export default function AboutPage() {
   const { t } = useI18n();
+  const { theme, themeImageBase } = useTheme();
+  const ext = theme === 'light' ? 'png' : 'webp';
+  const spreadImages = SPREAD_IMAGE_NAMES.map((n) => `${themeImageBase}/${n}.${ext}`);
   return (
     <div className="flex flex-1 flex-col items-center px-6 py-20">
       {/* ===== Hero ===== */}
       <motion.div {...fadeUp()} className="mb-16 max-w-2xl text-center">
-        <img src="/images/theme/logo.webp" alt="" className="mx-auto mb-4 h-14 w-14 animate-candle" />
+        <img src={`${themeImageBase}/logo.${ext}`} alt="" className="mx-auto mb-4 h-14 w-14 animate-candle" />
         <h1 className="mb-4 text-3xl font-bold tracking-[0.15em] text-[var(--color-accent-gold)] md:text-4xl" style={{ fontVariant: 'small-caps' }}>
           {t.about.title}
         </h1>
-        <img src="/images/theme/divider.webp" alt="" className="mx-auto my-3 h-5 w-auto opacity-60" />
+        <img src={`${themeImageBase}/divider.${ext}`} alt="" className="mx-auto my-3 h-5 w-auto opacity-60" />
         <p className="mt-6 text-base leading-relaxed text-[var(--color-text-secondary)]">
           {t.about.intro}
         </p>
@@ -67,7 +67,7 @@ export default function AboutPage() {
               <div
                 className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-[var(--color-border-ornate)]"
               >
-                <img src={SPREAD_IMAGES[i]} alt={s.name} className="h-full w-full object-cover" />
+                <img src={spreadImages[i]} alt={s.name} className="h-full w-full object-cover" />
               </div>
               <div className="flex-1">
                 <div className="mb-1 flex items-center gap-3">

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -66,6 +66,29 @@ export function useThemeProvider() {
   }, []);
 
   const themeImageBase = `/images/theme/${theme}`;
+
+  // 預載另一個主題的圖片，切換時不需要等載入
+  const preloaded = useRef(false);
+  useEffect(() => {
+    if (preloaded.current) return;
+    preloaded.current = true;
+    // 延遲 2 秒後背景預載，不影響首次載入速度
+    const timer = setTimeout(() => {
+      const otherTheme = theme === 'light' ? 'dark' : 'light';
+      const otherExt = otherTheme === 'light' ? 'png' : 'webp';
+      const images = [
+        'hero', 'logo', 'card-back',
+        'spread-single', 'spread-three', 'spread-celtic',
+        'icons/love', 'icons/career', 'icons/wealth', 'icons/fortune',
+        'icons/spirit', 'icons/social', 'icons/study', 'icons/free',
+      ];
+      for (const name of images) {
+        const img = new Image();
+        img.src = `/images/theme/${otherTheme}/${name}.${otherExt}`;
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [theme]);
 
   return { theme, toggle, themeImageBase };
 }

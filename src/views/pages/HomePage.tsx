@@ -81,12 +81,11 @@ export default function HomePage() {
         <h1 className="mb-3 text-4xl font-bold tracking-[0.15em] text-[var(--color-accent-gold)]" style={{ fontVariant: 'small-caps' }}>
           {t.appName}
         </h1>
-        {/* 裝飾分隔線（light 模式暫無 divider，統一用 dark 版 webp） */}
+        {/* 裝飾分隔線 */}
         <img
-          src="/images/theme/dark/divider.webp"
+          src={`${themeImageBase}/divider.${theme === 'light' ? 'png' : 'webp'}`}
           alt=""
           className="mx-auto my-4 h-6 w-auto opacity-70"
-          style={{ filter: theme === 'light' ? 'invert(0.35) sepia(0.5) hue-rotate(220deg)' : 'none' }}
         />
         <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-[var(--color-text-secondary)]">
           {t.home.subtitle}

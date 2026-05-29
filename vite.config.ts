@@ -26,11 +26,23 @@ export default defineConfig(({ command, mode }) => {
           // 執行期快取：牌面圖片與主題素材
           runtimeCaching: [
             {
-              // 78 張塔羅牌圖 + 主題素材（webp/png/jpg）
-              urlPattern: /\/images\/.*\.(webp|png|jpg|jpeg)$/i,
+              // 主題素材（經常更新，背景刷新）
+              urlPattern: /\/images\/theme\/.*\.(webp|png|jpg|jpeg)$/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'theme-images',
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 7 * 24 * 60 * 60, // 7 天
+                },
+              },
+            },
+            {
+              // 78 張塔羅牌圖（幾乎不變，長期快取）
+              urlPattern: /\/images\/(?!theme\/).*\.(webp|png|jpg|jpeg)$/i,
               handler: 'CacheFirst',
               options: {
-                cacheName: 'tarot-images',
+                cacheName: 'tarot-card-images',
                 expiration: {
                   maxEntries: 200,
                   maxAgeSeconds: 30 * 24 * 60 * 60, // 30 天

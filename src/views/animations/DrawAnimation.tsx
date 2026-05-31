@@ -321,30 +321,30 @@ function MobileWheelDraw({
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const [particlePos, setParticlePos] = useState<{ x: number; y: number } | null>(null);
-  /** 轉盤旋轉角度（度） */
   const [rotation, setRotation] = useState(0);
+  const [screenW, setScreenW] = useState(375);
   const [screenH, setScreenH] = useState(600);
   const isDragging = useRef(false);
+  const dragMoved = useRef(false);
   const lastY = useRef(0);
   const velocity = useRef(0);
   const animFrame = useRef<number>(0);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setScreenH(window.innerHeight);
-    const onResize = () => setScreenH(window.innerHeight);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const update = () => { setScreenW(window.innerWidth); setScreenH(window.innerHeight); };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   }, []);
 
-  // 動量慣性滾動
+  // 慣性滾動
   useEffect(() => {
     let running = true;
     const tick = () => {
       if (!running) return;
-      if (!isDragging.current && Math.abs(velocity.current) > 0.1) {
+      if (!isDragging.current && Math.abs(velocity.current) > 0.15) {
         setRotation((r) => r + velocity.current);
-        velocity.current *= 0.94; // 摩擦力
+        velocity.current *= 0.93;
       }
       animFrame.current = requestAnimationFrame(tick);
     };
@@ -352,18 +352,19 @@ function MobileWheelDraw({
     return () => { running = false; cancelAnimationFrame(animFrame.current); };
   }, []);
 
-  const WHEEL_CARDS = FAN_TOTAL;
-  const cardW = 54;
+  const cardW = 56;
   const cardH = Math.round(cardW * 1.6);
-  // 半圓 180 度
-  const arcAngle = 180;
-  // 半徑：讓半圓占據螢幕高度的大部分
-  const wheelRadius = Math.min(screenH * 0.42, 320);
+  // 半徑：讓弧形占滿大部分螢幕高度
+  const wheelRadius = Math.min(screenH * 0.38, 300);
+  // 78 張牌均分 180 度
+  const arcSpan = 180;
   // 輪心在螢幕右邊外
-  const centerOffsetX = cardW * 0.6;
+  const wheelCenterX = screenW + wheelRadius * 0.15;
+  const wheelCenterY = screenH * 0.45;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     isDragging.current = true;
+    dragMoved.current = false;
     lastY.current = e.clientY;
     velocity.current = 0;
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -372,7 +373,8 @@ function MobileWheelDraw({
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging.current) return;
     const dy = e.clientY - lastY.current;
-    const angleDelta = (dy / wheelRadius) * (180 / Math.PI) * 0.8;
+    if (Math.abs(dy) > 2) dragMoved.current = true;
+    const angleDelta = (dy / wheelRadius) * (180 / Math.PI) * 0.7;
     velocity.current = angleDelta;
     setRotation((r) => r + angleDelta);
     lastY.current = e.clientY;
@@ -383,6 +385,7 @@ function MobileWheelDraw({
   }, []);
 
   const handleCardTap = useCallback((index: number) => {
+    if (dragMoved.current) return; // 拖動中不觸發
     if (picked.has(index) || revealCount >= totalNeeded) return;
     setPendingIndex(index);
   }, [picked, revealCount, totalNeeded]);
@@ -416,8 +419,8 @@ function MobileWheelDraw({
   }, []);
 
   return (
-    <div className="flex h-full w-full flex-col items-center">
-      <div className="mb-3 text-center animate-fade-in">
+    <div className="flex h-full w-full flex-col">
+      <div className="mb-2 text-center animate-fade-in">
         <p className="text-sm text-[var(--color-text-secondary)]">
           {t.reading.drawMobileHint.replace('{count}', String(totalNeeded))}
         </p>
@@ -427,86 +430,77 @@ function MobileWheelDraw({
       </div>
 
       <div
-        ref={containerRef}
         className="relative flex-1 w-full overflow-hidden touch-none select-none"
-        style={{ minHeight: wheelRadius * 2 + 40 }}
+        style={{ minHeight: wheelRadius * 2 }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        {/* 輪心位於右側外 */}
-        <div
-          className="absolute"
-          style={{
-            right: -wheelRadius + centerOffsetX,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: wheelRadius * 2,
-            height: wheelRadius * 2,
-          }}
-        >
-          {Array.from({ length: WHEEL_CARDS }, (_, i) => {
-            const isPicked = picked.has(i);
-            const isPending = pendingIndex === i;
-            // 每張牌的角度
-            const baseAngle = -arcAngle / 2 + (i / (WHEEL_CARDS - 1)) * arcAngle;
-            const totalAngle = baseAngle + rotation;
-            const rad = (totalAngle * Math.PI) / 180;
-            // 牌面位置（左半圓弧上）
-            const cx = wheelRadius + Math.cos(rad) * wheelRadius;
-            const cy = wheelRadius + Math.sin(rad) * wheelRadius;
+        {Array.from({ length: FAN_TOTAL }, (_, i) => {
+          const isPicked = picked.has(i);
+          const isPending = pendingIndex === i;
+          // 每張牌均分在弧上，加上旋轉偏移
+          const baseAngle = 90 + (i / (FAN_TOTAL - 1)) * arcSpan;
+          const angle = baseAngle + rotation;
+          const rad = (angle * Math.PI) / 180;
+          // 從輪心算出牌的位置
+          const cx = wheelCenterX + Math.cos(rad) * wheelRadius;
+          const cy = wheelCenterY + Math.sin(rad) * wheelRadius;
 
-            // 只顯示可見範圍內的牌（優化效能）
-            const normalizedAngle = ((totalAngle % 360) + 360) % 360;
-            const isVisible = normalizedAngle > 90 && normalizedAngle < 270;
-            if (!isVisible && !isPending) return null;
+          // 只渲染螢幕內可見的牌
+          if (cx < -cardW * 2 || cx > screenW + cardW || cy < -cardH || cy > screenH + cardH) {
+            if (!isPending) return null;
+          }
 
-            return (
-              <div
-                key={i}
-                data-wheel-card
-                className="absolute"
-                style={{
-                  left: cx - cardW / 2,
-                  top: cy - cardH / 2,
-                  width: cardW,
-                  height: cardH,
-                  transform: `rotate(${totalAngle + 90}deg)`,
-                  opacity: isPicked ? 0 : 1,
-                  transition: 'opacity 0.3s, transform 0.15s',
-                  pointerEvents: isPicked ? 'none' : 'auto',
-                  zIndex: isPending ? 100 : 1,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isDragging.current) handleCardTap(i);
-                }}
-              >
-                <CardBack width={cardW} height={cardH} glowing={isPending} />
-                {isPending && (
-                  <div
-                    className="absolute -left-14 top-1/2 z-[101] flex -translate-y-1/2 flex-col gap-1.5"
-                    style={{ whiteSpace: 'nowrap' }}
+          return (
+            <div
+              key={i}
+              data-wheel-card
+              className="absolute"
+              style={{
+                left: cx - cardW / 2,
+                top: cy - cardH / 2,
+                width: cardW,
+                height: cardH,
+                transform: `rotate(${angle + 90}deg)`,
+                opacity: isPicked ? 0 : 1,
+                transition: 'opacity 0.3s',
+                pointerEvents: isPicked ? 'none' : 'auto',
+                zIndex: isPending ? 100 : 1,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCardTap(i);
+              }}
+            >
+              <CardBack width={cardW} height={cardH} glowing={isPending} />
+              {isPending && (
+                <div className="absolute -left-12 top-1/2 z-[101] flex -translate-y-1/2 gap-1.5">
+                  <button
+                    onClick={(e) => handleConfirm(i, e)}
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-lg"
+                    title={t.confirm}
                   >
-                    <button
-                      onClick={(e) => handleConfirm(i, e)}
-                      className="cursor-pointer rounded bg-[var(--color-accent-gold)] px-2.5 py-1 text-xs font-bold text-black shadow-lg"
-                    >
-                      {t.confirm}
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      className="cursor-pointer rounded bg-white/10 px-2.5 py-1 text-xs text-[var(--color-text-secondary)] shadow-lg backdrop-blur"
-                    >
-                      {t.cancel}
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/15 shadow-lg backdrop-blur"
+                    title={t.cancel}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-text-secondary)]">
+                      <polyline points="1 4 1 10 7 10" />
+                      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <AnimatePresence>

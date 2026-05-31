@@ -19,11 +19,6 @@ export default function CardFace({ drawnCard, positionLabel, className = '' }: P
     <div
       className={`relative flex w-44 flex-col items-center rounded-xl border border-[var(--color-accent-gold)] bg-[var(--color-bg-card)] p-3 shadow-[var(--shadow-glow)] ${className}`}
     >
-      {isReversed && (
-        <span className="absolute top-2.5 right-2.5 z-10 rounded bg-red-950/75 px-2 py-0.5 text-xs font-medium text-red-200">
-          {t.reading.reversed}
-        </span>
-      )}
       <div
         className="flex w-full items-center justify-center overflow-hidden rounded-lg bg-black/25"
         style={{ aspectRatio: '5 / 8' }}

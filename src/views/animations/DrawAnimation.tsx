@@ -22,7 +22,7 @@ interface Props {
   onComplete: () => void;
 }
 
-const FAN_TOTAL = 40; // 視覺上夠密，效能 OK
+const FAN_TOTAL = 78;
 const FLIP_W = 168;
 const FLIP_H = 269;
 const PARTICLE_TOTAL = 16;
@@ -71,7 +71,7 @@ function Particles({ x, y }: { x: number; y: number }) {
 }
 
 // ========================================================
-// 桌面端：弧形扇選牌（CSS transition 驅動 hover，效能好）
+// 桌面端：弧形扇選牌（78 張 + 確認/重選）
 // ========================================================
 function DesktopFan({
   totalNeeded,
@@ -87,6 +87,8 @@ function DesktopFan({
   const [flying, setFlying] = useState<Map<number, 'rising' | 'exiting'>>(new Map());
   const [revealCount, setRevealCount] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  /** 當前待確認（lifted）的牌 index */
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const [particlePos, setParticlePos] = useState<{ x: number; y: number } | null>(null);
   const [entered, setEntered] = useState(false);
   const [containerWidth, setContainerWidth] = useState(1200);
@@ -96,7 +98,6 @@ function DesktopFan({
     const el = containerRef.current;
     if (!el) return;
     setContainerWidth(el.clientWidth);
-    // 扇形半徑依容器寬度計算，ResizeObserver 可讓桌面縮放時不跑版。
     const ro = new ResizeObserver(([entry]) => setContainerWidth(entry.contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();
@@ -104,27 +105,40 @@ function DesktopFan({
 
   // 入場動畫延遲結束後標記
   useEffect(() => {
-    const t = setTimeout(() => setEntered(true), FAN_TOTAL * 15 + 400);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setEntered(true), FAN_TOTAL * 8 + 400);
+    return () => clearTimeout(timer);
   }, []);
 
-  // 限制桌機扇形寬度，避免寬螢幕時半徑過大造成牌組被推到畫面下方。
+  // 限制桌機扇形寬度
   const stageWidth = Math.min(containerWidth, 1100);
-  const cardW = Math.max(105, Math.min(150, stageWidth * 0.14));
+  const cardW = Math.max(70, Math.min(110, stageWidth * 0.09));
   const cardH = Math.round(cardW * 1.6);
-  const fanAngle = 115;
-  const radius = Math.max(340, Math.min(520, stageWidth * 0.48, containerWidth * 0.45));
-  const areaHeight = Math.round(cardH + radius * 0.28 + 120);
+  const fanAngle = 160;
+  const radius = Math.max(300, Math.min(480, stageWidth * 0.44, containerWidth * 0.42));
+  const areaHeight = Math.round(cardH + radius * 0.32 + 120);
   const centerX = stageWidth / 2;
   const fanTop = 24;
 
-  const handlePick = useCallback(
-    (fanIndex: number, e: React.MouseEvent) => {
+  const handleCardClick = useCallback(
+    (fanIndex: number) => {
       if (picked.has(fanIndex) || flying.has(fanIndex) || revealCount >= totalNeeded) return;
+      // 若已有待確認牌，先取消
+      setPendingIndex(fanIndex);
+    },
+    [picked, flying, revealCount, totalNeeded],
+  );
 
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      setParticlePos({ x: rect.left + rect.width / 2, y: rect.top });
-      setTimeout(() => setParticlePos(null), 800);
+  const handleConfirm = useCallback(
+    (fanIndex: number, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (picked.has(fanIndex) || flying.has(fanIndex) || revealCount >= totalNeeded) return;
+      setPendingIndex(null);
+
+      const rect = (e.currentTarget as HTMLElement).closest('[data-fan-card]')?.getBoundingClientRect();
+      if (rect) {
+        setParticlePos({ x: rect.left + rect.width / 2, y: rect.top });
+        setTimeout(() => setParticlePos(null), 800);
+      }
 
       // 階段 1：牌先往上飛起（rising）
       setFlying((prev) => new Map(prev).set(fanIndex, 'rising'));
@@ -133,9 +147,8 @@ function DesktopFan({
       setTimeout(() => {
         setFlying((prev) => new Map(prev).set(fanIndex, 'exiting'));
 
-        // 附近牌留出被抽走的空隙
         const newPicked = new Set(picked);
-        for (let d = -2; d <= 2; d++) {
+        for (let d = -1; d <= 1; d++) {
           const n = fanIndex + d;
           if (n >= 0 && n < FAN_TOTAL) newPicked.add(n);
         }
@@ -156,6 +169,11 @@ function DesktopFan({
     [picked, flying, revealCount, totalNeeded, onAllPicked],
   );
 
+  const handleCancel = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingIndex(null);
+  }, []);
+
   return (
     <div ref={containerRef} className="flex w-full flex-col items-center gap-0">
       <div className="mb-1 text-center animate-fade-in">
@@ -171,6 +189,7 @@ function DesktopFan({
         {Array.from({ length: FAN_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isHovered = hoveredIndex === i;
+          const isPending = pendingIndex === i;
           const startAngle = -fanAngle / 2;
           const angle = startAngle + (i / (FAN_TOTAL - 1)) * fanAngle;
           const rad = (angle * Math.PI) / 180;
@@ -190,42 +209,47 @@ function DesktopFan({
           let cardTransition: string;
 
           if (flyState === 'rising') {
-            // 階段 1：牌從扇形中飛起，往上方移動 + 放大 + 旋轉歸零
             cardTransform = `rotate(0deg) translateY(-${areaHeight + 40}px) scale(1.15)`;
             cardOpacity = 1;
             cardFilter = 'drop-shadow(0 0 30px rgba(139,110,192,0.8)) drop-shadow(0 8px 24px rgba(0,0,0,0.3)) brightness(1.15)';
             cardZIndex = 500;
             cardTransition = 'transform 0.45s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.3s, filter 0.3s';
           } else if (flyState === 'exiting') {
-            // 階段 2：縮小淡出
             cardTransform = `rotate(0deg) translateY(-${areaHeight + 80}px) scale(0.6)`;
             cardOpacity = 0;
             cardFilter = 'drop-shadow(0 0 40px rgba(167,139,250,0.6)) brightness(1.3)';
             cardZIndex = 500;
             cardTransition = 'transform 0.35s ease-in, opacity 0.3s ease-in, filter 0.3s';
           } else if (isPicked) {
-            // 已被抽走的空隙牌
             cardTransform = `rotate(${angle}deg) translateY(-10px) scale(0.85)`;
             cardOpacity = 0;
             cardFilter = 'none';
             cardZIndex = i + 1;
             cardTransition = 'transform 0.4s ease-out, opacity 0.5s ease-out';
+          } else if (isPending) {
+            // 待確認：牌浮起
+            cardTransform = `rotate(0deg) translateY(-36px) scale(1.12)`;
+            cardOpacity = 1;
+            cardFilter = 'drop-shadow(0 0 24px rgba(139,110,192,0.7)) brightness(1.1)';
+            cardZIndex = 300;
+            cardTransition = 'transform 0.25s ease-out, opacity 0.3s, filter 0.2s';
           } else {
             // 普通牌
-            cardTransform = `rotate(${angle}deg) translateY(${isHovered ? '-22px' : '0'}) scale(${isHovered ? 1.08 : 1})`;
+            cardTransform = `rotate(${angle}deg) translateY(${isHovered ? '-18px' : '0'}) scale(${isHovered ? 1.06 : 1})`;
             cardOpacity = entered ? 1 : 0;
             cardFilter = isHovered
-              ? 'drop-shadow(0 0 20px rgba(139,110,192,0.7)) drop-shadow(0 0 40px rgba(167,139,250,0.3)) brightness(1.1)'
+              ? 'drop-shadow(0 0 16px rgba(139,110,192,0.6)) brightness(1.08)'
               : 'none';
             cardZIndex = isHovered ? 200 : i + 1;
             cardTransition = entered
               ? 'transform 0.2s ease-out, opacity 0.3s, filter 0.15s'
-              : `opacity 0.3s ${i * 15}ms, transform 0.4s ${i * 15}ms ease-out`;
+              : `opacity 0.3s ${i * 8}ms, transform 0.4s ${i * 8}ms ease-out`;
           }
 
           return (
             <div
               key={i}
+              data-fan-card
               className="absolute origin-bottom"
               style={{
                 left: x,
@@ -238,11 +262,31 @@ function DesktopFan({
                 transition: cardTransition,
                 pointerEvents: isPicked || isFlying ? 'none' : 'auto',
               }}
-              onMouseEnter={() => !isPicked && !isFlying && setHoveredIndex(i)}
+              onMouseEnter={() => !isPicked && !isFlying && !isPending && setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
-              onClick={(e) => !isPicked && !isFlying && handlePick(i, e)}
+              onClick={() => !isPicked && !isFlying && handleCardClick(i)}
             >
-              <CardBack width={cardW} height={cardH} glowing={(isHovered && !isPicked) || isFlying} />
+              <CardBack width={cardW} height={cardH} glowing={(isHovered && !isPicked) || isFlying || isPending} />
+              {/* 確認/重選 overlay */}
+              {isPending && (
+                <div
+                  className="absolute -bottom-10 left-1/2 z-[301] flex -translate-x-1/2 gap-1.5"
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  <button
+                    onClick={(e) => handleConfirm(i, e)}
+                    className="cursor-pointer rounded bg-[var(--color-accent-gold)] px-2.5 py-1 text-xs font-bold text-black shadow-lg transition-transform hover:scale-105"
+                  >
+                    {t.confirm}
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="cursor-pointer rounded bg-white/10 px-2.5 py-1 text-xs text-[var(--color-text-secondary)] shadow-lg backdrop-blur transition-transform hover:scale-105 hover:bg-white/20"
+                  >
+                    {t.cancel}
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
@@ -256,9 +300,9 @@ function DesktopFan({
 }
 
 // ========================================================
-// 手機端：向上滑動抽牌
+// 手機端：半圓形轉盤選牌
 // ========================================================
-function MobileSwipeDraw({
+function MobileWheelDraw({
   totalNeeded,
   onAllPicked,
   t,
@@ -268,72 +312,106 @@ function MobileSwipeDraw({
   t: Locale;
 }) {
   const [revealCount, setRevealCount] = useState(0);
-  const [swiping, setSwiping] = useState(false);
-  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const [particlePos, setParticlePos] = useState<{ x: number; y: number } | null>(null);
-  const startY = useRef(0);
-  const isDrawing = useRef(false);
-  const SWIPE_THRESHOLD = 80;
-  const remaining = totalNeeded - revealCount;
+  /** 轉盤旋轉角度（度） */
+  const [rotation, setRotation] = useState(0);
+  const [screenH, setScreenH] = useState(600);
+  const isDragging = useRef(false);
+  const lastY = useRef(0);
+  const velocity = useRef(0);
+  const animFrame = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const doDrawCard = useCallback(
-    (e?: React.PointerEvent) => {
-      if (isDrawing.current || revealCount >= totalNeeded) return;
-      isDrawing.current = true;
+  useEffect(() => {
+    setScreenH(window.innerHeight);
+    const onResize = () => setScreenH(window.innerHeight);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
-      if (e) {
-        setParticlePos({ x: e.clientX, y: e.clientY - 60 });
-        setTimeout(() => setParticlePos(null), 800);
+  // 動量慣性滾動
+  useEffect(() => {
+    let running = true;
+    const tick = () => {
+      if (!running) return;
+      if (!isDragging.current && Math.abs(velocity.current) > 0.1) {
+        setRotation((r) => r + velocity.current);
+        velocity.current *= 0.94; // 摩擦力
       }
+      animFrame.current = requestAnimationFrame(tick);
+    };
+    animFrame.current = requestAnimationFrame(tick);
+    return () => { running = false; cancelAnimationFrame(animFrame.current); };
+  }, []);
 
-      const newCount = revealCount + 1;
-      setRevealCount(newCount);
+  const WHEEL_CARDS = FAN_TOTAL;
+  const cardW = 54;
+  const cardH = Math.round(cardW * 1.6);
+  // 半圓 180 度
+  const arcAngle = 180;
+  // 半徑：讓半圓占據螢幕高度的大部分
+  const wheelRadius = Math.min(screenH * 0.42, 320);
+  // 輪心在螢幕右邊外
+  const centerOffsetX = cardW * 0.6;
 
-      // 延遲進入下一階段，讓粒子與牌堆回彈動畫有時間播放完。
-      setTimeout(() => {
-        isDrawing.current = false;
-        if (newCount >= totalNeeded) {
-          setTimeout(onAllPicked, 400);
-        }
-      }, 300);
-    },
-    [revealCount, totalNeeded, onAllPicked],
-  );
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    isDragging.current = true;
+    lastY.current = e.clientY;
+    velocity.current = 0;
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  }, []);
 
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (remaining <= 0) return;
-      startY.current = e.clientY;
-      setSwiping(true);
-      setSwipeOffset(0);
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    },
-    [remaining],
-  );
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    const dy = e.clientY - lastY.current;
+    const angleDelta = (dy / wheelRadius) * (180 / Math.PI) * 0.8;
+    velocity.current = angleDelta;
+    setRotation((r) => r + angleDelta);
+    lastY.current = e.clientY;
+  }, [wheelRadius]);
 
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!swiping) return;
-      setSwipeOffset(Math.max(0, startY.current - e.clientY));
-    },
-    [swiping],
-  );
+  const handlePointerUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
 
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent) => {
-      if (!swiping) return;
-      setSwiping(false);
-      if (swipeOffset >= SWIPE_THRESHOLD) doDrawCard(e);
-      setSwipeOffset(0);
-    },
-    [swiping, swipeOffset, doDrawCard],
-  );
+  const handleCardTap = useCallback((index: number) => {
+    if (picked.has(index) || revealCount >= totalNeeded) return;
+    setPendingIndex(index);
+  }, [picked, revealCount, totalNeeded]);
 
-  const swipeProgress = Math.min(swipeOffset / SWIPE_THRESHOLD, 1);
+  const handleConfirm = useCallback((index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (picked.has(index) || revealCount >= totalNeeded) return;
+    setPendingIndex(null);
+
+    const rect = (e.currentTarget as HTMLElement).closest('[data-wheel-card]')?.getBoundingClientRect();
+    if (rect) {
+      setParticlePos({ x: rect.left + rect.width / 2, y: rect.top });
+      setTimeout(() => setParticlePos(null), 800);
+    }
+
+    const newPicked = new Set(picked);
+    newPicked.add(index);
+    setPicked(newPicked);
+
+    const newCount = revealCount + 1;
+    setRevealCount(newCount);
+
+    if (newCount >= totalNeeded) {
+      setTimeout(onAllPicked, 600);
+    }
+  }, [picked, revealCount, totalNeeded, onAllPicked]);
+
+  const handleCancel = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingIndex(null);
+  }, []);
 
   return (
-    <div className="flex flex-col items-center gap-5">
-      <div className="text-center animate-fade-in">
+    <div className="flex h-full w-full flex-col items-center">
+      <div className="mb-3 text-center animate-fade-in">
         <p className="text-sm text-[var(--color-text-secondary)]">
           {t.reading.drawMobileHint.replace('{count}', String(totalNeeded))}
         </p>
@@ -342,75 +420,88 @@ function MobileSwipeDraw({
         </p>
       </div>
 
-      {remaining > 0 ? (
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative flex items-center justify-center">
-            <svg
-              className="pointer-events-none absolute"
-              width={160}
-              height={160}
-              style={{ transform: 'rotate(-90deg)', opacity: swipeProgress > 0 ? 1 : 0, transition: 'opacity 0.2s' }}
-            >
-              <circle cx={80} cy={80} r={70} fill="none" stroke="rgba(139,110,192,0.15)" strokeWidth={2} />
-              <circle
-                cx={80} cy={80} r={70} fill="none" stroke="rgba(139,110,192,0.8)"
-                strokeWidth={2.5}
-                strokeDasharray={2 * Math.PI * 70}
-                strokeDashoffset={2 * Math.PI * 70 * (1 - swipeProgress)}
-                strokeLinecap="round"
-              />
-            </svg>
-            <motion.div
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={() => { setSwiping(false); setSwipeOffset(0); }}
-              animate={{ y: swiping ? -swipeOffset * 0.5 : 0, scale: swiping ? 1 + swipeProgress * 0.08 : 1 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="relative cursor-grab select-none touch-none active:cursor-grabbing"
-            >
-              {/* 牌堆隨抽取視覺減少：底層牌數量 = min(remaining-1, 2) */}
-              {Array.from({ length: Math.min(remaining - 1, 2) }, (_, i) => Math.min(remaining - 1, 2) - i).map((offset) => (
-                <motion.div
-                  key={`stack-${offset}`}
-                  className="absolute"
-                  style={{ top: -offset * 2, left: offset, zIndex: offset }}
-                  initial={false}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <CardBack width={140} height={224} />
-                </motion.div>
-              ))}
-              <div className="relative" style={{ zIndex: 3 }}>
-                <CardBack width={140} height={224} glowing />
-                <motion.div
-                  className="pointer-events-none absolute inset-0 rounded-xl"
-                  animate={{ opacity: swipeProgress > 0 ? swipeProgress * 0.6 : 0 }}
-                  style={{ background: 'radial-gradient(circle at 50% 30%, rgba(139,110,192,0.3), transparent 70%)' }}
-                />
+      <div
+        ref={containerRef}
+        className="relative flex-1 w-full overflow-hidden touch-none select-none"
+        style={{ minHeight: wheelRadius * 2 + 40 }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        {/* 輪心位於右側外 */}
+        <div
+          className="absolute"
+          style={{
+            right: -wheelRadius + centerOffsetX,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: wheelRadius * 2,
+            height: wheelRadius * 2,
+          }}
+        >
+          {Array.from({ length: WHEEL_CARDS }, (_, i) => {
+            const isPicked = picked.has(i);
+            const isPending = pendingIndex === i;
+            // 每張牌的角度
+            const baseAngle = -arcAngle / 2 + (i / (WHEEL_CARDS - 1)) * arcAngle;
+            const totalAngle = baseAngle + rotation;
+            const rad = (totalAngle * Math.PI) / 180;
+            // 牌面位置（左半圓弧上）
+            const cx = wheelRadius + Math.cos(rad) * wheelRadius;
+            const cy = wheelRadius + Math.sin(rad) * wheelRadius;
+
+            // 只顯示可見範圍內的牌（優化效能）
+            const normalizedAngle = ((totalAngle % 360) + 360) % 360;
+            const isVisible = normalizedAngle > 90 && normalizedAngle < 270;
+            if (!isVisible && !isPending) return null;
+
+            return (
+              <div
+                key={i}
+                data-wheel-card
+                className="absolute"
+                style={{
+                  left: cx - cardW / 2,
+                  top: cy - cardH / 2,
+                  width: cardW,
+                  height: cardH,
+                  transform: `rotate(${totalAngle + 90}deg)`,
+                  opacity: isPicked ? 0 : 1,
+                  transition: 'opacity 0.3s, transform 0.15s',
+                  pointerEvents: isPicked ? 'none' : 'auto',
+                  zIndex: isPending ? 100 : 1,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isDragging.current) handleCardTap(i);
+                }}
+              >
+                <CardBack width={cardW} height={cardH} glowing={isPending} />
+                {isPending && (
+                  <div
+                    className="absolute -left-14 top-1/2 z-[101] flex -translate-y-1/2 flex-col gap-1.5"
+                    style={{ whiteSpace: 'nowrap' }}
+                  >
+                    <button
+                      onClick={(e) => handleConfirm(i, e)}
+                      className="cursor-pointer rounded bg-[var(--color-accent-gold)] px-2.5 py-1 text-xs font-bold text-black shadow-lg"
+                    >
+                      {t.confirm}
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      className="cursor-pointer rounded bg-white/10 px-2.5 py-1 text-xs text-[var(--color-text-secondary)] shadow-lg backdrop-blur"
+                    >
+                      {t.cancel}
+                    </button>
+                  </div>
+                )}
               </div>
-            </motion.div>
-          </div>
-          <motion.div className="flex flex-col items-center gap-1.5" animate={{ opacity: swiping ? 0.4 : 1 }}>
-            <motion.div
-              className="text-lg text-[var(--color-accent-gold)]"
-              animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-            >↑</motion.div>
-            <p className="text-xs text-[var(--color-text-muted)]">
-              {t.reading.drawMobileSwipeNth.replace('{nth}', String(revealCount + 1))}
-            </p>
-            <button onClick={() => doDrawCard()} className="mt-1 cursor-pointer border-none bg-transparent text-[10px] text-[var(--color-text-muted)] underline opacity-60 hover:opacity-100">
-              {t.reading.drawMobileTapFallback}
-            </button>
-          </motion.div>
+            );
+          })}
         </div>
-      ) : (
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-[var(--color-accent-gold-light)]">
-          {t.reading.drawMobileAllDrawn}
-        </motion.p>
-      )}
+      </div>
 
       <AnimatePresence>
         {particlePos && <Particles x={particlePos.x} y={particlePos.y} />}
@@ -432,7 +523,6 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
   const positionNames = (t.positions as Record<string, string[]>)[posKey] ?? [];
 
   useEffect(() => {
-    // Tailwind v4 的 responsive utilities 在部分 WebView 不穩，這裡用 JS 判斷手機模式。
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
     window.addEventListener('resize', check);
@@ -441,7 +531,6 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
 
   const handleAllPicked = useCallback(() => {
     setPhase('reveal');
-    // 逐張翻牌，比一次揭示更符合占卜儀式感，也讓使用者知道流程正在前進。
     for (let i = 0; i < totalNeeded; i++) {
       setTimeout(() => {
         setFlipped((prev) => { const n = [...prev]; n[i] = true; return n; });
@@ -452,7 +541,7 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
 
   if (phase === 'pick') {
     return isMobile
-      ? <MobileSwipeDraw totalNeeded={totalNeeded} onAllPicked={handleAllPicked} t={t} />
+      ? <MobileWheelDraw totalNeeded={totalNeeded} onAllPicked={handleAllPicked} t={t} />
       : <DesktopFan totalNeeded={totalNeeded} onAllPicked={handleAllPicked} t={t} />;
   }
 

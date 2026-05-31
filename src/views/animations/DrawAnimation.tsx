@@ -111,7 +111,7 @@ function DesktopFan({
 
   // 限制桌機扇形寬度
   const stageWidth = Math.min(containerWidth, 1100);
-  const cardW = Math.max(70, Math.min(110, stageWidth * 0.09));
+  const cardW = Math.max(85, Math.min(130, stageWidth * 0.115));
   const cardH = Math.round(cardW * 1.6);
   const fanAngle = 160;
   const radius = Math.max(300, Math.min(480, stageWidth * 0.44, containerWidth * 0.42));
@@ -270,20 +270,26 @@ function DesktopFan({
               {/* 確認/重選 overlay */}
               {isPending && (
                 <div
-                  className="absolute -bottom-10 left-1/2 z-[301] flex -translate-x-1/2 gap-1.5"
-                  style={{ whiteSpace: 'nowrap' }}
+                  className="absolute -bottom-11 left-1/2 z-[301] flex -translate-x-1/2 gap-2"
                 >
                   <button
                     onClick={(e) => handleConfirm(i, e)}
-                    className="cursor-pointer rounded bg-[var(--color-accent-gold)] px-2.5 py-1 text-xs font-bold text-black shadow-lg transition-transform hover:scale-105"
+                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-lg transition-transform hover:scale-110"
+                    title={t.confirm}
                   >
-                    {t.confirm}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                   </button>
                   <button
                     onClick={handleCancel}
-                    className="cursor-pointer rounded bg-white/10 px-2.5 py-1 text-xs text-[var(--color-text-secondary)] shadow-lg backdrop-blur transition-transform hover:scale-105 hover:bg-white/20"
+                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/15 shadow-lg backdrop-blur transition-transform hover:scale-110 hover:bg-white/25"
+                    title={t.cancel}
                   >
-                    {t.cancel}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-text-secondary)]">
+                      <polyline points="1 4 1 10 7 10" />
+                      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                    </svg>
                   </button>
                 </div>
               )}

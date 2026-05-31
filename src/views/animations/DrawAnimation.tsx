@@ -306,7 +306,7 @@ function DesktopFan({
 }
 
 // ========================================================
-// 手機端：半圓形轉盤選牌
+// 手機端：全螢幕圓形轉盤選牌
 // ========================================================
 function MobileWheelDraw({
   totalNeeded,
@@ -320,10 +320,9 @@ function MobileWheelDraw({
   const [revealCount, setRevealCount] = useState(0);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
-  const [particlePos, setParticlePos] = useState<{ x: number; y: number } | null>(null);
   const [rotation, setRotation] = useState(0);
-  const [screenW, setScreenW] = useState(375);
-  const [screenH, setScreenH] = useState(600);
+  const [vw, setVw] = useState(375);
+  const [vh, setVh] = useState(700);
   const isDragging = useRef(false);
   const dragMoved = useRef(false);
   const lastY = useRef(0);
@@ -331,10 +330,17 @@ function MobileWheelDraw({
   const animFrame = useRef<number>(0);
 
   useEffect(() => {
-    const update = () => { setScreenW(window.innerWidth); setScreenH(window.innerHeight); };
+    const update = () => { setVw(window.innerWidth); setVh(window.innerHeight); };
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
+  }, []);
+
+  // 鎖定 body scroll
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
   }, []);
 
   // 慣性滾動
@@ -342,9 +348,9 @@ function MobileWheelDraw({
     let running = true;
     const tick = () => {
       if (!running) return;
-      if (!isDragging.current && Math.abs(velocity.current) > 0.15) {
+      if (!isDragging.current && Math.abs(velocity.current) > 0.12) {
         setRotation((r) => r + velocity.current);
-        velocity.current *= 0.93;
+        velocity.current *= 0.95;
       }
       animFrame.current = requestAnimationFrame(tick);
     };
@@ -352,15 +358,16 @@ function MobileWheelDraw({
     return () => { running = false; cancelAnimationFrame(animFrame.current); };
   }, []);
 
-  const cardW = 60;
-  const cardH = Math.round(cardW * 1.6);
-  // 超大半徑：弧形非常平緩，牌清晰排列
-  const wheelRadius = screenW * 2;
-  // 78 張牌均分 360 度整圓
-  const arcSpan = 360;
-  // 輪心遠在螢幕右邊外（牌的右緣貼著螢幕右邊）
-  const wheelCenterX = screenW + wheelRadius - screenW * 0.85;
-  const wheelCenterY = screenH * 0.46;
+  const cardW = 64;
+  const cardH = Math.round(cardW * 1.58);
+  // 半徑 = 螢幕高度的 70%，讓弧形大而平緩
+  const R = vh * 0.7;
+  // 輪心在螢幕右邊外面，讓弧形左側露出
+  // cx = vw + R*0.05 → 弧形最左端在 vw + R*0.05 - R = vw - R*0.95
+  // 例如 vw=390, R=490 → 最左端 = 390 - 465 = -75（略超出螢幕左邊）
+  // 中間的牌在螢幕內形成漂亮的弧形
+  const cx = vw + R * 0.05;
+  const cy = vh * 0.48;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     isDragging.current = true;
@@ -373,33 +380,27 @@ function MobileWheelDraw({
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging.current) return;
     const dy = e.clientY - lastY.current;
-    if (Math.abs(dy) > 2) dragMoved.current = true;
-    const angleDelta = (dy / wheelRadius) * (180 / Math.PI) * 0.7;
+    if (Math.abs(dy) > 3) dragMoved.current = true;
+    // 將 y 軸拖動轉換為旋轉角度
+    const angleDelta = (dy / R) * (180 / Math.PI);
     velocity.current = angleDelta;
     setRotation((r) => r + angleDelta);
     lastY.current = e.clientY;
-  }, [wheelRadius]);
+  }, [R]);
 
   const handlePointerUp = useCallback(() => {
     isDragging.current = false;
   }, []);
 
   const handleCardTap = useCallback((index: number) => {
-    if (dragMoved.current) return; // 拖動中不觸發
+    if (dragMoved.current) return;
     if (picked.has(index) || revealCount >= totalNeeded) return;
     setPendingIndex(index);
   }, [picked, revealCount, totalNeeded]);
 
-  const handleConfirm = useCallback((index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleConfirm = useCallback((index: number) => {
     if (picked.has(index) || revealCount >= totalNeeded) return;
     setPendingIndex(null);
-
-    const rect = (e.currentTarget as HTMLElement).closest('[data-wheel-card]')?.getBoundingClientRect();
-    if (rect) {
-      setParticlePos({ x: rect.left + rect.width / 2, y: rect.top });
-      setTimeout(() => setParticlePos(null), 800);
-    }
 
     const newPicked = new Set(picked);
     newPicked.add(index);
@@ -413,99 +414,104 @@ function MobileWheelDraw({
     }
   }, [picked, revealCount, totalNeeded, onAllPicked]);
 
-  const handleCancel = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCancel = useCallback(() => {
     setPendingIndex(null);
   }, []);
 
   return (
-    <div className="flex h-full w-full flex-col">
-      <div className="mb-2 text-center animate-fade-in">
-        <p className="text-sm text-[var(--color-text-secondary)]">
+    <div
+      className="fixed inset-0 z-[60] touch-none select-none"
+      style={{ background: 'var(--color-bg-primary)' }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      {/* 頂部資訊列 */}
+      <div className="absolute top-0 left-0 right-0 z-10 pt-[env(safe-area-inset-top)] px-5 pb-2"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}>
+        <p className="text-center text-sm font-medium text-[var(--color-text-primary)]">
           {t.reading.drawMobileHint.replace('{count}', String(totalNeeded))}
         </p>
-        <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+        <p className="text-center text-xs text-[var(--color-text-muted)] mt-1">
           {t.reading.drawMobileProgress.replace('{current}', String(revealCount)).replace('{total}', String(totalNeeded))}
         </p>
       </div>
 
-      <div
-        className="relative flex-1 w-full overflow-hidden touch-none select-none"
-        style={{ minHeight: wheelRadius * 2 }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      >
-        {Array.from({ length: FAN_TOTAL }, (_, i) => {
-          const isPicked = picked.has(i);
-          const isPending = pendingIndex === i;
-          // 78 張牌均分整圓 360 度
-          const baseAngle = (i / FAN_TOTAL) * arcSpan;
-          const angle = baseAngle + rotation;
-          const rad = (angle * Math.PI) / 180;
-          // 從輪心算出牌的位置
-          const cx = wheelCenterX + Math.cos(rad) * wheelRadius;
-          const cy = wheelCenterY + Math.sin(rad) * wheelRadius;
+      {/* 牌輪 */}
+      {Array.from({ length: FAN_TOTAL }, (_, i) => {
+        const isPicked = picked.has(i);
+        const isPending = pendingIndex === i;
+        const baseAngle = (i / FAN_TOTAL) * 360;
+        const angle = baseAngle + rotation;
+        const rad = (angle * Math.PI) / 180;
+        const px = cx + Math.cos(rad) * R;
+        const py = cy + Math.sin(rad) * R;
 
-          // 只渲染螢幕內可見的牌
-          if (cx < -cardW * 2 || cx > screenW + cardW || cy < -cardH || cy > screenH + cardH) {
-            if (!isPending) return null;
-          }
+        // 只渲染螢幕內的牌（含邊緣 buffer）
+        if (px < -cardW || px > vw + cardW * 2 || py < -cardH || py > vh + cardH) {
+          if (!isPending) return null;
+        }
 
-          return (
-            <div
-              key={i}
-              data-wheel-card
-              className="absolute"
-              style={{
-                left: cx - cardW / 2,
-                top: cy - cardH / 2,
-                width: cardW,
-                height: cardH,
-                transform: `rotate(${angle + 90}deg)`,
-                opacity: isPicked ? 0 : 1,
-                transition: 'opacity 0.3s',
-                pointerEvents: isPicked ? 'none' : 'auto',
-                zIndex: isPending ? 100 : 1,
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCardTap(i);
-              }}
-            >
-              <CardBack width={cardW} height={cardH} glowing={isPending} />
-              {isPending && (
-                <div className="absolute -left-12 top-1/2 z-[101] flex -translate-y-1/2 gap-1.5">
-                  <button
-                    onClick={(e) => handleConfirm(i, e)}
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-lg"
-                    title={t.confirm}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/15 shadow-lg backdrop-blur"
-                    title={t.cancel}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-text-secondary)]">
-                      <polyline points="1 4 1 10 7 10" />
-                      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+        return (
+          <div
+            key={i}
+            data-wheel-card
+            className="absolute"
+            style={{
+              left: px - cardW / 2,
+              top: py - cardH / 2,
+              width: cardW,
+              height: cardH,
+              // 牌面朝向圓心：角度 + 90 度讓牌底部指向圓心
+              transform: `rotate(${angle + 90}deg) ${isPending ? 'scale(1.15)' : ''}`,
+              opacity: isPicked ? 0 : 1,
+              transition: isPending ? 'transform 0.2s ease-out, opacity 0.3s' : 'opacity 0.3s',
+              pointerEvents: isPicked ? 'none' : 'auto',
+              zIndex: isPending ? 100 : 1,
+              filter: isPending ? 'drop-shadow(0 0 20px rgba(201,168,76,0.6))' : 'none',
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCardTap(i);
+            }}
+          >
+            <CardBack width={cardW} height={cardH} glowing={isPending} />
+          </div>
+        );
+      })}
 
+      {/* 確認/取消 — 固定在螢幕中央偏左 */}
       <AnimatePresence>
-        {particlePos && <Particles x={particlePos.x} y={particlePos.y} />}
+        {pendingIndex !== null && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute z-[101] flex gap-3"
+            style={{ left: 24, top: '50%', transform: 'translateY(-50%)' }}
+          >
+            <button
+              onClick={(e) => { e.stopPropagation(); handleConfirm(pendingIndex); }}
+              className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-xl"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleCancel(); }}
+              className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-xl"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-text-secondary)]">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
+
     </div>
   );
 }

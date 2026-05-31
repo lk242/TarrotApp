@@ -354,11 +354,11 @@ function MobileWheelDraw({
 
   const cardW = 58;
   const cardH = Math.round(cardW * 1.6);
-  // 半徑：讓弧形 C 型填滿螢幕高度
+  // 半徑：讓弧形填滿螢幕高度
   const wheelRadius = Math.max(screenH * 0.48, 340);
-  // 78 張牌均分 180 度
-  const arcSpan = 180;
-  // 輪心在螢幕右邊外（弧形左半圓露在螢幕內，形成 C 型）
+  // 78 張牌均分 360 度整圓（滑動永遠不會遇到空白）
+  const arcSpan = 360;
+  // 輪心在螢幕右邊外（左半圓露在螢幕內）
   const wheelCenterX = screenW + wheelRadius * 0.32;
   const wheelCenterY = screenH * 0.44;
 
@@ -440,8 +440,8 @@ function MobileWheelDraw({
         {Array.from({ length: FAN_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isPending = pendingIndex === i;
-          // 牌從上方 (90°) 沿左弧到下方 (270°)
-          const baseAngle = 90 + (i / (FAN_TOTAL - 1)) * arcSpan;
+          // 78 張牌均分整圓 360 度
+          const baseAngle = (i / FAN_TOTAL) * arcSpan;
           const angle = baseAngle + rotation;
           const rad = (angle * Math.PI) / 180;
           // 從輪心算出牌的位置

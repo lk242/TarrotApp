@@ -358,16 +358,13 @@ function MobileWheelDraw({
     return () => { running = false; cancelAnimationFrame(animFrame.current); };
   }, []);
 
-  const cardW = 64;
+  const cardW = 52;
   const cardH = Math.round(cardW * 1.58);
-  // 半徑 = 螢幕高度的 70%，讓弧形大而平緩
-  const R = vh * 0.7;
-  // 輪心在螢幕右邊外面，讓弧形左側露出
-  // cx = vw + R*0.05 → 弧形最左端在 vw + R*0.05 - R = vw - R*0.95
-  // 例如 vw=390, R=490 → 最左端 = 390 - 465 = -75（略超出螢幕左邊）
-  // 中間的牌在螢幕內形成漂亮的弧形
-  const cx = vw + R * 0.05;
-  const cy = vh * 0.48;
+  // 半徑：讓弧形佔螢幕大部分寬度，曲線適中
+  const R = Math.max(vw * 0.95, 360);
+  // 輪心在螢幕右邊外約 40px，弧形最左端約在 x=50
+  const cx = vw + 40;
+  const cy = vh / 2;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     isDragging.current = true;

@@ -352,15 +352,15 @@ function MobileWheelDraw({
     return () => { running = false; cancelAnimationFrame(animFrame.current); };
   }, []);
 
-  const cardW = 58;
+  const cardW = 56;
   const cardH = Math.round(cardW * 1.6);
-  // 半徑：讓弧形填滿螢幕高度
-  const wheelRadius = Math.max(screenH * 0.48, 340);
-  // 78 張牌均分 360 度整圓（滑動永遠不會遇到空白）
+  // 大半徑：弧形平緩，牌有間距不擠成月牙
+  const wheelRadius = Math.max(screenW * 1.6, 600);
+  // 78 張牌均分 360 度整圓
   const arcSpan = 360;
-  // 輪心在螢幕右邊外（左半圓露在螢幕內）
-  const wheelCenterX = screenW + wheelRadius * 0.32;
-  const wheelCenterY = screenH * 0.44;
+  // 輪心在螢幕右邊外（大半徑讓可見弧形寬度適中）
+  const wheelCenterX = screenW + wheelRadius * 0.48;
+  const wheelCenterY = screenH * 0.46;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     isDragging.current = true;

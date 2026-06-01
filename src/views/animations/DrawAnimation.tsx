@@ -120,15 +120,17 @@ function DesktopFan({
   const stageWidth = containerWidth;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
   const availH = vh - 100;
-  // 牌變大！手機 52px，桌面給到 120-150px
-  const cardW = Math.max(120, Math.min(160, stageWidth * 0.09));
+  const cardW = Math.max(110, Math.min(150, stageWidth * 0.085));
   const cardH = Math.round(cardW * 1.58);
-  // 半徑：讓圓周頂端離畫面頂約 cardH，且夠大讓 78 張不擠
-  const radius = Math.max(availH * 1.4, stageWidth * 0.5);
+  // 半徑：讓弧形剛好撐滿畫面寬度（兩端落在螢幕左右邊緣）
+  // sin(70°)=0.94，所以 radius = stageWidth/2 / 0.94
+  const halfVisibleAngle = 70; // 可視半角
+  const halfRad = (halfVisibleAngle * Math.PI) / 180;
+  const radius = (stageWidth / 2) / Math.sin(halfRad);
   const areaHeight = availH;
   const centerX = stageWidth / 2;
-  // 圓心 Y：底部下方，讓頂端弧形（離圓心 -radius）出現在畫面 cardH+20 處
-  const cy = areaHeight + (radius - availH + cardH + 20);
+  // 圓心在容器正下方，讓頂端牌（normAngle=0）出現在畫面頂部 cardH+10 處
+  const cy = cardH + 10 + radius;
 
   // 慣性滾動
   useEffect(() => {
@@ -236,8 +238,8 @@ function DesktopFan({
       </div>
 
       <div
-        className="relative w-full overflow-hidden touch-none"
-        style={{ maxWidth: stageWidth, height: areaHeight, cursor: isDragging.current ? 'grabbing' : 'grab' }}
+        className="relative w-full overflow-visible touch-none"
+        style={{ width: stageWidth, height: areaHeight, cursor: isDragging.current ? 'grabbing' : 'grab' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -254,11 +256,11 @@ function DesktopFan({
           let normAngle = angle % 360;
           if (normAngle > 180) normAngle -= 360;
           if (normAngle < -180) normAngle += 360;
-          // 只渲染畫面範圍內的牌（頂部弧形 ±90°）
-          const visible = Math.abs(normAngle) < 95;
+          // 只渲染可見範圍的牌
+          const visible = Math.abs(normAngle) < halfVisibleAngle + 5;
           if (!visible && !isPending && !flying.has(i)) return null;
           const rad = (normAngle * Math.PI) / 180;
-          // 牌底落在圓周上，牌往圓心相反方向延伸
+          // 牌底落在圓周上（圓心在下方 cy），牌往上延伸
           const bottomX = centerX + Math.sin(rad) * radius;
           const bottomY = cy - Math.cos(rad) * radius;
           const x = bottomX - cardW / 2;

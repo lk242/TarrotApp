@@ -109,15 +109,15 @@ function DesktopFan({
     return () => clearTimeout(timer);
   }, []);
 
-  // 桌面版：容器放大，讓 78 張牌有足夠空間
-  const stageWidth = Math.min(containerWidth, 1600);
-  const cardW = Math.max(70, Math.min(100, stageWidth * 0.065));
-  const cardH = Math.round(cardW * 1.6);
-  const fanAngle = 160;
-  const radius = Math.max(420, Math.min(700, stageWidth * 0.48));
-  const areaHeight = Math.round(cardH + radius * 0.38 + 140);
+  // 桌面版：大弧形讓 78 張牌充分攤開到兩側
+  const stageWidth = Math.min(containerWidth, 1800);
+  const cardW = Math.max(60, Math.min(90, stageWidth * 0.055));
+  const cardH = Math.round(cardW * 1.58);
+  const fanAngle = 200;
+  const radius = Math.max(500, Math.min(860, stageWidth * 0.55));
+  const areaHeight = Math.round(radius * 0.75 + cardH + 60);
   const centerX = stageWidth / 2;
-  const fanTop = 24;
+  const fanTop = 10;
 
   const handleCardClick = useCallback(
     (fanIndex: number) => {

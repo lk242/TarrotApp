@@ -295,12 +295,12 @@ function DesktopFan({
             cardZIndex = i + 1;
             cardTransition = 'transform 0.4s ease-out, opacity 0.5s ease-out';
           } else if (isPending) {
-            // 待確認：牌浮起
-            cardTransform = `rotate(0deg) translateY(-36px) scale(1.12)`;
-            cardOpacity = 1;
-            cardFilter = 'drop-shadow(0 0 24px rgba(139,110,192,0.7)) brightness(1.1)';
-            cardZIndex = 300;
-            cardTransition = 'transform 0.25s ease-out, opacity 0.3s, filter 0.2s';
+            // 待確認：原位變暗（modal 中央會顯示放大版）
+            cardTransform = `rotate(${normAngle}deg) translateY(0) scale(1)`;
+            cardOpacity = 0.25;
+            cardFilter = 'none';
+            cardZIndex = i + 1;
+            cardTransition = 'opacity 0.3s';
           } else {
             // 普通牌
             cardTransform = `rotate(${normAngle}deg) translateY(${isHovered ? '-18px' : '0'}) scale(${isHovered ? 1.08 : 1})`;
@@ -354,36 +354,74 @@ function DesktopFan({
                   {i + 1}
                 </span>
               )}
-              {/* 確認/重選 overlay */}
-              {isPending && (
-                <div
-                  className="absolute -bottom-11 left-1/2 z-[301] flex -translate-x-1/2 gap-2"
-                >
-                  <button
-                    onClick={(e) => handleConfirm(i, e)}
-                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-lg transition-transform hover:scale-110"
-                    title={t.confirm}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/15 shadow-lg backdrop-blur transition-transform hover:scale-110 hover:bg-white/25"
-                    title={t.cancel}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-text-secondary)]">
-                      <polyline points="1 4 1 10 7 10" />
-                      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                    </svg>
-                  </button>
-                </div>
-              )}
             </div>
           );
         })}
       </div>
+
+      {/* Modal overlay：選中的牌放大居中顯示 */}
+      <AnimatePresence>
+        {pendingIndex !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-[400] flex flex-col items-center justify-center"
+            style={{ background: 'rgba(8, 8, 16, 0.75)', backdropFilter: 'blur(8px)' }}
+            onClick={(e) => { e.stopPropagation(); setPendingIndex(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.6, y: 30, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.7, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.2, 0.8, 0.3, 1] }}
+              className="relative"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                filter: 'drop-shadow(0 0 40px rgba(139,110,192,0.8)) drop-shadow(0 12px 32px rgba(0,0,0,0.5))',
+              }}
+            >
+              <CardBack width={cardW * 2.2} height={cardH * 2.2} glowing />
+              <span
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-base font-bold text-[var(--color-accent-gold)]"
+                style={{ bottom: -32 }}
+              >
+                #{pendingIndex + 1}
+              </span>
+            </motion.div>
+            {/* 確認 / 取消按鈕 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mt-16 flex gap-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={(e) => handleConfirm(pendingIndex, e)}
+                className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-xl transition-transform hover:scale-110"
+                title={t.confirm}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </button>
+              <button
+                onClick={handleCancel}
+                className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border border-[var(--color-border)] bg-white/10 shadow-xl backdrop-blur transition-transform hover:scale-110 hover:bg-white/20"
+                title={t.cancel}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                  <polyline points="1 4 1 10 7 10" />
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {particlePos && <Particles x={particlePos.x} y={particlePos.y} />}
@@ -565,19 +603,18 @@ function MobileWheelDraw({
                 top: py - cardH / 2,
                 width: cardW,
                 height: cardH,
-                transform: `rotate(${angle + 90}deg) ${isPending ? 'scale(1.15)' : ''}`,
-                opacity: isPicked ? 0 : 1,
-                transition: isPending ? 'transform 0.2s ease-out, opacity 0.3s' : 'opacity 0.3s',
+                transform: `rotate(${angle + 90}deg)`,
+                opacity: isPicked ? 0 : (isPending ? 0.25 : 1),
+                transition: 'opacity 0.3s',
                 pointerEvents: isPicked ? 'none' : 'auto',
-                zIndex: isPending ? 100 : 1,
-                filter: isPending ? 'drop-shadow(0 0 20px rgba(139,110,192,0.6))' : 'none',
+                zIndex: 1,
               }}
               onClick={(e) => {
                 e.stopPropagation();
                 handleCardTap(i);
               }}
             >
-              <CardBack width={cardW} height={cardH} glowing={isPending} />
+              <CardBack width={cardW} height={cardH} />
             </div>
           );
         })}
@@ -629,33 +666,63 @@ function MobileWheelDraw({
         })}
       </div>
 
-      {/* 確認/取消 — 固定在螢幕中央偏左 */}
+      {/* Modal overlay：選中的牌放大居中 */}
       <AnimatePresence>
         {pendingIndex !== null && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute z-[101] flex gap-3"
-            style={{ left: 24, top: '50%', transform: 'translateY(-50%)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="absolute inset-0 z-[200] flex flex-col items-center justify-center"
+            style={{ background: 'rgba(8, 8, 16, 0.78)', backdropFilter: 'blur(8px)' }}
+            onClick={(e) => { e.stopPropagation(); handleCancel(); }}
           >
-            <button
-              onClick={(e) => { e.stopPropagation(); handleConfirm(pendingIndex); }}
-              className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-xl"
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.6, opacity: 0 }}
+              transition={{ duration: 0.32, ease: [0.2, 0.8, 0.3, 1] }}
+              className="relative"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                filter: 'drop-shadow(0 0 40px rgba(139,110,192,0.8)) drop-shadow(0 12px 32px rgba(0,0,0,0.5))',
+              }}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleCancel(); }}
-              className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-xl"
+              <CardBack width={Math.min(vw * 0.6, 220)} height={Math.min(vw * 0.6, 220) * 1.58} glowing />
+              <span
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-base font-bold text-[var(--color-accent-gold)]"
+                style={{ bottom: -32 }}
+              >
+                #{pendingIndex + 1}
+              </span>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.12 }}
+              className="mt-16 flex gap-5"
+              onClick={(e) => e.stopPropagation()}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-text-secondary)]">
-                <polyline points="1 4 1 10 7 10" />
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-              </svg>
-            </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleConfirm(pendingIndex); }}
+                className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-xl"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCancel(); }}
+                className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border border-[var(--color-border)] bg-white/10 shadow-xl backdrop-blur"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                  <polyline points="1 4 1 10 7 10" />
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

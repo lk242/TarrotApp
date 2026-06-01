@@ -285,7 +285,7 @@ function DesktopFan({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        {/* 教學引導：左右拖動提示 */}
+        {/* 教學引導：手指 + 雙向箭頭 */}
         <AnimatePresence>
           {showHint && entered && (
             <motion.div
@@ -293,29 +293,30 @@ function DesktopFan({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.4 }}
-              className="pointer-events-none absolute left-1/2 z-[250] flex -translate-x-1/2 flex-col items-center gap-2"
-              style={{ top: cardH + 30 }}
+              className="pointer-events-none absolute left-1/2 z-[250] flex -translate-x-1/2 flex-col items-center gap-3"
+              style={{ top: cardH + 40 }}
             >
-              <div className="flex items-center gap-3 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)]/80 px-4 py-2 backdrop-blur-md shadow-[var(--shadow-card)]">
-                <motion.svg
-                  width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  className="text-[var(--color-accent-gold)]"
-                  animate={{ x: [-3, 3, -3] }}
-                  transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                >
-                  <polyline points="15 18 9 12 15 6" />
-                </motion.svg>
-                <span className="text-xs font-medium text-[var(--color-text-secondary)]">
+              {/* 雙向箭頭 */}
+              <svg width="80" height="14" viewBox="0 0 80 14" fill="none" className="text-[var(--color-accent-gold)]">
+                <path d="M6 7 L14 1 M6 7 L14 13 M6 7 L74 7 M74 7 L66 1 M74 7 L66 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {/* 手指（左右滑動） */}
+              <motion.svg
+                width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+                className="text-[var(--color-accent-gold)]"
+                style={{ filter: 'drop-shadow(0 0 8px rgba(139,110,192,0.5))' }}
+                animate={{ x: [-22, 22, -22] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                {/* 手指：食指向上、其他手指收起 */}
+                <path d="M9 11V6a2 2 0 0 1 4 0v5" />
+                <path d="M13 11V4a2 2 0 0 1 4 0v7" />
+                <path d="M17 11V6a2 2 0 0 1 4 0v8a7 7 0 0 1-7 7h-2a8 8 0 0 1-8-8 2 2 0 0 1 4 0" />
+              </motion.svg>
+              <div className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)]/80 px-3 py-1.5 backdrop-blur-md shadow-[var(--shadow-card)]">
+                <span className="text-[11px] font-medium text-[var(--color-text-secondary)] whitespace-nowrap">
                   {t.reading.drawSwipeHint ?? '左右拖動瀏覽 78 張牌'}
                 </span>
-                <motion.svg
-                  width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  className="text-[var(--color-accent-gold)]"
-                  animate={{ x: [3, -3, 3] }}
-                  transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </motion.svg>
               </div>
             </motion.div>
           )}
@@ -676,7 +677,7 @@ function MobileWheelDraw({
         </p>
       </div>
 
-      {/* 教學引導：上下拖動提示 */}
+      {/* 教學引導：手指 + 雙向箭頭（上下） */}
       <AnimatePresence>
         {showHint && (
           <motion.div
@@ -684,30 +685,32 @@ function MobileWheelDraw({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, delay: 0.4 }}
-            className="pointer-events-none absolute z-[150] flex flex-col items-center gap-2"
+            className="pointer-events-none absolute z-[150] flex flex-row items-center gap-3"
             style={{ left: 20, top: '50%', transform: 'translateY(-50%)' }}
           >
-            <motion.svg
-              width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              className="text-[var(--color-accent-gold)]"
-              animate={{ y: [-4, 4, -4] }}
-              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <polyline points="18 15 12 9 6 15" />
-            </motion.svg>
-            <div className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)]/85 px-3 py-1.5 backdrop-blur-md shadow-lg">
-              <span className="text-[11px] font-medium text-[var(--color-text-secondary)] whitespace-nowrap">
-                {t.reading.drawSwipeHint ?? '滑動瀏覽 78 張牌'}
-              </span>
+            {/* 雙向上下箭頭 */}
+            <svg width="14" height="80" viewBox="0 0 14 80" fill="none" className="text-[var(--color-accent-gold)]">
+              <path d="M7 6 L1 14 M7 6 L13 14 M7 6 L7 74 M7 74 L1 66 M7 74 L13 66" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <div className="flex flex-col items-center gap-2">
+              {/* 手指（上下滑動） */}
+              <motion.svg
+                width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+                className="text-[var(--color-accent-gold)]"
+                style={{ filter: 'drop-shadow(0 0 8px rgba(139,110,192,0.5))' }}
+                animate={{ y: [-22, 22, -22] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <path d="M9 11V6a2 2 0 0 1 4 0v5" />
+                <path d="M13 11V4a2 2 0 0 1 4 0v7" />
+                <path d="M17 11V6a2 2 0 0 1 4 0v8a7 7 0 0 1-7 7h-2a8 8 0 0 1-8-8 2 2 0 0 1 4 0" />
+              </motion.svg>
+              <div className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)]/85 px-3 py-1.5 backdrop-blur-md shadow-lg">
+                <span className="text-[11px] font-medium text-[var(--color-text-secondary)] whitespace-nowrap">
+                  {t.reading.drawSwipeHint ?? '滑動瀏覽 78 張牌'}
+                </span>
+              </div>
             </div>
-            <motion.svg
-              width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              className="text-[var(--color-accent-gold)]"
-              animate={{ y: [4, -4, 4] }}
-              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </motion.svg>
           </motion.div>
         )}
       </AnimatePresence>

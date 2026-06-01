@@ -337,8 +337,8 @@ function DesktopFan({
               onClick={() => !isPicked && !isFlying && handleCardClick(i)}
             >
               <CardBack width={cardW} height={cardH} glowing={(isHovered && !isPicked) || isFlying || isPending} />
-              {/* 牌號碼：hover 時顯示，平時每 10 張一個刻度 */}
-              {!isPicked && !isFlying && ((isHovered || isPending) || (i + 1) % 10 === 0 || i === 0 || i === CARD_TOTAL - 1) && (
+              {/* 牌號碼：每張都顯示 */}
+              {!isPicked && !isFlying && (
                 <span
                   className="pointer-events-none absolute left-1/2"
                   style={{

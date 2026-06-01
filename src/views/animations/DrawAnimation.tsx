@@ -22,8 +22,7 @@ interface Props {
   onComplete: () => void;
 }
 
-const DESKTOP_MOBILE_WHEEL_TOTAL = 40;  // 桌面扇形：40 張排列優雅
-const MOBILE_WHEEL_TOTAL = 78; // 手機轉盤：完整 78 張
+const CARD_TOTAL = 78; // 完整 78 張塔羅牌
 const FLIP_W = 168;
 const FLIP_H = 269;
 const PARTICLE_TOTAL = 16;
@@ -106,17 +105,17 @@ function DesktopFan({
 
   // 入場動畫延遲結束後標記
   useEffect(() => {
-    const timer = setTimeout(() => setEntered(true), DESKTOP_MOBILE_WHEEL_TOTAL * 15 + 400);
+    const timer = setTimeout(() => setEntered(true), CARD_TOTAL * 8 + 400);
     return () => clearTimeout(timer);
   }, []);
 
-  // 限制桌機扇形寬度
-  const stageWidth = Math.min(containerWidth, 1100);
-  const cardW = Math.max(105, Math.min(150, stageWidth * 0.14));
+  // 桌面版：容器放大，讓 78 張牌有足夠空間
+  const stageWidth = Math.min(containerWidth, 1600);
+  const cardW = Math.max(70, Math.min(100, stageWidth * 0.065));
   const cardH = Math.round(cardW * 1.6);
-  const fanAngle = 120;
-  const radius = Math.max(300, Math.min(480, stageWidth * 0.44, containerWidth * 0.42));
-  const areaHeight = Math.round(cardH + radius * 0.32 + 120);
+  const fanAngle = 160;
+  const radius = Math.max(420, Math.min(700, stageWidth * 0.48));
+  const areaHeight = Math.round(cardH + radius * 0.38 + 140);
   const centerX = stageWidth / 2;
   const fanTop = 24;
 
@@ -151,7 +150,7 @@ function DesktopFan({
         const newPicked = new Set(picked);
         for (let d = -1; d <= 1; d++) {
           const n = fanIndex + d;
-          if (n >= 0 && n < DESKTOP_MOBILE_WHEEL_TOTAL) newPicked.add(n);
+          if (n >= 0 && n < CARD_TOTAL) newPicked.add(n);
         }
         setPicked(newPicked);
 
@@ -187,12 +186,12 @@ function DesktopFan({
       </div>
 
       <div className="relative w-full overflow-visible" style={{ maxWidth: stageWidth, height: areaHeight }}>
-        {Array.from({ length: DESKTOP_MOBILE_WHEEL_TOTAL }, (_, i) => {
+        {Array.from({ length: CARD_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isHovered = hoveredIndex === i;
           const isPending = pendingIndex === i;
           const startAngle = -fanAngle / 2;
-          const angle = startAngle + (i / (DESKTOP_MOBILE_WHEEL_TOTAL - 1)) * fanAngle;
+          const angle = startAngle + (i / (CARD_TOTAL - 1)) * fanAngle;
           const rad = (angle * Math.PI) / 180;
           const bottomX = centerX + Math.sin(rad) * radius;
           const bottomY = fanTop + cardH + (1 - Math.cos(rad)) * radius * 0.42;
@@ -268,18 +267,18 @@ function DesktopFan({
               onClick={() => !isPicked && !isFlying && handleCardClick(i)}
             >
               <CardBack width={cardW} height={cardH} glowing={(isHovered && !isPicked) || isFlying || isPending} />
-              {/* 牌號碼 */}
+              {/* 牌號碼：hover 時顯示，或每 5 張顯示一個刻度 */}
               {!isPicked && !isFlying && (
                 <span
-                  className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+                  className="pointer-events-none absolute left-1/2"
                   style={{
-                    bottom: -18,
-                    fontSize: 10,
+                    bottom: -20,
+                    fontSize: (isHovered || isPending) ? 12 : 9,
                     fontWeight: 700,
                     color: (isHovered || isPending) ? 'var(--color-accent-gold)' : 'var(--color-text-muted)',
-                    opacity: (isHovered || isPending) ? 1 : 0.5,
-                    transition: 'color 0.15s, opacity 0.15s',
-                    transform: `translateX(-50%) rotate(-${angle}deg)`,
+                    opacity: (isHovered || isPending) ? 1 : ((i + 1) % 5 === 0 || i === 0) ? 0.6 : 0,
+                    transition: 'color 0.15s, opacity 0.15s, font-size 0.15s',
+                    transform: `translateX(-50%) rotate(${-angle}deg)`,
                   }}
                 >
                   {i + 1}
@@ -471,10 +470,10 @@ function MobileWheelDraw({
           transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        {Array.from({ length: MOBILE_WHEEL_TOTAL }, (_, i) => {
+        {Array.from({ length: CARD_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isPending = pendingIndex === i;
-          const baseAngle = (i / MOBILE_WHEEL_TOTAL) * 360;
+          const baseAngle = (i / CARD_TOTAL) * 360;
           const angle = baseAngle + rotation;
           const rad = (angle * Math.PI) / 180;
           const px = cx + Math.cos(rad) * R;
@@ -523,10 +522,10 @@ function MobileWheelDraw({
           transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        {Array.from({ length: MOBILE_WHEEL_TOTAL }, (_, i) => {
+        {Array.from({ length: CARD_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           if (isPicked) return null;
-          const baseAngle = (i / MOBILE_WHEEL_TOTAL) * 360;
+          const baseAngle = (i / CARD_TOTAL) * 360;
           const angle = baseAngle + rotation;
           const rad = (angle * Math.PI) / 180;
           const cardPx = cx + Math.cos(rad) * R;

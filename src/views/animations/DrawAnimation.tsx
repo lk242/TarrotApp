@@ -109,14 +109,16 @@ function DesktopFan({
     return () => clearTimeout(timer);
   }, []);
 
-  // 桌面版：扇形撐滿整個可用畫面
+  // 桌面版：扇形撐滿畫面，弧形兩端觸及底部
   const stageWidth = containerWidth;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const availH = vh - 120; // navbar + 提示文字
+  const availH = vh - 100;
+  const fanAngle = 150;
+  const halfAngleRad = (fanAngle / 2) * Math.PI / 180;
+  // 反算半徑：讓弧形兩端（±75°）剛好落在底部
   const cardW = Math.max(72, Math.min(105, stageWidth * 0.07));
   const cardH = Math.round(cardW * 1.58);
-  const fanAngle = 150;
-  const radius = availH * 0.85;
+  const radius = (availH - cardH) / (1 - Math.cos(halfAngleRad));
   const areaHeight = availH;
   const centerX = stageWidth / 2;
   const fanTop = 0;
@@ -196,7 +198,7 @@ function DesktopFan({
           const angle = startAngle + (i / (CARD_TOTAL - 1)) * fanAngle;
           const rad = (angle * Math.PI) / 180;
           const bottomX = centerX + Math.sin(rad) * radius;
-          const bottomY = fanTop + cardH + (1 - Math.cos(rad)) * radius * 0.42;
+          const bottomY = fanTop + cardH + (1 - Math.cos(rad)) * radius;
           const x = bottomX - cardW / 2;
           const y = bottomY - cardH;
 

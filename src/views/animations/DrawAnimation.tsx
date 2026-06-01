@@ -109,15 +109,15 @@ function DesktopFan({
     return () => clearTimeout(timer);
   }, []);
 
-  // 桌面版：大弧形讓 78 張牌充分攤開到兩側
-  const stageWidth = Math.min(containerWidth, 1800);
-  const cardW = Math.max(60, Math.min(90, stageWidth * 0.055));
+  // 桌面版：經典弧形扇面，牌適度重疊
+  const stageWidth = Math.min(containerWidth, 1400);
+  const cardW = Math.max(72, Math.min(95, stageWidth * 0.068));
   const cardH = Math.round(cardW * 1.58);
-  const fanAngle = 200;
-  const radius = Math.max(500, Math.min(860, stageWidth * 0.55));
-  const areaHeight = Math.round(radius * 0.75 + cardH + 60);
+  const fanAngle = 140;
+  const radius = Math.max(460, Math.min(640, stageWidth * 0.46));
+  const areaHeight = Math.round(cardH + radius * 0.34 + 80);
   const centerX = stageWidth / 2;
-  const fanTop = 10;
+  const fanTop = 16;
 
   const handleCardClick = useCallback(
     (fanIndex: number) => {
@@ -267,17 +267,17 @@ function DesktopFan({
               onClick={() => !isPicked && !isFlying && handleCardClick(i)}
             >
               <CardBack width={cardW} height={cardH} glowing={(isHovered && !isPicked) || isFlying || isPending} />
-              {/* 牌號碼：hover 時顯示，或每 5 張顯示一個刻度 */}
-              {!isPicked && !isFlying && (
+              {/* 牌號碼：hover 時顯示，平時每 10 張一個刻度 */}
+              {!isPicked && !isFlying && ((isHovered || isPending) || (i + 1) % 10 === 0 || i === 0 || i === CARD_TOTAL - 1) && (
                 <span
                   className="pointer-events-none absolute left-1/2"
                   style={{
-                    bottom: -20,
-                    fontSize: (isHovered || isPending) ? 12 : 9,
+                    bottom: -22,
+                    fontSize: (isHovered || isPending) ? 13 : 10,
                     fontWeight: 700,
                     color: (isHovered || isPending) ? 'var(--color-accent-gold)' : 'var(--color-text-muted)',
-                    opacity: (isHovered || isPending) ? 1 : ((i + 1) % 5 === 0 || i === 0) ? 0.6 : 0,
-                    transition: 'color 0.15s, opacity 0.15s, font-size 0.15s',
+                    opacity: (isHovered || isPending) ? 1 : 0.55,
+                    transition: 'color 0.15s, opacity 0.15s',
                     transform: `translateX(-50%) rotate(${-angle}deg)`,
                   }}
                 >

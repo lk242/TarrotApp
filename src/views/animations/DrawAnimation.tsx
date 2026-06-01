@@ -468,12 +468,6 @@ function MobileWheelDraw({
             if (!isPending) return null;
           }
 
-          // 編號位置：牌的左側（朝圓心內側）
-          const numRad = (angle * Math.PI) / 180;
-          const numOffset = cardW * 0.8 + 14;
-          const numX = -Math.cos(numRad - Math.PI / 2) * numOffset;
-          const numY = -Math.sin(numRad - Math.PI / 2) * numOffset;
-
           return (
             <div
               key={i}
@@ -497,19 +491,19 @@ function MobileWheelDraw({
               }}
             >
               <CardBack width={cardW} height={cardH} glowing={isPending} />
-              {/* 牌號碼 */}
+              {/* 牌號碼 — 直接疊在牌面上 */}
               <span
                 style={{
                   position: 'absolute',
                   left: '50%',
                   top: '50%',
-                  transform: `translate(-50%, -50%) translate(${numX}px, ${numY}px) rotate(-${angle + 90}deg)`,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: 'var(--color-text-muted)',
-                  opacity: isPicked ? 0 : 0.7,
+                  transform: `translate(-50%, -50%) rotate(-${angle + 90}deg)`,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: 'var(--color-accent-gold)',
+                  opacity: isPicked ? 0 : 0.85,
                   pointerEvents: 'none',
-                  whiteSpace: 'nowrap',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.3)',
                 }}
               >
                 {i + 1}

@@ -22,7 +22,8 @@ interface Props {
   onComplete: () => void;
 }
 
-const FAN_TOTAL = 78;
+const DESKTOP_MOBILE_WHEEL_TOTAL = 40;  // 桌面扇形：40 張排列優雅
+const MOBILE_WHEEL_TOTAL = 78; // 手機轉盤：完整 78 張
 const FLIP_W = 168;
 const FLIP_H = 269;
 const PARTICLE_TOTAL = 16;
@@ -105,15 +106,15 @@ function DesktopFan({
 
   // 入場動畫延遲結束後標記
   useEffect(() => {
-    const timer = setTimeout(() => setEntered(true), FAN_TOTAL * 8 + 400);
+    const timer = setTimeout(() => setEntered(true), DESKTOP_MOBILE_WHEEL_TOTAL * 15 + 400);
     return () => clearTimeout(timer);
   }, []);
 
   // 限制桌機扇形寬度
   const stageWidth = Math.min(containerWidth, 1100);
-  const cardW = Math.max(85, Math.min(130, stageWidth * 0.115));
+  const cardW = Math.max(105, Math.min(150, stageWidth * 0.14));
   const cardH = Math.round(cardW * 1.6);
-  const fanAngle = 160;
+  const fanAngle = 120;
   const radius = Math.max(300, Math.min(480, stageWidth * 0.44, containerWidth * 0.42));
   const areaHeight = Math.round(cardH + radius * 0.32 + 120);
   const centerX = stageWidth / 2;
@@ -150,7 +151,7 @@ function DesktopFan({
         const newPicked = new Set(picked);
         for (let d = -1; d <= 1; d++) {
           const n = fanIndex + d;
-          if (n >= 0 && n < FAN_TOTAL) newPicked.add(n);
+          if (n >= 0 && n < DESKTOP_MOBILE_WHEEL_TOTAL) newPicked.add(n);
         }
         setPicked(newPicked);
 
@@ -186,12 +187,12 @@ function DesktopFan({
       </div>
 
       <div className="relative w-full overflow-visible" style={{ maxWidth: stageWidth, height: areaHeight }}>
-        {Array.from({ length: FAN_TOTAL }, (_, i) => {
+        {Array.from({ length: DESKTOP_MOBILE_WHEEL_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isHovered = hoveredIndex === i;
           const isPending = pendingIndex === i;
           const startAngle = -fanAngle / 2;
-          const angle = startAngle + (i / (FAN_TOTAL - 1)) * fanAngle;
+          const angle = startAngle + (i / (DESKTOP_MOBILE_WHEEL_TOTAL - 1)) * fanAngle;
           const rad = (angle * Math.PI) / 180;
           const bottomX = centerX + Math.sin(rad) * radius;
           const bottomY = fanTop + cardH + (1 - Math.cos(rad)) * radius * 0.42;
@@ -267,6 +268,23 @@ function DesktopFan({
               onClick={() => !isPicked && !isFlying && handleCardClick(i)}
             >
               <CardBack width={cardW} height={cardH} glowing={(isHovered && !isPicked) || isFlying || isPending} />
+              {/* 牌號碼 */}
+              {!isPicked && !isFlying && (
+                <span
+                  className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+                  style={{
+                    bottom: -18,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: (isHovered || isPending) ? 'var(--color-accent-gold)' : 'var(--color-text-muted)',
+                    opacity: (isHovered || isPending) ? 1 : 0.5,
+                    transition: 'color 0.15s, opacity 0.15s',
+                    transform: `translateX(-50%) rotate(-${angle}deg)`,
+                  }}
+                >
+                  {i + 1}
+                </span>
+              )}
               {/* 確認/重選 overlay */}
               {isPending && (
                 <div
@@ -453,10 +471,10 @@ function MobileWheelDraw({
           transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        {Array.from({ length: FAN_TOTAL }, (_, i) => {
+        {Array.from({ length: MOBILE_WHEEL_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isPending = pendingIndex === i;
-          const baseAngle = (i / FAN_TOTAL) * 360;
+          const baseAngle = (i / MOBILE_WHEEL_TOTAL) * 360;
           const angle = baseAngle + rotation;
           const rad = (angle * Math.PI) / 180;
           const px = cx + Math.cos(rad) * R;
@@ -505,10 +523,10 @@ function MobileWheelDraw({
           transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        {Array.from({ length: FAN_TOTAL }, (_, i) => {
+        {Array.from({ length: MOBILE_WHEEL_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           if (isPicked) return null;
-          const baseAngle = (i / FAN_TOTAL) * 360;
+          const baseAngle = (i / MOBILE_WHEEL_TOTAL) * 360;
           const angle = baseAngle + rotation;
           const rad = (angle * Math.PI) / 180;
           const cardPx = cx + Math.cos(rad) * R;

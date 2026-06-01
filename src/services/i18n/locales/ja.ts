@@ -68,6 +68,7 @@ const ja: Locale = {
     drawMobileSwipeNth: '上にスワイプして{nth}枚目を引いてください',
     drawMobileTapFallback: 'またはタップして引く',
     drawMobileAllDrawn: '✦ すべてのカードを引きました。開示の準備中...',
+    drawSwipeHint: 'スワイプして 78 枚を閲覧',
     revealingCards: '運命のカードを明かしています...',
     revealComplete: '✦ すべてのカードが開かれました。神託をお待ちください...',
     followUpGuidePosition: 'ガイド',

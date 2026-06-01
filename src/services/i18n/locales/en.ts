@@ -68,6 +68,7 @@ const en: Locale = {
     drawMobileSwipeNth: 'Swipe up to draw card #{nth}',
     drawMobileTapFallback: 'or tap here to draw',
     drawMobileAllDrawn: '✦ All cards drawn, preparing to reveal...',
+    drawSwipeHint: 'Drag to browse all 78 cards',
     revealingCards: 'Revealing the cards of fate...',
     revealComplete: '✦ All cards are revealed. Waiting for the oracle...',
     followUpGuidePosition: 'Guide',

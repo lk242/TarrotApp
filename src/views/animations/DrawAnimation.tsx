@@ -94,6 +94,8 @@ function DesktopFan({
   const [containerWidth, setContainerWidth] = useState(1200);
   /** 牌堆旋轉角度（左右拖動）*/
   const [rotation, setRotation] = useState(0);
+  /** 是否顯示滑動引導提示 */
+  const [showHint, setShowHint] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragMoved = useRef(false);
@@ -115,6 +117,43 @@ function DesktopFan({
     const timer = setTimeout(() => setEntered(true), 600);
     return () => clearTimeout(timer);
   }, []);
+
+  // 教學引導：入場後自動輕微搖動牌堆 + 顯示提示
+  useEffect(() => {
+    if (!entered) return;
+    let cancelled = false;
+    let startTime = 0;
+    let raf = 0;
+    const animate = (t: number) => {
+      if (cancelled || !showHint) return;
+      if (!startTime) startTime = t;
+      const elapsed = t - startTime;
+      // 1.6s 內做兩次完整左右搖擺（左→右→左→0）
+      if (elapsed < 1800) {
+        const progress = elapsed / 1800;
+        // sin 波形，振幅 12 度，逐漸衰減
+        const amp = 12 * (1 - progress);
+        const r = Math.sin(progress * Math.PI * 4) * amp;
+        setRotation(r);
+        raf = requestAnimationFrame(animate);
+      } else {
+        setRotation(0);
+      }
+    };
+    const startTimer = setTimeout(() => { raf = requestAnimationFrame(animate); }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(startTimer);
+      cancelAnimationFrame(raf);
+    };
+  }, [entered, showHint]);
+
+  // 自動隱藏提示
+  useEffect(() => {
+    if (!showHint) return;
+    const timer = setTimeout(() => setShowHint(false), 4000);
+    return () => clearTimeout(timer);
+  }, [showHint]);
 
   // 桌面版：完整 78 張圓形，圓心在畫面底部下方
   const stageWidth = containerWidth;
@@ -153,6 +192,7 @@ function DesktopFan({
     lastX.current = e.clientX;
     velocity.current = 0;
     setPendingIndex(null);
+    setShowHint(false);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   }, []);
 
@@ -245,6 +285,42 @@ function DesktopFan({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
+        {/* 教學引導：左右拖動提示 */}
+        <AnimatePresence>
+          {showHint && entered && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+              className="pointer-events-none absolute left-1/2 z-[250] flex -translate-x-1/2 flex-col items-center gap-2"
+              style={{ top: cardH + 30 }}
+            >
+              <div className="flex items-center gap-3 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)]/80 px-4 py-2 backdrop-blur-md shadow-[var(--shadow-card)]">
+                <motion.svg
+                  width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className="text-[var(--color-accent-gold)]"
+                  animate={{ x: [-3, 3, -3] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <polyline points="15 18 9 12 15 6" />
+                </motion.svg>
+                <span className="text-xs font-medium text-[var(--color-text-secondary)]">
+                  {t.reading.drawSwipeHint ?? '左右拖動瀏覽 78 張牌'}
+                </span>
+                <motion.svg
+                  width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className="text-[var(--color-accent-gold)]"
+                  animate={{ x: [3, -3, 3] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </motion.svg>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {Array.from({ length: CARD_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isHovered = hoveredIndex === i;
@@ -449,6 +525,7 @@ function MobileWheelDraw({
   const [vw, setVw] = useState(375);
   const [vh, setVh] = useState(700);
   const [zoomed, setZoomed] = useState(false);
+  const [showHint, setShowHint] = useState(true);
   const isDragging = useRef(false);
   const dragMoved = useRef(false);
   const lastY = useRef(0);
@@ -484,6 +561,36 @@ function MobileWheelDraw({
     return () => { running = false; cancelAnimationFrame(animFrame.current); };
   }, []);
 
+  // 教學引導：入場後自動上下搖動
+  useEffect(() => {
+    if (!showHint) return;
+    let cancelled = false;
+    let startTime = 0;
+    let raf = 0;
+    const animate = (t: number) => {
+      if (cancelled || !showHint) return;
+      if (!startTime) startTime = t;
+      const elapsed = t - startTime;
+      if (elapsed < 1800) {
+        const progress = elapsed / 1800;
+        const amp = 14 * (1 - progress);
+        const r = Math.sin(progress * Math.PI * 4) * amp;
+        setRotation(r);
+        raf = requestAnimationFrame(animate);
+      } else {
+        setRotation(0);
+      }
+    };
+    const startTimer = setTimeout(() => { raf = requestAnimationFrame(animate); }, 600);
+    const hideTimer = setTimeout(() => setShowHint(false), 4000);
+    return () => {
+      cancelled = true;
+      clearTimeout(startTimer);
+      clearTimeout(hideTimer);
+      cancelAnimationFrame(raf);
+    };
+  }, [showHint]);
+
   const cardW = 52;
   const cardH = Math.round(cardW * 1.58);
   // 半徑：讓弧形佔螢幕大部分寬度，曲線適中
@@ -498,6 +605,7 @@ function MobileWheelDraw({
     lastY.current = e.clientY;
     velocity.current = 0;
     setZoomed(true);
+    setShowHint(false);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   }, []);
 
@@ -567,6 +675,42 @@ function MobileWheelDraw({
           {t.reading.drawMobileProgress.replace('{current}', String(revealCount)).replace('{total}', String(totalNeeded))}
         </p>
       </div>
+
+      {/* 教學引導：上下拖動提示 */}
+      <AnimatePresence>
+        {showHint && (
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+            className="pointer-events-none absolute z-[150] flex flex-col items-center gap-2"
+            style={{ left: 20, top: '50%', transform: 'translateY(-50%)' }}
+          >
+            <motion.svg
+              width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className="text-[var(--color-accent-gold)]"
+              animate={{ y: [-4, 4, -4] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <polyline points="18 15 12 9 6 15" />
+            </motion.svg>
+            <div className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)]/85 px-3 py-1.5 backdrop-blur-md shadow-lg">
+              <span className="text-[11px] font-medium text-[var(--color-text-secondary)] whitespace-nowrap">
+                {t.reading.drawSwipeHint ?? '滑動瀏覽 78 張牌'}
+              </span>
+            </div>
+            <motion.svg
+              width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className="text-[var(--color-accent-gold)]"
+              animate={{ y: [4, -4, 4] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </motion.svg>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 牌輪容器 — 拖動時放大（以弧形左緣為原點，牌往內側展開） */}
       <div

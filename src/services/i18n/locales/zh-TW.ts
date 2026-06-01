@@ -73,6 +73,7 @@ const zhTW = {
     drawMobileSwipeNth: '向上滑動抽取第 {nth} 張牌',
     drawMobileTapFallback: '或點此抽牌',
     drawMobileAllDrawn: '✦ 牌已抽齊，準備揭示...',
+    drawSwipeHint: '拖動瀏覽 78 張牌',
     revealingCards: '揭示命運之牌...',
     revealComplete: '✦ 所有牌已翻開，靜候神諭...',
     // 追問指引

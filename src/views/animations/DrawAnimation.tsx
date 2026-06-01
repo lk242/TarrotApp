@@ -496,8 +496,15 @@ function MobileWheelDraw({
         })}
       </div>
 
-      {/* 牌號碼 — 獨立於縮放容器外，不受放大影響 */}
-      <div className="pointer-events-none absolute inset-0">
+      {/* 牌號碼 — 獨立圖層，自己做縮放（以畫面左側為原點，數字不會飛出去） */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          transform: zoomed ? 'scale(1.3)' : 'scale(1)',
+          transformOrigin: `0px ${cy}px`,
+          transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
         {Array.from({ length: FAN_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           if (isPicked) return null;
@@ -507,13 +514,13 @@ function MobileWheelDraw({
           const cardPx = cx + Math.cos(rad) * R;
           const cardPy = cy + Math.sin(rad) * R;
 
-          // 數字在牌的內側（朝圓心方向），偏移一個牌寬的距離
+          // 數字在牌的內側（朝圓心方向）
           const inwardOffset = cardW * 0.9 + 16;
           const numPx = cardPx - Math.cos(rad) * inwardOffset;
           const numPy = cardPy - Math.sin(rad) * inwardOffset;
 
           // 螢幕外不渲染
-          if (numPx < -20 || numPx > vw + 20 || numPy < -20 || numPy > vh + 20) return null;
+          if (numPx < -40 || numPx > vw + 40 || numPy < -40 || numPy > vh + 40) return null;
 
           return (
             <span

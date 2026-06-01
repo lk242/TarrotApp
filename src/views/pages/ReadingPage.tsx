@@ -102,8 +102,10 @@ export default function ReadingPage() {
     }
   }, [followUps.length]);
 
+  const isDrawing = phase === 'drawing';
+
   return (
-    <div className="flex flex-1 flex-col items-center px-6 py-20">
+    <div className={`flex flex-1 flex-col items-center px-6 ${isDrawing ? 'py-4' : 'py-20'}`}>
       {/* 全螢幕遮罩：只在初次解讀 (interpreting) 時使用，追問改用 inline loading */}
       {phase === 'interpreting' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6 backdrop-blur-md">
@@ -136,11 +138,16 @@ export default function ReadingPage() {
         </div>
       )}
 
-      <h1 className="mb-2 text-2xl font-bold text-[var(--color-accent-gold)] animate-fade-in">
-        {t.spreads[SPREAD_I18N_KEY[spreadType]]?.name ?? spread.name}
-      </h1>
-      <p className="mb-10 text-sm text-[var(--color-text-muted)]">{t.spreads[SPREAD_I18N_KEY[spreadType]]?.description ?? spread.description}</p>
-      <div className="mb-6 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-xs text-[var(--color-text-secondary)]">
+      {!isDrawing && (
+        <h1 className="mb-2 text-2xl font-bold text-[var(--color-accent-gold)] animate-fade-in">
+          {t.spreads[SPREAD_I18N_KEY[spreadType]]?.name ?? spread.name}
+        </h1>
+      )}
+      {!isDrawing && (
+        <p className="mb-10 text-sm text-[var(--color-text-muted)]">{t.spreads[SPREAD_I18N_KEY[spreadType]]?.description ?? spread.description}</p>
+      )}
+      {!isDrawing && (
+        <div className="mb-6 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-2 text-xs text-[var(--color-text-secondary)]">
         {user ? (
           <>
             {creditLoading ? t.credits.loadingPoints : t.credits.currentPoints.replace('{points}', String(balance))}
@@ -159,6 +166,7 @@ export default function ReadingPage() {
           </>
         )}
       </div>
+      )}
 
       {(error || (blockedReason && user)) && (
         <div className="mb-6 w-full max-w-xl rounded-lg border border-[var(--color-accent-gold)]/30 bg-[var(--color-accent-gold)]/10 p-4 text-center text-sm text-[var(--color-text-secondary)]">

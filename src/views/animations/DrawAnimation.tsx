@@ -109,15 +109,17 @@ function DesktopFan({
     return () => clearTimeout(timer);
   }, []);
 
-  // 桌面版：經典弧形扇面，牌適度重疊
+  // 桌面版：經典弧形扇面，佔滿可用空間
   const stageWidth = Math.min(containerWidth, 1400);
-  const cardW = Math.max(72, Math.min(95, stageWidth * 0.068));
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const availH = vh - 140; // 扣掉 navbar + 提示文字
+  const cardW = Math.max(72, Math.min(100, stageWidth * 0.072));
   const cardH = Math.round(cardW * 1.58);
-  const fanAngle = 140;
-  const radius = Math.max(460, Math.min(640, stageWidth * 0.46));
-  const areaHeight = Math.round(cardH + radius * 0.34 + 80);
+  const fanAngle = 150;
+  const radius = Math.max(400, Math.min(640, availH * 0.7, stageWidth * 0.46));
+  const areaHeight = Math.round(cardH + radius * 0.42 + 60);
   const centerX = stageWidth / 2;
-  const fanTop = 16;
+  const fanTop = 8;
 
   const handleCardClick = useCallback(
     (fanIndex: number) => {

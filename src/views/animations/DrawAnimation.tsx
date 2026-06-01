@@ -113,7 +113,7 @@ function DesktopFan({
   const stageWidth = containerWidth;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
   const availH = vh - 100;
-  const fanAngle = 150;
+  const fanAngle = 120;
   const halfAngleRad = (fanAngle / 2) * Math.PI / 180;
   // 反算半徑：讓弧形兩端（±75°）剛好落在底部
   const cardW = Math.max(72, Math.min(105, stageWidth * 0.07));

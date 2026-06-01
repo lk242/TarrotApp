@@ -491,24 +491,46 @@ function MobileWheelDraw({
               }}
             >
               <CardBack width={cardW} height={cardH} glowing={isPending} />
-              {/* 牌號碼 — 直接疊在牌面上 */}
-              <span
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '50%',
-                  transform: `translate(-50%, -50%) rotate(-${angle + 90}deg)`,
-                  fontSize: 11,
-                  fontWeight: 800,
-                  color: 'var(--color-accent-gold)',
-                  opacity: isPicked ? 0 : 0.85,
-                  pointerEvents: 'none',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                }}
-              >
-                {i + 1}
-              </span>
             </div>
+          );
+        })}
+      </div>
+
+      {/* 牌號碼 — 獨立於縮放容器外，不受放大影響 */}
+      <div className="pointer-events-none absolute inset-0">
+        {Array.from({ length: FAN_TOTAL }, (_, i) => {
+          const isPicked = picked.has(i);
+          if (isPicked) return null;
+          const baseAngle = (i / FAN_TOTAL) * 360;
+          const angle = baseAngle + rotation;
+          const rad = (angle * Math.PI) / 180;
+          const cardPx = cx + Math.cos(rad) * R;
+          const cardPy = cy + Math.sin(rad) * R;
+
+          // 數字在牌的內側（朝圓心方向），偏移一個牌寬的距離
+          const inwardOffset = cardW * 0.9 + 16;
+          const numPx = cardPx - Math.cos(rad) * inwardOffset;
+          const numPy = cardPy - Math.sin(rad) * inwardOffset;
+
+          // 螢幕外不渲染
+          if (numPx < -20 || numPx > vw + 20 || numPy < -20 || numPy > vh + 20) return null;
+
+          return (
+            <span
+              key={`num-${i}`}
+              style={{
+                position: 'absolute',
+                left: numPx,
+                top: numPy,
+                transform: 'translate(-50%, -50%)',
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'var(--color-text-muted)',
+                opacity: 0.7,
+              }}
+            >
+              {i + 1}
+            </span>
           );
         })}
       </div>

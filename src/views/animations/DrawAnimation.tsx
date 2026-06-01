@@ -92,7 +92,14 @@ function DesktopFan({
   const [particlePos, setParticlePos] = useState<{ x: number; y: number } | null>(null);
   const [entered, setEntered] = useState(false);
   const [containerWidth, setContainerWidth] = useState(1200);
+  /** 牌堆旋轉角度（左右拖動）*/
+  const [rotation, setRotation] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragMoved = useRef(false);
+  const lastX = useRef(0);
+  const velocity = useRef(0);
+  const animFrame = useRef<number>(0);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -105,28 +112,67 @@ function DesktopFan({
 
   // 入場動畫延遲結束後標記
   useEffect(() => {
-    const timer = setTimeout(() => setEntered(true), CARD_TOTAL * 8 + 400);
+    const timer = setTimeout(() => setEntered(true), 600);
     return () => clearTimeout(timer);
   }, []);
 
-  // 桌面版：扇形撐滿畫面，弧形兩端觸及底部
+  // 桌面版：完整 78 張圓形，圓心在畫面底部下方
   const stageWidth = containerWidth;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
   const availH = vh - 100;
-  const fanAngle = 120;
-  const halfAngleRad = (fanAngle / 2) * Math.PI / 180;
-  // 反算半徑：讓弧形兩端（±75°）剛好落在底部
-  const cardW = Math.max(72, Math.min(105, stageWidth * 0.07));
+  // 牌變大！手機 52px，桌面給到 120-150px
+  const cardW = Math.max(120, Math.min(160, stageWidth * 0.09));
   const cardH = Math.round(cardW * 1.58);
-  const radius = (availH - cardH) / (1 - Math.cos(halfAngleRad));
+  // 半徑：讓圓周頂端離畫面頂約 cardH，且夠大讓 78 張不擠
+  const radius = Math.max(availH * 1.4, stageWidth * 0.5);
   const areaHeight = availH;
   const centerX = stageWidth / 2;
-  const fanTop = 0;
+  // 圓心 Y：底部下方，讓頂端弧形（離圓心 -radius）出現在畫面 cardH+20 處
+  const cy = areaHeight + (radius - availH + cardH + 20);
+
+  // 慣性滾動
+  useEffect(() => {
+    let running = true;
+    const tick = () => {
+      if (!running) return;
+      if (!isDragging.current && Math.abs(velocity.current) > 0.05) {
+        setRotation((r) => r + velocity.current);
+        velocity.current *= 0.94;
+      }
+      animFrame.current = requestAnimationFrame(tick);
+    };
+    animFrame.current = requestAnimationFrame(tick);
+    return () => { running = false; cancelAnimationFrame(animFrame.current); };
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    isDragging.current = true;
+    dragMoved.current = false;
+    lastX.current = e.clientX;
+    velocity.current = 0;
+    setPendingIndex(null);
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - lastX.current;
+    if (Math.abs(dx) > 3) dragMoved.current = true;
+    // x 軸拖動轉旋轉角度
+    const angleDelta = (dx / radius) * (180 / Math.PI);
+    velocity.current = angleDelta;
+    setRotation((r) => r + angleDelta);
+    lastX.current = e.clientX;
+  }, [radius]);
+
+  const handlePointerUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
 
   const handleCardClick = useCallback(
     (fanIndex: number) => {
+      if (dragMoved.current) return; // 拖動中不觸發
       if (picked.has(fanIndex) || flying.has(fanIndex) || revealCount >= totalNeeded) return;
-      // 若已有待確認牌，先取消
       setPendingIndex(fanIndex);
     },
     [picked, flying, revealCount, totalNeeded],
@@ -179,7 +225,7 @@ function DesktopFan({
   }, []);
 
   return (
-    <div ref={containerRef} className="flex w-full flex-col items-center gap-0">
+    <div ref={containerRef} className="flex w-full flex-col items-center gap-0 select-none">
       <div className="mb-1 text-center animate-fade-in">
         <p className="text-base text-[var(--color-text-secondary)]">
           {t.reading.drawDesktopHint.replace('{count}', String(totalNeeded))}
@@ -189,16 +235,32 @@ function DesktopFan({
         </p>
       </div>
 
-      <div className="relative w-full overflow-visible" style={{ maxWidth: stageWidth, height: areaHeight }}>
+      <div
+        className="relative w-full overflow-hidden touch-none"
+        style={{ maxWidth: stageWidth, height: areaHeight, cursor: isDragging.current ? 'grabbing' : 'grab' }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
         {Array.from({ length: CARD_TOTAL }, (_, i) => {
           const isPicked = picked.has(i);
           const isHovered = hoveredIndex === i;
           const isPending = pendingIndex === i;
-          const startAngle = -fanAngle / 2;
-          const angle = startAngle + (i / (CARD_TOTAL - 1)) * fanAngle;
-          const rad = (angle * Math.PI) / 180;
+          // 完整圓：每張牌均分 360° + 拖動旋轉，0° = 圓周頂端（畫面上方）
+          const baseAngle = (i / CARD_TOTAL) * 360 - 180;
+          const angle = baseAngle + rotation;
+          // 把角度標準化到 -180~180
+          let normAngle = angle % 360;
+          if (normAngle > 180) normAngle -= 360;
+          if (normAngle < -180) normAngle += 360;
+          // 只渲染畫面範圍內的牌（頂部弧形 ±90°）
+          const visible = Math.abs(normAngle) < 95;
+          if (!visible && !isPending && !flying.has(i)) return null;
+          const rad = (normAngle * Math.PI) / 180;
+          // 牌底落在圓周上，牌往圓心相反方向延伸
           const bottomX = centerX + Math.sin(rad) * radius;
-          const bottomY = fanTop + cardH + (1 - Math.cos(rad)) * radius;
+          const bottomY = cy - Math.cos(rad) * radius;
           const x = bottomX - cardW / 2;
           const y = bottomY - cardH;
 
@@ -225,7 +287,7 @@ function DesktopFan({
             cardZIndex = 500;
             cardTransition = 'transform 0.35s ease-in, opacity 0.3s ease-in, filter 0.3s';
           } else if (isPicked) {
-            cardTransform = `rotate(${angle}deg) translateY(-10px) scale(0.85)`;
+            cardTransform = `rotate(${normAngle}deg) translateY(-10px) scale(0.85)`;
             cardOpacity = 0;
             cardFilter = 'none';
             cardZIndex = i + 1;
@@ -239,15 +301,17 @@ function DesktopFan({
             cardTransition = 'transform 0.25s ease-out, opacity 0.3s, filter 0.2s';
           } else {
             // 普通牌
-            cardTransform = `rotate(${angle}deg) translateY(${isHovered ? '-18px' : '0'}) scale(${isHovered ? 1.06 : 1})`;
+            cardTransform = `rotate(${normAngle}deg) translateY(${isHovered ? '-18px' : '0'}) scale(${isHovered ? 1.08 : 1})`;
             cardOpacity = entered ? 1 : 0;
             cardFilter = isHovered
-              ? 'drop-shadow(0 0 16px rgba(139,110,192,0.6)) brightness(1.08)'
+              ? 'drop-shadow(0 0 18px rgba(139,110,192,0.7)) brightness(1.1)'
               : 'none';
-            cardZIndex = isHovered ? 200 : i + 1;
+            // 越靠近頂端 z-index 越高
+            const distanceFromTop = Math.abs(normAngle);
+            cardZIndex = isHovered ? 200 : Math.round(200 - distanceFromTop);
             cardTransition = entered
               ? 'transform 0.2s ease-out, opacity 0.3s, filter 0.15s'
-              : `opacity 0.3s ${i * 8}ms, transform 0.4s ${i * 8}ms ease-out`;
+              : 'opacity 0.4s, transform 0.4s ease-out';
           }
 
           return (
@@ -282,7 +346,7 @@ function DesktopFan({
                     color: (isHovered || isPending) ? 'var(--color-accent-gold)' : 'var(--color-text-muted)',
                     opacity: (isHovered || isPending) ? 1 : 0.55,
                     transition: 'color 0.15s, opacity 0.15s',
-                    transform: `translateX(-50%) rotate(${-angle}deg)`,
+                    transform: `translateX(-50%) rotate(${-normAngle}deg)`,
                   }}
                 >
                   {i + 1}

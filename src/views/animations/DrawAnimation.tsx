@@ -443,13 +443,13 @@ function MobileWheelDraw({
         </p>
       </div>
 
-      {/* 牌輪容器 — 拖動時放大 */}
+      {/* 牌輪容器 — 拖動時放大（以弧形左緣為原點，牌往內側展開） */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          transform: zoomed ? 'scale(1.25)' : 'scale(1)',
-          transformOrigin: `${cx}px ${cy}px`,
+          transform: zoomed ? 'scale(1.3)' : 'scale(1)',
+          transformOrigin: `${Math.round(cx - R)}px ${cy}px`,
           transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >

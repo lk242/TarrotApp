@@ -323,6 +323,7 @@ function MobileWheelDraw({
   const [rotation, setRotation] = useState(0);
   const [vw, setVw] = useState(375);
   const [vh, setVh] = useState(700);
+  const [zoomed, setZoomed] = useState(false);
   const isDragging = useRef(false);
   const dragMoved = useRef(false);
   const lastY = useRef(0);
@@ -371,6 +372,7 @@ function MobileWheelDraw({
     dragMoved.current = false;
     lastY.current = e.clientY;
     velocity.current = 0;
+    setZoomed(true);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   }, []);
 
@@ -387,6 +389,12 @@ function MobileWheelDraw({
 
   const handlePointerUp = useCallback(() => {
     isDragging.current = false;
+    // 慣性結束後再縮回（如果速度很小就直接縮）
+    if (Math.abs(velocity.current) < 1) {
+      setZoomed(false);
+    } else {
+      setTimeout(() => setZoomed(false), 800);
+    }
   }, []);
 
   const handleCardTap = useCallback((index: number) => {
@@ -435,48 +443,81 @@ function MobileWheelDraw({
         </p>
       </div>
 
-      {/* 牌輪 */}
-      {Array.from({ length: FAN_TOTAL }, (_, i) => {
-        const isPicked = picked.has(i);
-        const isPending = pendingIndex === i;
-        const baseAngle = (i / FAN_TOTAL) * 360;
-        const angle = baseAngle + rotation;
-        const rad = (angle * Math.PI) / 180;
-        const px = cx + Math.cos(rad) * R;
-        const py = cy + Math.sin(rad) * R;
+      {/* 牌輪容器 — 拖動時放大 */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: zoomed ? 'scale(1.25)' : 'scale(1)',
+          transformOrigin: `${cx}px ${cy}px`,
+          transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        {Array.from({ length: FAN_TOTAL }, (_, i) => {
+          const isPicked = picked.has(i);
+          const isPending = pendingIndex === i;
+          const baseAngle = (i / FAN_TOTAL) * 360;
+          const angle = baseAngle + rotation;
+          const rad = (angle * Math.PI) / 180;
+          const px = cx + Math.cos(rad) * R;
+          const py = cy + Math.sin(rad) * R;
 
-        // 只渲染螢幕內的牌（含邊緣 buffer）
-        if (px < -cardW || px > vw + cardW * 2 || py < -cardH || py > vh + cardH) {
-          if (!isPending) return null;
-        }
+          // 只渲染螢幕內的牌（含邊緣 buffer，放大時多留空間）
+          const buf = zoomed ? cardW * 3 : cardW;
+          if (px < -buf || px > vw + buf * 2 || py < -cardH * 2 || py > vh + cardH * 2) {
+            if (!isPending) return null;
+          }
 
-        return (
-          <div
-            key={i}
-            data-wheel-card
-            className="absolute"
-            style={{
-              left: px - cardW / 2,
-              top: py - cardH / 2,
-              width: cardW,
-              height: cardH,
-              // 牌面朝向圓心：角度 + 90 度讓牌底部指向圓心
-              transform: `rotate(${angle + 90}deg) ${isPending ? 'scale(1.15)' : ''}`,
-              opacity: isPicked ? 0 : 1,
-              transition: isPending ? 'transform 0.2s ease-out, opacity 0.3s' : 'opacity 0.3s',
-              pointerEvents: isPicked ? 'none' : 'auto',
-              zIndex: isPending ? 100 : 1,
-              filter: isPending ? 'drop-shadow(0 0 20px rgba(201,168,76,0.6))' : 'none',
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCardTap(i);
-            }}
-          >
-            <CardBack width={cardW} height={cardH} glowing={isPending} />
-          </div>
-        );
-      })}
+          // 編號位置：牌的左側（朝圓心內側）
+          const numRad = (angle * Math.PI) / 180;
+          const numOffset = cardW * 0.8 + 14;
+          const numX = -Math.cos(numRad - Math.PI / 2) * numOffset;
+          const numY = -Math.sin(numRad - Math.PI / 2) * numOffset;
+
+          return (
+            <div
+              key={i}
+              data-wheel-card
+              className="absolute"
+              style={{
+                left: px - cardW / 2,
+                top: py - cardH / 2,
+                width: cardW,
+                height: cardH,
+                transform: `rotate(${angle + 90}deg) ${isPending ? 'scale(1.15)' : ''}`,
+                opacity: isPicked ? 0 : 1,
+                transition: isPending ? 'transform 0.2s ease-out, opacity 0.3s' : 'opacity 0.3s',
+                pointerEvents: isPicked ? 'none' : 'auto',
+                zIndex: isPending ? 100 : 1,
+                filter: isPending ? 'drop-shadow(0 0 20px rgba(139,110,192,0.6))' : 'none',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCardTap(i);
+              }}
+            >
+              <CardBack width={cardW} height={cardH} glowing={isPending} />
+              {/* 牌號碼 */}
+              <span
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: `translate(-50%, -50%) translate(${numX}px, ${numY}px) rotate(-${angle + 90}deg)`,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: 'var(--color-text-muted)',
+                  opacity: isPicked ? 0 : 0.7,
+                  pointerEvents: 'none',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {i + 1}
+              </span>
+            </div>
+          );
+        })}
+      </div>
 
       {/* 確認/取消 — 固定在螢幕中央偏左 */}
       <AnimatePresence>

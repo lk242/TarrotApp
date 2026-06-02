@@ -159,7 +159,7 @@ function DesktopFan({
   const stageWidth = containerWidth;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
   const availH = vh - 100;
-  const cardW = Math.max(110, Math.min(150, stageWidth * 0.085));
+  const cardW = Math.max(130, Math.min(190, stageWidth * 0.11));
   const cardH = Math.round(cardW * 1.58);
   // 半徑：讓弧形剛好撐滿畫面寬度（兩端落在螢幕左右邊緣）
   // sin(70°)=0.94，所以 radius = stageWidth/2 / 0.94
@@ -540,11 +540,24 @@ function MobileWheelDraw({
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // 鎖定 body scroll
+  // 鎖定 body scroll（含橫向），防止抽牌滑動時頁面晃動
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    const body = document.body;
+    const html = document.documentElement;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevOverscroll = body.style.overscrollBehavior;
+    const prevTouchAction = body.style.touchAction;
+    body.style.overflow = 'hidden';
+    html.style.overflowX = 'hidden';
+    body.style.overscrollBehavior = 'none';
+    body.style.touchAction = 'pan-y pinch-zoom';
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overscrollBehavior = prevOverscroll;
+      body.style.touchAction = prevTouchAction;
+    };
   }, []);
 
   // 慣性滾動
@@ -592,7 +605,7 @@ function MobileWheelDraw({
     };
   }, [showHint]);
 
-  const cardW = 52;
+  const cardW = Math.max(58, Math.round(vw * 0.16));
   const cardH = Math.round(cardW * 1.58);
   // 半徑：讓弧形佔螢幕大部分寬度，曲線適中
   const R = Math.max(vw * 0.95, 360);
@@ -951,8 +964,8 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
                 <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0 }}>
                   <CardBack width={FLIP_W} height={FLIP_H} glowing />
                 </div>
-                <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0, transform: 'rotateY(180deg)' }}>
-                  <CardFace drawnCard={dc} className="h-[269px] w-[168px]" />
+                <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0, transform: `rotateY(180deg)${dc.isReversed ? ' rotate(180deg)' : ''}` }}>
+                  <CardFace drawnCard={{ ...dc, isReversed: false }} className="h-[269px] w-[168px]" />
                 </div>
               </motion.div>
             </div>

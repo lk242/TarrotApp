@@ -17,7 +17,7 @@ const SPREAD_IMAGE_MAP: Record<string, string> = {
 };
 
 const SPREAD_OPACITY = {
-  light: { opacity: 0.9, hoverOpacity: 1 },
+  light: { opacity: 0.7, hoverOpacity: 0.85 },
   dark:  { opacity: 0.4, hoverOpacity: 0.55 },
 };
 
@@ -75,10 +75,11 @@ export default function HomePage() {
           src={`${themeImageBase}/logo.${ext}`}
           alt=""
           className="mx-auto mb-5 h-16 w-16 animate-candle cursor-default select-none"
+          style={{ mixBlendMode: theme === 'light' ? 'multiply' : 'screen' }}
           onClick={handleLogoTap}
           draggable={false}
         />
-        <h1 className="mb-3 text-4xl font-bold tracking-[0.15em] text-[var(--color-accent-gold)]" style={{ fontVariant: 'small-caps' }}>
+        <h1 className="mb-3 text-4xl font-light tracking-[0.25em] text-[var(--color-accent-gold)] uppercase" style={{ fontFamily: 'var(--font-heading)' }}>
           {t.appName}
         </h1>
         {/* 裝飾分隔線 */}
@@ -164,14 +165,14 @@ function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]
         />
         {/* 內容 */}
         <div className="relative z-10 p-6 text-center">
-          <div className="mb-10" />
+          <div className="mb-16" />
           {/* 新手推薦 / 深度解析標籤 */}
           {spread.type === 'single' && (
             <span
-              className="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider"
+              className="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-medium tracking-wider"
               style={{
-                backgroundColor: theme === 'light' ? 'rgba(139,110,192,0.18)' : 'rgba(201,168,76,0.2)',
-                color: theme === 'light' ? '#6d4ec0' : 'var(--color-accent-gold)',
+                backgroundColor: theme === 'light' ? 'rgba(107,91,78,0.1)' : 'rgba(201,168,76,0.2)',
+                color: theme === 'light' ? '#6b5b4e' : 'var(--color-accent-gold)',
               }}
             >
               {t.home.beginner}
@@ -179,10 +180,10 @@ function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]
           )}
           {spread.type === 'celtic-cross' && (
             <span
-              className="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider"
+              className="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-medium tracking-wider"
               style={{
-                backgroundColor: theme === 'light' ? 'rgba(99,102,241,0.15)' : 'rgba(123,94,167,0.2)',
-                color: theme === 'light' ? '#4f46e5' : 'var(--color-accent-purple-light)',
+                backgroundColor: theme === 'light' ? 'rgba(123,107,138,0.12)' : 'rgba(123,94,167,0.2)',
+                color: theme === 'light' ? '#7b6b8a' : 'var(--color-accent-purple-light)',
               }}
             >
               {t.home.deepAnalysis}
@@ -190,10 +191,10 @@ function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]
           )}
           {spread.type === 'yes-no' && (
             <span
-              className="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider"
+              className="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-medium tracking-wider"
               style={{
-                backgroundColor: theme === 'light' ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.2)',
-                color: theme === 'light' ? '#059669' : '#34d399',
+                backgroundColor: theme === 'light' ? 'rgba(106,143,160,0.12)' : 'rgba(16,185,129,0.2)',
+                color: theme === 'light' ? '#5a7f90' : '#34d399',
               }}
             >
               {t.home.quickAnswer}

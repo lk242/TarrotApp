@@ -19,7 +19,7 @@ export default function AboutPage() {
     <div className="flex flex-1 flex-col items-center px-6 py-20">
       {/* ===== Hero ===== */}
       <motion.div {...fadeUp()} className="mb-16 max-w-2xl text-center">
-        <img src={`${themeImageBase}/logo.${ext}`} alt="" className="mx-auto mb-4 h-14 w-14 animate-candle" />
+        <img src={`${themeImageBase}/logo.${ext}`} alt="" className="mx-auto mb-4 h-14 w-14 animate-candle" style={{ mixBlendMode: theme === 'light' ? 'multiply' : 'screen' }} />
         <h1 className="mb-4 text-3xl font-bold tracking-[0.15em] text-[var(--color-accent-gold)] md:text-4xl" style={{ fontVariant: 'small-caps' }}>
           {t.about.title}
         </h1>
@@ -65,7 +65,7 @@ export default function AboutPage() {
               className="ornate-card flex items-start gap-5 rounded-xl p-5 transition-all hover:shadow-[var(--shadow-card-hover)]"
             >
               <div
-                className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-[var(--color-border-ornate)]"
+                className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl border border-[var(--color-border-ornate)]"
               >
                 <img src={spreadImages[i]} alt={s.name} className="h-full w-full object-cover" />
               </div>

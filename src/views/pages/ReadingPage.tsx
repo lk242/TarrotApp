@@ -213,7 +213,7 @@ export default function ReadingPage() {
                   <img
                     src={`${themeImageBase}/icons/${key}.${iconExt}`}
                     alt={label}
-                    className="h-14 w-14 object-contain transition-transform group-hover:scale-110"
+                    className="h-20 w-20 object-contain transition-transform group-hover:scale-110"
                   />
                   <span className="text-xs font-bold tracking-wider text-[var(--color-text-primary)]">
                     {label}

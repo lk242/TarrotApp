@@ -36,8 +36,8 @@ export default function Navbar() {
       >
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <Link to="/" className="group flex items-center gap-2 text-[var(--color-accent-gold)] no-underline">
-            <img src={`/images/theme/${theme}/logo.${theme === 'light' ? 'png' : 'webp'}`} alt="" className="h-8 w-8 transition-transform group-hover:scale-110" />
-            <span className="text-lg font-bold tracking-[0.15em]" style={{ fontVariant: 'small-caps' }}>{t.appName}</span>
+            <img src={`/images/theme/${theme}/logo.${theme === 'light' ? 'png' : 'webp'}`} alt="" className="h-8 w-8 transition-transform group-hover:scale-110" style={{ mixBlendMode: theme === 'light' ? 'multiply' : 'screen' }} />
+            <span className="text-lg font-light tracking-[0.2em] uppercase" style={{ fontFamily: 'var(--font-heading)' }}>{t.appName}</span>
           </Link>
 
           {/* 手機端漢堡 */}

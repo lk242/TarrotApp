@@ -7,28 +7,36 @@
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* 字體變數：標題襯線 + 內文無襯線 */
+/* 字體變數：標題用 Cormorant Garamond（現代優雅襯線）+ 內文 Inter */
 :root {
-  --font-heading: 'Playfair Display', 'Noto Serif TC', 'Georgia', serif;
-  --font-body: 'Noto Sans TC', 'Helvetica Neue', 'Arial', sans-serif;
+  --font-heading: 'Cormorant Garamond', 'Noto Serif TC', 'Georgia', serif;
+  --font-body: 'Inter', 'Noto Sans TC', 'Helvetica Neue', 'Arial', sans-serif;
+}
+
+html {
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   background-color: var(--body-bg-color);
   background-image: var(--gradient-page);
   color: var(--color-text-primary);
   font-family: var(--font-body);
-  font-weight: 400;
-  letter-spacing: 0.01em;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.25s ease, color 0.2s ease;
 }
 
-/* 標題用襯線字體 */
+/* 標題用襯線字體 — 輕盈優雅 */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
+  font-weight: 400;
+  letter-spacing: 0.08em;
 }
 
 /* 背景紋理 */
@@ -72,11 +80,11 @@ body::before {
 }
 .ornate-card::before,
 .ornate-card::after {
-  content: '✦';
+  content: '·';
   position: absolute;
-  font-size: 8px;
+  font-size: 14px;
   color: var(--color-accent-gold-dim);
-  opacity: 0.35;
+  opacity: 0.3;
   pointer-events: none;
 }
 .ornate-card::before { top: 6px; left: 8px; }
@@ -122,15 +130,16 @@ body::before {
   position: relative;
 }
 .ornate-divider::after {
-  content: '◆';
+  content: '·';
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 8px;
+  font-size: 16px;
   color: var(--color-accent-gold);
   background: var(--color-bg-primary);
-  padding: 0 0.5rem;
+  padding: 0 0.6rem;
+  letter-spacing: 0.3em;
 }
 
 .interpretation-panel h2 {
@@ -182,11 +191,11 @@ body::before {
   color: var(--color-accent-gold);
 }
 .interpretation-panel blockquote {
-  border-left: 3px solid var(--color-accent-gold);
+  border-left: 2px solid var(--color-accent-gold);
   margin: 1.25rem 0;
   padding: 0.75rem 1rem;
-  background: rgba(139, 110, 192, 0.06);
-  border-radius: 0 12px 12px 0;
+  background: rgba(107, 91, 78, 0.04);
+  border-radius: 0 8px 8px 0;
   font-style: italic;
-  color: var(--color-accent-gold);
+  color: var(--color-text-secondary);
 }

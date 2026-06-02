@@ -49,7 +49,7 @@ export function useThemeProvider() {
     // 更新 theme-color meta
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', theme === 'light' ? '#f0eef5' : '#0A0A14');
+      metaThemeColor.setAttribute('content', theme === 'light' ? '#F1E6D9' : '#0A0A14');
     }
   }, [theme]);
 

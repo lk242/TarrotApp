@@ -27,7 +27,8 @@ export default function CardFace({ drawnCard, positionLabel, className = '' }: P
           src={card.imageUrl}
           alt={`${displayName} ${isReversed ? t.reading.reversed : t.reading.upright}`}
           /* 逆位只旋轉牌面圖片，不旋轉牌名與牌位，方便閱讀。 */
-          className={`h-full w-full object-contain transition-transform duration-300 ${isReversed ? 'rotate-180' : ''}`}
+          className="h-full w-full object-contain transition-transform duration-300"
+          style={isReversed ? { transform: 'rotate(180deg)' } : undefined}
           loading="lazy"
         />
       </div>

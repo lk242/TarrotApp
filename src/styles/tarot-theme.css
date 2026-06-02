@@ -1,47 +1,47 @@
-/* ── 淺色主題（預設）── */
+/* ── 淺色主題（預設）── Linestrider 風格：暖米白 + 墨線 + 水彩淡彩 */
 :root,
 [data-theme="light"] {
   color-scheme: only light;
 
-  --color-bg-primary: #f0eef5;
-  --color-bg-secondary: #e8e4f0;
-  --color-bg-card: rgba(255, 255, 255, 0.55);
-  --color-bg-glass: rgba(255, 255, 255, 0.35);
-  --color-bg-parchment: rgba(255, 255, 255, 0.45);
+  --color-bg-primary: #F1E6D9;
+  --color-bg-secondary: #EADDD0;
+  --color-bg-card: rgba(241, 230, 217, 0.78);
+  --color-bg-glass: rgba(241, 230, 217, 0.45);
+  --color-bg-parchment: rgba(241, 230, 217, 0.6);
 
-  --color-text-primary: #2d2640;
-  --color-text-secondary: #5a5270;
-  --color-text-muted: #8c84a0;
+  --color-text-primary: #1a1510;
+  --color-text-secondary: #3d3630;
+  --color-text-muted: #6e655c;
 
-  --color-accent-gold: #8b6ec0;
-  --color-accent-gold-light: #a78bfa;
-  --color-accent-gold-dim: #6d5a99;
-  --color-accent-purple: #7b5ea7;
-  --color-accent-purple-light: #c4b5fd;
-  --color-accent-mystic: #60a5fa;
-  --color-accent-crimson: #e879a0;
+  --color-accent-gold: #4a3c30;
+  --color-accent-gold-light: #6b5b4e;
+  --color-accent-gold-dim: #3a2e22;
+  --color-accent-purple: #7b6b8a;
+  --color-accent-purple-light: #a090b0;
+  --color-accent-mystic: #6a8fa0;
+  --color-accent-crimson: #c27070;
 
-  --color-border: rgba(139, 110, 192, 0.18);
-  --color-border-hover: rgba(139, 110, 192, 0.4);
-  --color-border-ornate: rgba(139, 110, 192, 0.25);
+  --color-border: rgba(90, 74, 62, 0.12);
+  --color-border-hover: rgba(90, 74, 62, 0.28);
+  --color-border-ornate: rgba(90, 74, 62, 0.18);
 
-  --shadow-glow: 0 0 20px rgba(139, 110, 192, 0.12), 0 0 60px rgba(167, 139, 250, 0.06);
-  --shadow-card: 0 4px 24px rgba(139, 110, 192, 0.08), 0 1px 6px rgba(0, 0, 0, 0.04);
-  --shadow-card-hover: 0 8px 40px rgba(139, 110, 192, 0.16), 0 0 60px rgba(167, 139, 250, 0.08);
-  --shadow-inner-glow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow-glow: 0 0 30px rgba(107, 91, 78, 0.06);
+  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.03);
+  --shadow-card-hover: 0 6px 32px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(90, 74, 62, 0.08);
+  --shadow-inner-glow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 
-  --radius-card: 16px;
-  --radius-button: 12px;
+  --radius-card: 12px;
+  --radius-button: 8px;
 
-  --gradient-card: linear-gradient(160deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.4) 40%, rgba(248,245,255,0.5) 60%, rgba(237,233,254,0.6) 100%);
-  --gradient-vignette: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(139,110,192,0.06) 100%);
-  --gradient-page: linear-gradient(160deg, #f0eef5 0%, #e8e4f0 25%, #ede8f8 50%, #f2eef9 75%, #eee9f5 100%);
+  --gradient-card: linear-gradient(160deg, rgba(255,255,253,0.8) 0%, rgba(250,248,245,0.5) 40%, rgba(243,239,233,0.4) 100%);
+  --gradient-vignette: radial-gradient(ellipse at center, transparent 0%, transparent 70%, rgba(107,91,78,0.03) 100%);
+  --gradient-page: linear-gradient(180deg, #F1E6D9 0%, #EDE1D4 50%, #F1E6D9 100%);
 
-  --body-bg-color: #f0eef5;
+  --body-bg-color: #F1E6D9;
   --body-texture-blend: multiply;
-  --body-texture-opacity: 0.03;
-  --glass-backdrop: blur(16px) saturate(1.4);
-  --glass-border: rgba(255, 255, 255, 0.5);
+  --body-texture-opacity: 0.015;
+  --glass-backdrop: blur(20px) saturate(1.2);
+  --glass-border: rgba(255, 255, 255, 0.6);
 }
 
 /* ── 深色主題 ── */

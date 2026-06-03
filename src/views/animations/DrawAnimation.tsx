@@ -465,8 +465,8 @@ function DesktopFan({
             >
               <CardBack width={cardW * 2.2} height={cardH * 2.2} glowing />
               <span
-                className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-base font-bold text-[var(--color-accent-gold)]"
-                style={{ bottom: -32 }}
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-base font-bold"
+                style={{ bottom: -32, color: 'rgba(255,255,255,0.9)', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
               >
                 #{pendingIndex + 1}
               </span>
@@ -873,8 +873,8 @@ function MobileWheelDraw({
             >
               <CardBack width={Math.min(vw * 0.6, 220)} height={Math.min(vw * 0.6, 220) * 1.58} glowing />
               <span
-                className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-base font-bold text-[var(--color-accent-gold)]"
-                style={{ bottom: -32 }}
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-base font-bold"
+                style={{ bottom: -32, color: 'rgba(255,255,255,0.9)', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
               >
                 #{pendingIndex + 1}
               </span>

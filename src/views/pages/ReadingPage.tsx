@@ -21,7 +21,6 @@ import InterpretationSections from '../components/tarot/InterpretationSections';
 import ReadingShareCard from '../components/tarot/ReadingShareCard';
 import PushPrompt from '../components/notification/PushPrompt';
 import AutoGrowTextarea from '../components/ui/AutoGrowTextarea';
-import TtsButton from '../components/ui/TtsButton';
 import { usePushNotification } from '../../controllers/usePushNotification';
 import { useI18n } from '../../controllers/useI18n';
 import { useTheme } from '../../controllers/useTheme';
@@ -51,7 +50,7 @@ export default function ReadingPage() {
   const spread = SPREADS[spreadType] || SPREADS.single;
   const { user } = useAuth();
   const { balance, loading: creditLoading } = useCredits();
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const posKey = SPREAD_I18N_KEY[spreadType] ?? 'single';
   const positionNames = (t.positions as Record<string, string[]>)?.[posKey] ?? [];
   const { onTopicChange, onTypingStart, resetSignals, buildContext } = useQuerentSignals(user?.uid);
@@ -453,9 +452,6 @@ export default function ReadingPage() {
           ) : (
             /* 串流完成 / 非串流：使用 InterpretationSections 分段顯示 */
             <div className="animate-fade-in">
-              <div className="flex justify-end mb-2">
-                <TtsButton text={interpretation} locale={lang} />
-              </div>
               <InterpretationSections markdown={interpretation} animated={false} />
             </div>
           )}

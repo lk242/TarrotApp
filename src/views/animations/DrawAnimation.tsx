@@ -536,12 +536,23 @@ function MobileWheelDraw({
   const lastY = useRef(0);
   const velocity = useRef(0);
   const animFrame = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // 用 ResizeObserver 量容器實際尺寸，避免 Safari/Chrome viewport 高度不一致的問題
   useEffect(() => {
-    const update = () => { setVw(window.innerWidth); setVh(window.innerHeight); };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      setVw(width);
+      setVh(height);
+    });
+    ro.observe(el);
+    // 初始化一次
+    const rect = el.getBoundingClientRect();
+    setVw(rect.width);
+    setVh(rect.height);
+    return () => ro.disconnect();
   }, []);
 
   // 鎖定 body scroll（含橫向），防止抽牌滑動時頁面晃動
@@ -682,6 +693,7 @@ function MobileWheelDraw({
 
   return (
     <div
+      ref={containerRef}
       className="fixed inset-0 z-[60] touch-none select-none"
       style={{ background: 'var(--color-bg-primary)' }}
       onPointerDown={handlePointerDown}

@@ -24,7 +24,7 @@ const SPREAD_OPACITY = {
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { theme, themeImageBase } = useTheme();
   const ext = theme === 'light' ? 'png' : 'webp';
   const tapCountRef = useRef(0);
@@ -113,6 +113,31 @@ export default function HomePage() {
           {(t as Record<string, any>).serviceInfo?.contactEmail}
         </p>
       </section>
+
+      {/* ── 瑪雅跨系統入口 ── */}
+      <motion.a
+        href="https://stellar-maya-2026.web.app"
+        target="_blank"
+        rel="noopener noreferrer"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 1.2 }}
+        className="mt-6 w-full max-w-3xl rounded-xl border border-[var(--color-border)] p-5 no-underline transition-all duration-300 hover:border-[var(--color-border-hover)] hover:shadow-[var(--shadow-card-hover)] group block"
+        style={{ background: theme === 'light' ? 'rgba(241,230,217,0.5)' : 'rgba(10,8,20,0.7)' }}
+      >
+        <div className="flex items-center gap-4">
+          <div className="text-2xl shrink-0">🌀</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-gold)] transition-colors">
+              {lang === 'en' ? 'Discover Your Maya Galactic Signature' : lang === 'ja' ? 'マヤ暦で自分の星系印記を見つけよう' : '也來探索你的瑪雅星系印記'}
+            </p>
+            <p className="text-xs mt-0.5 text-[var(--color-text-secondary)]">
+              {lang === 'en' ? 'Reveal your soul blueprint through the ancient Dreamspell calendar' : lang === 'ja' ? 'ドリームスペルカレンダーで魂の設計図を解読する' : '透過古馬雅卓爾金曆，解讀靈魂藍圖與星系能量'}
+            </p>
+          </div>
+          <div className="text-[var(--color-text-secondary)] group-hover:text-[var(--color-accent-gold)] transition-colors text-sm shrink-0">→</div>
+        </div>
+      </motion.a>
     </div>
   );
 }

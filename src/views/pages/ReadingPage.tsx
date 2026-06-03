@@ -575,21 +575,24 @@ export default function ReadingPage() {
 
               {/* 自由追問輸入 */}
               <div className="flex w-full items-end gap-2">
-                <AutoGrowTextarea
-                  value={followUpInput}
-                  onChange={setFollowUpInput}
-                  onSubmit={() => {
-                    if (followUpInput.trim() && canFollowUp) {
-                      askFollowUp(followUpInput.trim(), followUpMode === 'card');
-                      setFollowUpInput('');
-                    }
-                  }}
-                  placeholder={followUpMode === 'card' ? t.reading.followUpPlaceholder : t.reading.chatPlaceholder}
-                  maxLength={300}
-                  minRows={1}
-                  maxRows={4}
-                  className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
-                />
+                {/* 用 div 包住讓 flex-1 作用在正確的 flex child 上 */}
+                <div className="flex-1 min-w-0">
+                  <AutoGrowTextarea
+                    value={followUpInput}
+                    onChange={setFollowUpInput}
+                    onSubmit={() => {
+                      if (followUpInput.trim() && canFollowUp) {
+                        askFollowUp(followUpInput.trim(), followUpMode === 'card');
+                        setFollowUpInput('');
+                      }
+                    }}
+                    placeholder={followUpMode === 'card' ? t.reading.followUpPlaceholder : t.reading.chatPlaceholder}
+                    maxLength={300}
+                    minRows={1}
+                    maxRows={4}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)]"
+                  />
+                </div>
                 <button
                   onClick={() => {
                     if (followUpInput.trim() && canFollowUp) {

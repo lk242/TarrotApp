@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { marked } from 'marked';
 import type { SpreadType } from '../../models/spread';
 import { SPREADS } from '../../models/spread';
@@ -72,10 +72,10 @@ export default function ReadingPage() {
   const [followUpMode, setFollowUpMode] = useState<'card' | 'chat'>('card');
   const [shareStatus, setShareStatus] = useState<string>('');
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
   const followUpEndRef = useRef<HTMLDivElement>(null);
   const readingCost = spreadType === 'yes-no' ? YES_NO_CREDIT_COST : QUESTION_CREDIT_COST;
-  const canAsk = Boolean(user) && balance >= readingCost;
   const canFollowUp = Boolean(user) && balance >= FOLLOW_UP_CREDIT_COST;
   const blockedReason = !user
     ? t.credits.loginRequired
@@ -268,8 +268,14 @@ export default function ReadingPage() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
-            onClick={startReading}
-            disabled={user ? (!canAsk || creditLoading) : false}
+            onClick={() => {
+              if (user && balance < readingCost) {
+                setShowCreditModal(true);
+              } else {
+                startReading();
+              }
+            }}
+            disabled={creditLoading}
             className="w-full cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/30 bg-gradient-to-r from-[var(--color-accent-gold)]/20 via-[var(--color-accent-gold)]/10 to-[var(--color-accent-purple)]/20 px-6 py-3.5 text-base font-bold tracking-wider text-[var(--color-accent-gold)] shadow-[var(--shadow-glow)] transition-all hover:border-[var(--color-accent-gold)]/50 hover:shadow-[var(--shadow-card-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {user
@@ -695,6 +701,87 @@ export default function ReadingPage() {
           </div>}
         </div>
       )}
+
+      {/* 點數不足引導 Modal */}
+      <AnimatePresence>
+        {showCreditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-end justify-center sm:items-center"
+            style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
+            onClick={() => setShowCreditModal(false)}
+          >
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 60, opacity: 0 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-t-2xl sm:rounded-2xl border border-[var(--color-border)] p-6"
+              style={{ backgroundColor: 'var(--color-bg-primary)' }}
+            >
+              {/* 圖示 */}
+              <div className="mb-4 flex justify-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[var(--color-accent-gold)]/30 bg-[var(--color-accent-gold)]/10 text-2xl">
+                  ✦
+                </div>
+              </div>
+
+              <h3 className="mb-1 text-center text-lg font-bold text-[var(--color-accent-gold)]">
+                服務額度不足
+              </h3>
+              <p className="mb-1 text-center text-sm text-[var(--color-text-secondary)]">
+                目前餘額 <span className="font-bold text-[var(--color-text-primary)]">{balance}</span> 點，
+                本次占卜需要 <span className="font-bold text-[var(--color-accent-gold)]">{readingCost}</span> 點
+              </p>
+              <p className="mb-6 text-center text-xs text-[var(--color-text-muted)]">
+                購買額度後即可繼續占卜，額度不會過期
+              </p>
+
+              {/* 方案預覽 */}
+              <div className="mb-5 grid grid-cols-3 gap-2">
+                {[
+                  { label: '入門', points: 100, price: 'NT$99' },
+                  { label: '標準', points: 300, price: 'NT$249', recommended: true },
+                  { label: '超值', points: 600, price: 'NT$399' },
+                ].map((plan) => (
+                  <div
+                    key={plan.label}
+                    className={`rounded-xl border p-3 text-center ${
+                      plan.recommended
+                        ? 'border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)]/10'
+                        : 'border-[var(--color-border)] bg-[var(--color-bg-card)]'
+                    }`}
+                  >
+                    {plan.recommended && (
+                      <p className="mb-1 text-[9px] font-bold tracking-wider text-[var(--color-accent-gold)]">推薦</p>
+                    )}
+                    <p className="text-sm font-bold text-[var(--color-text-primary)]">{plan.points} 點</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">{plan.price}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* 按鈕 */}
+              <Link
+                to="/billing"
+                onClick={() => setShowCreditModal(false)}
+                className="block w-full rounded-lg bg-[var(--color-accent-gold)] py-3 text-center text-sm font-bold text-[var(--color-bg-primary)] no-underline transition-opacity hover:opacity-90"
+              >
+                前往購買額度
+              </Link>
+              <button
+                onClick={() => setShowCreditModal(false)}
+                className="mt-3 w-full cursor-pointer rounded-lg border border-[var(--color-border)] bg-transparent py-2.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
+              >
+                取消
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

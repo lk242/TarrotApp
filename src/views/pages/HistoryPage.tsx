@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { Link } from 'react-router';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { marked } from 'marked';
 import type { Reading } from '../../models/reading';
 import { FOLLOW_UP_CREDIT_COST } from '../../models/credits';
@@ -18,7 +18,9 @@ export default function HistoryPage() {
   const { balance } = useCredits();
   const { t, lang } = useI18n();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [drawerReadingId, setDrawerReadingId] = useState<string | null>(null);
   const [showAllLangs, setShowAllLangs] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
   // 過濾語系：舊紀錄若無 locale 欄位視為 zh-TW
   const filteredReadings = useMemo(
@@ -100,9 +102,13 @@ export default function HistoryPage() {
             t={t}
             currentLang={lang}
             isExpanded={expandedId === reading.id}
-            onToggle={() =>
-              setExpandedId(expandedId === reading.id ? null : reading.id)
-            }
+            onToggle={() => {
+              if (isMobile) {
+                setDrawerReadingId(reading.id);
+              } else {
+                setExpandedId(expandedId === reading.id ? null : reading.id);
+              }
+            }}
             onDelete={() => deleteReading(reading.id)}
             onFollowUp={(question, withCard) => askFollowUp(reading, question, withCard)}
             onUpdateNotes={(notes) => updateNotes(reading.id, notes)}
@@ -110,7 +116,6 @@ export default function HistoryPage() {
             isStreaming={isHistoryStreaming && followingUpId === reading.id}
             canFollowUp={balance >= FOLLOW_UP_CREDIT_COST}
             suggestedQuestions={
-              // 優先用 controller 最新的（追問剛完成時），否則讀 reading 儲存的
               followingUpId === reading.id || (expandedId === reading.id && suggestedQuestions.length > 0)
                 ? suggestedQuestions
                 : reading.suggestedQuestions ?? []
@@ -118,6 +123,64 @@ export default function HistoryPage() {
           />
         ))}
       </div>
+
+      {/* 手機版 Bottom Drawer */}
+      <AnimatePresence>
+        {drawerReadingId && (() => {
+          const reading = readings.find((r) => r.id === drawerReadingId);
+          if (!reading) return null;
+          return (
+            <motion.div
+              key="drawer-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] bg-black/50"
+              onClick={() => setDrawerReadingId(null)}
+            >
+              <motion.div
+                key="drawer"
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto rounded-t-2xl border-t border-[var(--color-border)]"
+                style={{ backgroundColor: 'var(--color-bg-primary)' }}
+              >
+                {/* 拖動把手 */}
+                <div className="sticky top-0 z-10 flex flex-col items-center border-b border-[var(--color-border)] px-5 pb-3 pt-3"
+                  style={{ backgroundColor: 'var(--color-bg-primary)' }}
+                >
+                  <div className="mb-3 h-1 w-10 rounded-full bg-[var(--color-border)]" />
+                  <div className="flex w-full items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">{reading.question}</p>
+                      <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{new Date(reading.timestamp).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    </div>
+                    <button onClick={() => setDrawerReadingId(null)} className="cursor-pointer rounded-full border border-[var(--color-border)] p-1.5 text-[var(--color-text-muted)]">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="px-5 pb-8 pt-4">
+                  {/* 牌面 */}
+                  <div className="mb-5 flex flex-wrap justify-center gap-3">
+                    {reading.drawnCards.map((dc) => (
+                      <CardFace key={dc.card.id} drawnCard={dc} className="!w-28" />
+                    ))}
+                  </div>
+                  {/* 完整解讀 */}
+                  {reading.interpretation && (
+                    <InterpretationSections markdown={reading.interpretation} animated={false} />
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { SPREADS } from '../../models/spread';
 import type { SpreadType } from '../../models/spread';
 import { useI18n } from '../../controllers/useI18n';
 import { useTheme } from '../../controllers/useTheme';
+import WelcomeGuide from '../components/ui/WelcomeGuide';
 
 const spreadList = Object.values(SPREADS);
 
@@ -99,6 +100,8 @@ export default function HomePage() {
           <SpreadCard key={spread.type} spread={spread} delay={0.5 + i * 0.15} t={t} />
         ))}
       </div>
+
+      <WelcomeGuide />
 
       <section className="ornate-card mt-12 w-full max-w-3xl rounded-xl p-6 text-sm leading-7 text-[var(--color-text-secondary)]">
         <h2 className="mb-3 text-lg font-bold tracking-wider text-[var(--color-accent-gold)]">

@@ -142,27 +142,31 @@ export default function ReadingPage() {
             </div>
 
             {/* 已抽到的牌 — 關鍵字預覽 */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               {drawnCards.map((dc, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.15 }}
-                  className="flex items-start gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-3"
                 >
-                  <CardFace drawnCard={dc} className="h-[54px] w-[34px] flex-shrink-0 rounded-md overflow-hidden" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-[var(--color-text-primary)] truncate">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base text-[var(--color-accent-gold)]">
+                      {dc.isReversed ? '↓' : '✦'}
+                    </span>
+                    <p className="font-medium text-[var(--color-text-primary)]" style={{ fontSize: '0.875rem' }}>
                       {dc.card.name}
-                      {dc.isReversed && (
-                        <span className="ml-1.5 text-[10px] text-[var(--color-accent-gold)]">↓ 逆位</span>
-                      )}
                     </p>
-                    <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--color-text-muted)]">
-                      {(dc.isReversed ? dc.card.reversedKeywords : dc.card.keywords).slice(0, 3).join(' · ')}
-                    </p>
+                    {dc.isReversed && (
+                      <span className="rounded-full bg-[var(--color-accent-gold)]/15 px-2 py-0.5 text-[10px] font-medium text-[var(--color-accent-gold)]">
+                        逆位
+                      </span>
+                    )}
                   </div>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-muted)]">
+                    {(dc.isReversed ? dc.card.reversedKeywords : dc.card.keywords).slice(0, 4).join('・')}
+                  </p>
                 </motion.div>
               ))}
             </div>

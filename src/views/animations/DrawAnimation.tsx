@@ -622,7 +622,7 @@ function MobileWheelDraw({
     dragMoved.current = false;
     lastY.current = e.clientY;
     velocity.current = 0;
-    setZoomed(true);
+    // 不在 pointerDown 立即 zoom，等確認是拖動才放大
     setShowHint(false);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   }, []);
@@ -630,7 +630,10 @@ function MobileWheelDraw({
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging.current) return;
     const dy = e.clientY - lastY.current;
-    if (Math.abs(dy) > 3) dragMoved.current = true;
+    if (Math.abs(dy) > 5) {
+      dragMoved.current = true;
+      setZoomed(true); // 確認是拖動後才放大
+    }
     // 將 y 軸拖動轉換為旋轉角度
     const angleDelta = (dy / R) * (180 / Math.PI);
     velocity.current = angleDelta;

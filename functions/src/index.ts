@@ -1952,6 +1952,102 @@ export const streamFollowUpReading = onRequest(
   },
 );
 
+/* ─────────────────────────────────────────────────────
+   語音朗讀 — generateTTS
+   接收解讀文字 → 去除 Markdown → OpenAI TTS → 回傳 mp3
+   ───────────────────────────────────────────────────── */
+
+/** 移除 Markdown 格式，讓 TTS 讀起來自然 */
+function stripMarkdownForTTS(text: string): string {
+  return text
+    .replace(/<!--[\s\S]*?-->/g, '')       // 移除 HTML 注釋（含 SUGGESTED_QUESTIONS）
+    .replace(/^#{1,6}\s+(.+)$/gm, '$1')   // 標題 → 純文字
+    .replace(/\*\*(.*?)\*\*/g, '$1')       // 粗體
+    .replace(/\*(.*?)\*/g, '$1')           // 斜體
+    .replace(/`(.*?)`/g, '$1')             // code
+    .replace(/^[-*•]\s+/gm, '')            // 無序清單項目
+    .replace(/^\d+\.\s+/gm, '')            // 有序清單
+    .replace(/^>\s*/gm, '')                // 引用
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // 連結
+    .replace(/!?\[.*?\]\(.*?\)/g, '')      // 圖片
+    .replace(/\n{3,}/g, '\n\n')            // 多餘換行
+    .replace(/✦|🃏|🔮|💡|⚠️|✨|🌀|🎴/gu, '') // emoji（TTS 會念出來很怪）
+    .trim();
+}
+
+const TTS_MAX_CHARS = 4000;
+
+export const generateTTS = onRequest(
+  {
+    region: REGION,
+    secrets: [openAIKey],
+    cors: true,
+    timeoutSeconds: 60,
+    memory: '256MiB',
+  },
+  async (req, res) => {
+    // 驗證 Auth
+    const authHeader = req.headers.authorization ?? '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!idToken) {
+      res.status(401).json({ error: '未登入' });
+      return;
+    }
+    try {
+      await getAuth().verifyIdToken(idToken);
+    } catch {
+      res.status(401).json({ error: 'Token 無效' });
+      return;
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).send('Method Not Allowed');
+      return;
+    }
+
+    const { text, locale } = req.body as { text?: string; locale?: string };
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      res.status(400).json({ error: 'text 必填' });
+      return;
+    }
+
+    const clean = stripMarkdownForTTS(text).slice(0, TTS_MAX_CHARS);
+    const speed = locale === 'zh-TW' ? 0.94 : 1.0; // 中文稍慢一點比較清晰
+
+    try {
+      const ttsRes = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${openAIKey.value()}`,
+        },
+        body: JSON.stringify({
+          model: 'tts-1',
+          input: clean,
+          voice: 'shimmer',   // 柔和、有溫度感，適合 Mystica 角色
+          response_format: 'mp3',
+          speed,
+        }),
+      });
+
+      if (!ttsRes.ok) {
+        const err = await ttsRes.text();
+        res.status(502).json({ error: `TTS API 失敗: ${err}` });
+        return;
+      }
+
+      const buffer = Buffer.from(await ttsRes.arrayBuffer());
+      res.set('Content-Type', 'audio/mpeg');
+      res.set('Content-Length', String(buffer.length));
+      res.set('Cache-Control', 'private, max-age=3600'); // 同一解讀 1 小時快取
+      res.send(buffer);
+    } catch (err) {
+      console.error('TTS error:', err);
+      res.status(500).json({ error: '語音生成失敗，請稍後再試' });
+    }
+  },
+);
+
 export const generateTarotReading = onCall(
   { region: REGION, secrets: [openAIKey], timeoutSeconds: 120 },
   async (request) => {

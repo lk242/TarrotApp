@@ -9,9 +9,9 @@ interface Props {
 
 const TTS_URL =
   (import.meta.env.VITE_TTS_URL as string | undefined) ||
-  'https://asia-east1-mystic-tarot-2026.cloudfunctions.net/generateTTS';
+  'https://generatetts-hoqm6svvza-de.a.run.app';
 
-type Status = 'idle' | 'loading' | 'playing' | 'paused';
+type Status = 'idle' | 'loading' | 'playing' | 'paused' | 'error';
 
 export default function TtsButton({ text, locale, className = '' }: Props) {
   const [status, setStatus] = useState<Status>('idle');
@@ -44,16 +44,29 @@ export default function TtsButton({ text, locale, className = '' }: Props) {
       if (!user) throw new Error('請先登入');
       const idToken = await user.getIdToken();
 
-      const res = await fetch(TTS_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ text, locale }),
-      });
+      // 40 秒 timeout，避免永遠卡在 loading
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 40_000);
 
-      if (!res.ok) throw new Error(`TTS 失敗 (${res.status})`);
+      let res: Response;
+      try {
+        res = await fetch(TTS_URL, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ text, locale }),
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.status.toString());
+        throw new Error(errText);
+      }
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -80,8 +93,11 @@ export default function TtsButton({ text, locale, className = '' }: Props) {
       await audio.play();
       setStatus('playing');
     } catch (e) {
-      console.error('TTS error:', e);
-      setStatus('idle');
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('TTS error:', msg);
+      setStatus('error');
+      // 3 秒後恢復可重試
+      setTimeout(() => setStatus('idle'), 3000);
     }
   }, [text, locale, status]);
 
@@ -96,6 +112,10 @@ export default function TtsButton({ text, locale, className = '' }: Props) {
         <rect x="6" y="4" width="4" height="16" rx="1" />
         <rect x="14" y="4" width="4" height="16" rx="1" />
       </svg>
+    ) : status === 'error' ? (
+      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
     ) : (
       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none" />
@@ -107,7 +127,8 @@ export default function TtsButton({ text, locale, className = '' }: Props) {
   const label =
     status === 'loading' ? '生成中…' :
     status === 'playing' ? '暫停' :
-    status === 'paused'  ? '繼續' : '聆聽';
+    status === 'paused'  ? '繼續' :
+    status === 'error'   ? '失敗，點擊重試' : '聆聽';
 
   return (
     <button
@@ -118,6 +139,7 @@ export default function TtsButton({ text, locale, className = '' }: Props) {
         border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]
         hover:border-[var(--color-accent-gold)]/50 hover:text-[var(--color-accent-gold)]
         ${status === 'playing' ? 'border-[var(--color-accent-gold)]/40 text-[var(--color-accent-gold)]' : ''}
+        ${status === 'error' ? 'border-red-400/40 text-red-400' : ''}
         ${className}`}
     >
       {/* 進度條背景 */}

@@ -1982,10 +1982,22 @@ export const generateTTS = onRequest(
     region: REGION,
     secrets: [openAIKey],
     cors: true,
+    invoker: 'public',   // 必須，否則 Cloud Run 在 infra 層擋掉 preflight
     timeoutSeconds: 60,
     memory: '256MiB',
   },
   async (req, res) => {
+    // 明確處理 CORS preflight
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).send('Method Not Allowed');
+      return;
+    }
+
     // 驗證 Auth
     const authHeader = req.headers.authorization ?? '';
     const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
@@ -1997,11 +2009,6 @@ export const generateTTS = onRequest(
       await getAuth().verifyIdToken(idToken);
     } catch {
       res.status(401).json({ error: 'Token 無效' });
-      return;
-    }
-
-    if (req.method !== 'POST') {
-      res.status(405).send('Method Not Allowed');
       return;
     }
 

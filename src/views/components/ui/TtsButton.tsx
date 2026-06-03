@@ -46,7 +46,7 @@ export default function TtsButton({ text, locale, className = '' }: Props) {
 
       // 40 秒 timeout，避免永遠卡在 loading
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 40_000);
+      const timer = setTimeout(() => controller.abort(), 55_000);
 
       let res: Response;
       try {

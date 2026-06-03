@@ -1975,7 +1975,7 @@ function stripMarkdownForTTS(text: string): string {
     .trim();
 }
 
-const TTS_MAX_CHARS = 4000;
+const TTS_MAX_CHARS = 1800; // 約 3 分鐘音頻，夠用且生成快
 
 export const generateTTS = onRequest(
   {
@@ -2019,9 +2019,12 @@ export const generateTTS = onRequest(
     }
 
     const clean = stripMarkdownForTTS(text).slice(0, TTS_MAX_CHARS);
-    const speed = locale === 'zh-TW' ? 0.94 : 1.0; // 中文稍慢一點比較清晰
+    const speed = locale === 'zh-TW' ? 0.94 : 1.0;
+
+    console.log(`TTS: locale=${locale}, chars=${clean.length}`);
 
     try {
+      console.log('TTS: calling OpenAI...');
       const ttsRes = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
@@ -2031,23 +2034,28 @@ export const generateTTS = onRequest(
         body: JSON.stringify({
           model: 'tts-1',
           input: clean,
-          voice: 'shimmer',   // 柔和、有溫度感，適合 Mystica 角色
+          voice: 'shimmer',
           response_format: 'mp3',
           speed,
         }),
       });
 
+      console.log(`TTS: OpenAI responded ${ttsRes.status}`);
+
       if (!ttsRes.ok) {
         const err = await ttsRes.text();
+        console.error('TTS: OpenAI error body:', err);
         res.status(502).json({ error: `TTS API 失敗: ${err}` });
         return;
       }
 
       const buffer = Buffer.from(await ttsRes.arrayBuffer());
+      console.log(`TTS: audio buffer ${buffer.length} bytes, sending...`);
       res.set('Content-Type', 'audio/mpeg');
       res.set('Content-Length', String(buffer.length));
-      res.set('Cache-Control', 'private, max-age=3600'); // 同一解讀 1 小時快取
+      res.set('Cache-Control', 'private, max-age=3600');
       res.send(buffer);
+      console.log('TTS: done');
     } catch (err) {
       console.error('TTS error:', err);
       res.status(500).json({ error: '語音生成失敗，請稍後再試' });

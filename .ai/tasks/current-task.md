@@ -251,11 +251,74 @@
 - AI 可據此延續跨占卜脈絡，提升「被理解」感
 - ✅ hosting 已部署
 
+### 分享卡片優化（commit bbc58f2）
+- `ReadingShareCard` 加入牌面圖片 + 品牌 logo（`/images/theme/logo.webp`）
+- 排版重新設計：牌面 + 問題 + 解讀摘要 + 品牌
+- html2canvas inline style + crossOrigin + useCORS 確保正確渲染
+- i18n props：brandName / uprightLabel / reversedLabel
+
+### 是非牌陣快速占卜（commit d923edd）
+- `spread.ts` 新增 `yes-no` 牌陣（單牌，位置「神諭」）
+- 專屬 AI prompt：200-300 字 Yes/No 解析，三語系
+- 消耗 10 點（`YES_NO_CREDIT_COST`），首頁綠色「快問快答」標籤
+- Cloud Functions 新增退款邏輯 + 計費分流
+
+### 占卜日記功能（commit fa8f0a8）
+- `Reading` model 新增 `userNotes?: string`
+- HistoryPage 每筆紀錄可展開寫筆記，防抖 1.5s 自動存 + 離開自動存
+
+### 每日回顧推播（commit 9e74b1b）
+- `dailyReadingReview` onSchedule（每日 9:00 Asia/Taipei）
+- 查詢 24-48h 前有紀錄的用戶，FCM multicast + 自動清除失效 token
+
+### 邀請制 + 社群裂變（commit e0fad2e）
+- `getReferralCode` / `applyReferralCode` Cloud Functions
+- 邀請碼反查索引 `referralCodes/{code}`，雙方各得 50 點
+- BillingPage 底部顯示邀請區塊
+
+### 免費體驗流程（commit bc456bc）
+- 未登入用戶可完整體驗洗牌/切牌/抽牌動畫
+- `useTarotSession.onDrawComplete` 未登入時跳過 AI 呼叫
+- 抽牌後顯示牌面 + 登入引導 CTA（「免費註冊，解鎖解讀」）
+- 三語系 i18n（freeTrialButton / trialTitle / trialDesc / trialCTA / trialHint）
+
+### 塔羅 × 瑪雅跨系統解讀（commit 7dd625d）
+- Cloud Functions 新增 `buildMayaContext(uid, locale)` 讀取 `users/{uid}.mayaProfile`
+- 20 圖騰 + 13 調性名稱查找表（三語系）+ 圖騰關鍵字
+- 若使用者有瑪雅檔案，自動注入 user prompt：Kin、圖騰、調性、五方位
+- AI 指引：自然融合瑪雅能量原型，不說教，作為心理洞察的深層維度
+- 四個端點全覆蓋：streamTarotReading / generateTarotReading / streamFollowUpReading / followUpReading
+- 無瑪雅資料時回傳空字串，graceful fallback
+- ✅ Cloud Functions 已部署
+
+### 技術文件撰寫（commit 7d53b71）
+- 新增 `docs/todo-changelog-2026-05-28.md`（734 行）
+- 涵蓋 10 項 TODO 的完整技術拆解：問題背景、程式碼片段、資料結構、檔案清單
+
 ## 待處理
 
 ### 功能強化 TODO（見 TODO.md）
-- 下一步：#4 占卜結果分享卡片優化
-- 後續：#5 是非牌陣、#6 占卜日記、#7 每日推播
+- ✅ #1-#10 全部完成並部署（含技術文件）
+- ✅ 兩個專案已 push 至 GitHub（tarot-app: `7d53b71`、maya-app: already up-to-date）
+- ✅ 本輪 TODO 全部完成，無進行中任務
+
+### 淺色水晶毛玻璃主題（2026-05-29）
+- 塔羅 app commit `8b508a4` — tarot-theme.css / animations.css / DrawAnimation.tsx / index.html
+- 瑪雅 app commit `54730ae` — index.css / index.html
+- 背景：深黑 → 淺紫漸層
+- 卡片：毛玻璃 backdrop-filter + 白色半透明底
+- 強調色：金色 → 紫色系水晶折射
+- 抽牌動畫：新增光芒綻放擴散效果 + 粒子改為紫藍水晶色
+- 翻牌動畫：加長至 0.7s + radial-gradient 脈衝光暈
+- color-scheme: only light 防止 Chrome 強制深色模式
+
+### 深淺主題切換系統（commit 1e8fc27）
+- 新增 `useTheme` hook + `ThemeContext`：`data-theme` 屬性驅動 CSS 變數切換
+- `tarot-theme.css` 拆為 `[data-theme="light"]` 和 `[data-theme="dark"]` 兩套完整變數
+- 圖片分 `light/` 和 `dark/` 兩目錄，元件動態組合路徑
+- Navbar 加入 🌙/☀️ 切換按鈕，localStorage 記住偏好
+- 14 張全新淺色水晶風素材已替換（hero、牌陣背景、牌背、logo、8 個圖標）
+- CardBack / HomePage / ReadingPage 全面改為動態圖片路徑
 
 ### 綠界金流審核重新送審
 - **狀態**：已準備好產品展示間截圖，待使用者上傳送審

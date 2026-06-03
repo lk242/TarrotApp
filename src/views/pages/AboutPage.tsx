@@ -65,9 +65,15 @@ export default function AboutPage() {
               className="ornate-card flex items-start gap-5 rounded-xl p-5 transition-all hover:shadow-[var(--shadow-card-hover)]"
             >
               <div
-                className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl border border-[var(--color-border-ornate)]"
+                className="h-28 w-28 flex-shrink-0 overflow-hidden rounded-xl border border-[var(--color-border-ornate)] flex items-center justify-center"
+                style={{ background: theme === 'light' ? 'rgba(241,230,217,0.3)' : 'transparent' }}
               >
-                <img src={spreadImages[i]} alt={s.name} className="h-full w-full object-cover" />
+                <img
+                  src={spreadImages[i]}
+                  alt={s.name}
+                  className="h-full w-full object-contain"
+                  style={{ mixBlendMode: theme === 'light' ? 'multiply' : 'normal' }}
+                />
               </div>
               <div className="flex-1">
                 <div className="mb-1 flex items-center gap-3">

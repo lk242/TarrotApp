@@ -108,25 +108,14 @@ export default function ReadingPage() {
     <div className={`flex flex-1 flex-col items-center px-6 ${isDrawing ? 'py-4' : 'py-20'}`}>
       {/* 全螢幕遮罩：只在初次解讀 (interpreting) 時使用，追問改用 inline loading */}
       {phase === 'interpreting' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6 backdrop-blur-md">
-          <div className="w-full max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 text-center shadow-[var(--shadow-card)]">
-            <div className="mb-4 flex justify-center gap-2">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="h-2.5 w-2.5 rounded-full bg-[var(--color-accent-gold)]"
-                  animate={{ opacity: [0.25, 1, 0.25], scale: [0.85, 1.25, 0.85] }}
-                  transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.25 }}
-                />
-              ))}
-            </div>
-            <p className="text-sm font-bold text-[var(--color-text-primary)]">
-              {t.reading.interpreting}
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
-              {t.reading.waitHint}
-            </p>
-            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-[var(--shadow-card)]"
+          >
+            {/* 載入進度條 */}
+            <div className="mb-5 h-1 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
               <motion.div
                 className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-purple)] via-[var(--color-accent-gold)] to-[var(--color-accent-mystic)]"
                 initial={{ x: '-100%' }}
@@ -134,7 +123,50 @@ export default function ReadingPage() {
                 transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
               />
             </div>
-          </div>
+
+            {/* 標題 */}
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex gap-1.5">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)]"
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.25 }}
+                  />
+                ))}
+              </div>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                {t.reading.interpreting}
+              </p>
+            </div>
+
+            {/* 已抽到的牌 — 關鍵字預覽 */}
+            <div className="space-y-3">
+              {drawnCards.map((dc, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.15 }}
+                  className="flex items-start gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3"
+                >
+                  <CardFace drawnCard={dc} className="h-[54px] w-[34px] flex-shrink-0 rounded-md overflow-hidden" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-[var(--color-text-primary)] truncate">
+                      {dc.card.name}
+                      {dc.isReversed && (
+                        <span className="ml-1.5 text-[10px] text-[var(--color-accent-gold)]">↓ 逆位</span>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--color-text-muted)]">
+                      {(dc.isReversed ? dc.card.reversedKeywords : dc.card.keywords).slice(0, 3).join(' · ')}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       )}
 
@@ -213,7 +245,7 @@ export default function ReadingPage() {
                   <img
                     src={`${themeImageBase}/icons/${key}.${iconExt}`}
                     alt={label}
-                    className="h-20 w-20 object-contain transition-transform group-hover:scale-110"
+                    className="h-24 w-24 object-contain transition-transform group-hover:scale-110"
                   />
                   <span className="text-xs font-bold tracking-wider text-[var(--color-text-primary)]">
                     {label}

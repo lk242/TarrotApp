@@ -7,6 +7,7 @@ import CardBack from '../components/tarot/CardBack';
 import CardFace from '../components/tarot/CardFace';
 import { useI18n } from '../../controllers/useI18n';
 import type { SpreadType } from '../../models/spread';
+import { hapticLight, hapticMedium, hapticHeavy } from '../../utils/haptic';
 
 /** SpreadType → positions locale key */
 const SPREAD_POS_KEY: Record<SpreadType, 'single' | 'threeCard' | 'celticCross' | 'yesNo'> = {
@@ -215,6 +216,7 @@ function DesktopFan({
     (fanIndex: number) => {
       if (dragMoved.current) return; // 拖動中不觸發
       if (picked.has(fanIndex) || flying.has(fanIndex) || revealCount >= totalNeeded) return;
+      hapticLight();
       setPendingIndex(fanIndex);
     },
     [picked, flying, revealCount, totalNeeded],
@@ -224,6 +226,7 @@ function DesktopFan({
     (fanIndex: number, e: React.MouseEvent) => {
       e.stopPropagation();
       if (picked.has(fanIndex) || flying.has(fanIndex) || revealCount >= totalNeeded) return;
+      hapticMedium();
       setPendingIndex(null);
 
       const rect = (e.currentTarget as HTMLElement).closest('[data-fan-card]')?.getBoundingClientRect();
@@ -253,6 +256,7 @@ function DesktopFan({
         setTimeout(() => {
           setFlying((prev) => { const m = new Map(prev); m.delete(fanIndex); return m; });
           if (newCount >= totalNeeded) {
+            hapticHeavy();
             setTimeout(onAllPicked, 400);
           }
         }, 350);
@@ -647,11 +651,13 @@ function MobileWheelDraw({
   const handleCardTap = useCallback((index: number) => {
     if (dragMoved.current) return;
     if (picked.has(index) || revealCount >= totalNeeded) return;
+    hapticLight();
     setPendingIndex(index);
   }, [picked, revealCount, totalNeeded]);
 
   const handleConfirm = useCallback((index: number) => {
     if (picked.has(index) || revealCount >= totalNeeded) return;
+    hapticMedium();
     setPendingIndex(null);
 
     const newPicked = new Set(picked);
@@ -662,6 +668,7 @@ function MobileWheelDraw({
     setRevealCount(newCount);
 
     if (newCount >= totalNeeded) {
+      hapticHeavy();
       setTimeout(onAllPicked, 600);
     }
   }, [picked, revealCount, totalNeeded, onAllPicked]);
@@ -910,15 +917,26 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // 下一張要翻的牌 index（-1 表示全部翻完）
+  const [nextToFlip, setNextToFlip] = useState(0);
+
   const handleAllPicked = useCallback(() => {
     setPhase('reveal');
-    for (let i = 0; i < totalNeeded; i++) {
-      setTimeout(() => {
-        setFlipped((prev) => { const n = [...prev]; n[i] = true; return n; });
-        if (i === totalNeeded - 1) setTimeout(onComplete, 1000);
-      }, 500 + i * 500);
+    setNextToFlip(0);
+  }, []);
+
+  // 點擊翻牌 — 每次只翻下一張
+  const handleFlipCard = useCallback((i: number) => {
+    if (i !== nextToFlip) return; // 只允許翻「下一張」
+    if (flipped[i]) return;
+    hapticMedium();
+    setFlipped((prev) => { const n = [...prev]; n[i] = true; return n; });
+    const next = i + 1;
+    setNextToFlip(next);
+    if (next >= totalNeeded) {
+      setTimeout(onComplete, 1000);
     }
-  }, [totalNeeded, onComplete]);
+  }, [nextToFlip, flipped, totalNeeded, onComplete]);
 
   if (phase === 'pick') {
     return isMobile
@@ -927,66 +945,93 @@ export default function DrawAnimation({ spread, drawnCards, onComplete }: Props)
   }
 
   // === 翻牌揭示 ===
+  const allFlipped = flipped.every(Boolean);
   return (
     <div className="flex flex-col items-center gap-8 animate-fade-in">
-      <div className="flex flex-wrap justify-center gap-5">
-        {drawnCards.map((dc, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.15 }}
-            className="flex flex-col items-center gap-2"
+      {/* 提示文字 */}
+      <AnimatePresence mode="wait">
+        {!allFlipped ? (
+          <motion.p
+            key="hint"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="text-sm text-[var(--color-text-secondary)]"
           >
-            <span className="text-xs text-[var(--color-text-muted)]">{positionNames[i] ?? spread.positions[i]?.name}</span>
-            <div style={{ perspective: '800px' }} className="relative">
-              {/* 光芒綻放效果 — 翻牌瞬間擴散 */}
-              <AnimatePresence>
-                {flipped[i] && (
+            點擊牌背翻開第 {nextToFlip + 1} 張
+          </motion.p>
+        ) : null}
+      </AnimatePresence>
+
+      <div className="flex flex-wrap justify-center gap-5">
+        {drawnCards.map((dc, i) => {
+          const isNext = i === nextToFlip && !flipped[i];
+          const isLocked = i > nextToFlip && !flipped[i];
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: -30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.15 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <span className="text-xs text-[var(--color-text-muted)]">{positionNames[i] ?? spread.positions[i]?.name}</span>
+              <div
+                style={{ perspective: '800px' }}
+                className={`relative ${isNext ? 'cursor-pointer' : ''}`}
+                onClick={() => handleFlipCard(i)}
+              >
+                {/* 下一張可翻的牌 — 呼吸光暈提示 */}
+                {isNext && (
                   <motion.div
-                    initial={{ opacity: 0.8, scale: 0.5 }}
-                    animate={{ opacity: 0, scale: 2.2 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
-                    className="pointer-events-none absolute inset-0 z-10"
-                    style={{
-                      background: 'radial-gradient(circle, rgba(167,139,250,0.5), rgba(96,165,250,0.2), transparent 70%)',
-                      borderRadius: '50%',
-                    }}
+                    className="pointer-events-none absolute inset-0 z-20 rounded-lg"
+                    animate={{ boxShadow: ['0 0 0px 0px rgba(201,168,76,0)', '0 0 16px 4px rgba(201,168,76,0.5)', '0 0 0px 0px rgba(201,168,76,0)'] }}
+                    transition={{ duration: 1.4, repeat: Infinity }}
                   />
                 )}
-              </AnimatePresence>
-              <motion.div
-                animate={{ rotateY: flipped[i] ? 180 : 0 }}
-                transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-                style={{ transformStyle: 'preserve-3d', position: 'relative', width: FLIP_W, height: FLIP_H }}
-              >
-                <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0 }}>
-                  <CardBack width={FLIP_W} height={FLIP_H} glowing />
-                </div>
-                <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0, transform: `rotateY(180deg)${dc.isReversed ? ' rotate(180deg)' : ''}` }}>
-                  <CardFace drawnCard={{ ...dc, isReversed: false }} className="h-[269px] w-[168px]" />
-                </div>
-              </motion.div>
-            </div>
-          </motion.div>
-        ))}
+                {/* 尚未解鎖的牌 — 半透明遮罩 */}
+                {isLocked && (
+                  <div className="pointer-events-none absolute inset-0 z-20 rounded-lg bg-black/30" />
+                )}
+                {/* 光芒綻放效果 — 翻牌瞬間擴散 */}
+                <AnimatePresence>
+                  {flipped[i] && (
+                    <motion.div
+                      initial={{ opacity: 0.8, scale: 0.5 }}
+                      animate={{ opacity: 0, scale: 2.2 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.8, ease: 'easeOut' }}
+                      className="pointer-events-none absolute inset-0 z-10"
+                      style={{
+                        background: 'radial-gradient(circle, rgba(167,139,250,0.5), rgba(96,165,250,0.2), transparent 70%)',
+                        borderRadius: '50%',
+                      }}
+                    />
+                  )}
+                </AnimatePresence>
+                <motion.div
+                  animate={{ rotateY: flipped[i] ? 180 : 0 }}
+                  transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+                  style={{ transformStyle: 'preserve-3d', position: 'relative', width: FLIP_W, height: FLIP_H }}
+                >
+                  <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0 }}>
+                    <CardBack width={FLIP_W} height={FLIP_H} glowing={isNext} />
+                  </div>
+                  <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0, transform: `rotateY(180deg)${dc.isReversed ? ' rotate(180deg)' : ''}` }}>
+                    <CardFace drawnCard={{ ...dc, isReversed: false }} className="h-[269px] w-[168px]" />
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
-      {!flipped.every(Boolean) ? (
-        <div className="flex items-center gap-2">
-          {[0, 1, 2].map((i) => (
-            <motion.div key={i} className="h-2 w-2 rounded-full bg-[var(--color-accent-gold)]"
-              animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.2, 0.8] }}
-              transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }} />
-          ))}
-          <span className="ml-2 text-sm text-[var(--color-text-secondary)]">{t.reading.revealingCards}</span>
-        </div>
-      ) : (
+      {allFlipped ? (
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-[var(--color-accent-gold-light)]">
           {t.reading.revealComplete}
         </motion.p>
-      )}
+      ) : null}
     </div>
   );
 }

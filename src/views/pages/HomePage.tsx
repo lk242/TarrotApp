@@ -139,33 +139,23 @@ function SpreadCard({ spread, delay, t }: { spread: (typeof SPREADS)[SpreadType]
     >
       <Link
         to={`/reading?spread=${spread.type}`}
-        className="group relative block h-full overflow-hidden rounded-xl border border-[var(--color-border)] no-underline shadow-[var(--shadow-card)] transition-all hover:border-[var(--color-border-hover)] hover:shadow-[var(--shadow-card-hover)]"
+        className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-[var(--color-border)] no-underline shadow-[var(--shadow-card)] transition-all hover:border-[var(--color-border-hover)] hover:shadow-[var(--shadow-card-hover)]"
       >
-        {/* 背景圖 */}
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-opacity"
-          style={{
-            backgroundImage: `url(${config.image})`,
-            opacity: config.opacity,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = String(config.hoverOpacity); }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = String(config.opacity); }}
-        />
-        {/* 漸層疊加：依主題調整 */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: theme === 'dark'
-              ? (spread.cardCount === 10
-                ? 'linear-gradient(to bottom, rgba(8,8,16,0.1) 0%, rgba(8,8,16,0.7) 100%)'
-                : 'linear-gradient(to bottom, rgba(8,8,16,0.3) 0%, rgba(8,8,16,0.85) 100%)')
-              : 'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.55) 100%)',
-            backdropFilter: theme === 'light' ? 'blur(1px)' : 'none',
-          }}
-        />
-        {/* 內容 */}
-        <div className="relative z-10 p-6 text-center">
-          <div className="mb-16" />
+        {/* 素材圖 — 上半部 */}
+        <div className="relative w-full overflow-hidden" style={{ paddingBottom: '90%' }}>
+          <img
+            src={config.image}
+            alt=""
+            className="absolute inset-0 h-full w-full object-contain transition-all duration-300"
+            style={{ opacity: config.opacity, mixBlendMode: theme === 'light' ? 'multiply' : 'normal' }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = String(config.hoverOpacity); }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = String(config.opacity); }}
+          />
+        </div>
+        {/* 內容 — 下半部 */}
+        <div className="flex flex-1 flex-col justify-end p-4 text-center"
+          style={{ background: theme === 'light' ? 'rgba(241,230,217,0.6)' : 'rgba(8,8,16,0.5)' }}
+        >
           {/* 新手推薦 / 深度解析標籤 */}
           {spread.type === 'single' && (
             <span

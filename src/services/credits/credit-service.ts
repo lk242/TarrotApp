@@ -26,6 +26,11 @@ export const createSubscriptionCallable = httpsCallable<
   { checkoutUrl?: string; message: string }
 >(functions, 'createSubscription');
 
+export const redeemCodeCallable = httpsCallable<
+  { code: string },
+  { credits: number; productLabel: string }
+>(functions, 'redeemCode');
+
 export function subscribeCreditProfile(
   userId: string,
   onChange: (profile: CreditProfile | null) => void,

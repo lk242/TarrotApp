@@ -17,6 +17,7 @@ import { useReferral } from '../../controllers/useReferral';
 import {
   createCreditPurchaseCallable,
   createSubscriptionCallable,
+  redeemCodeCallable,
 } from '../../services/credits/credit-service';
 
 type PurchaseTarget =
@@ -50,6 +51,26 @@ export default function BillingPage() {
   const { convert } = useExchangeRate(lang);
   const [pending, setPending] = useState<PurchaseTarget | null>(null);
   const [message, setMessage] = useState('');
+
+  // 兌換碼
+  const [redeemInput, setRedeemInput] = useState('');
+  const [redeemStatus, setRedeemStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [redeemMessage, setRedeemMessage] = useState('');
+
+  const handleRedeem = async () => {
+    if (!redeemInput.trim() || !user) return;
+    setRedeemStatus('loading');
+    setRedeemMessage('');
+    try {
+      const result = await redeemCodeCallable({ code: redeemInput.trim() });
+      setRedeemStatus('success');
+      setRedeemMessage(`✓ 成功兌換 ${result.data.credits} 點（${result.data.productLabel}）`);
+      setRedeemInput('');
+    } catch (err) {
+      setRedeemStatus('error');
+      setRedeemMessage(err instanceof Error ? err.message : '兌換失敗，請重試');
+    }
+  };
 
   const handlePackage = async (packageId: CreditPackageId) => {
     setPending({ type: 'package', id: packageId });
@@ -256,6 +277,53 @@ export default function BillingPage() {
 
         {/* 邀請碼區塊 */}
         {user && <ReferralSection t={t} />}
+
+        {/* ── Gumroad 兌換碼 ── */}
+        {user && (
+          <section className="ornate-card mt-6 rounded-xl p-6">
+            <h2 className="mb-1 text-lg font-bold text-[var(--color-accent-gold)]">
+              🎫 兌換碼
+            </h2>
+            <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+              在 Gumroad 購買方案後，將收到的授權碼貼入下方即可自動加值。
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={redeemInput}
+                onChange={(e) => { setRedeemInput(e.target.value.toUpperCase()); setRedeemStatus('idle'); }}
+                onKeyDown={(e) => e.key === 'Enter' && handleRedeem()}
+                placeholder="貼上 Gumroad 授權碼"
+                disabled={redeemStatus === 'loading'}
+                className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none transition-colors focus:border-[var(--color-accent-gold)] disabled:opacity-50"
+              />
+              <button
+                onClick={handleRedeem}
+                disabled={!redeemInput.trim() || redeemStatus === 'loading'}
+                className="shrink-0 cursor-pointer rounded-lg border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/10 px-5 py-2.5 text-sm font-bold text-[var(--color-accent-gold)] transition-all hover:bg-[var(--color-accent-gold)]/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {redeemStatus === 'loading' ? '兌換中...' : '兌換'}
+              </button>
+            </div>
+            {redeemMessage && (
+              <p className={`mt-2 text-sm ${redeemStatus === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>
+                {redeemMessage}
+              </p>
+            )}
+            <p className="mt-4 text-xs text-[var(--color-text-muted)]">
+              還沒有方案？前往
+              <a
+                href="https://wolfpack184.gumroad.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mx-1 text-[var(--color-accent-gold)] underline hover:no-underline"
+              >
+                Gumroad 購買
+              </a>
+              即可取得授權碼。
+            </p>
+          </section>
+        )}
       </div>
     </div>
   );

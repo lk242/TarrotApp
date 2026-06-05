@@ -3508,3 +3508,125 @@ export const applyReferralCode = onCall({ region: REGION }, async (request) => {
 
   return { reward: REFERRAL_REWARD };
 });
+
+// ========== Gumroad 兌換碼系統 ==========
+
+/** Gumroad product permalink → 點數對應表 */
+const GUMROAD_PRODUCTS: Record<string, { credits: number; label: string }> = {
+  'tarot-starter':  { credits: 400,  label: '入門解讀方案' },
+  'tarot-standard': { credits: 880,  label: '標準解讀方案' },
+  'tarot-deep':     { credits: 1750, label: '深度解讀方案' },
+};
+
+/**
+ * Gumroad Webhook — 收到付款通知後儲存兌換碼
+ * Gumroad 設定：Settings → Advanced → Webhooks → 填入此 Function URL
+ * 需在 Gumroad 產品設定啟用 "Generate a unique license key per customer"
+ */
+export const gumroadWebhook = onRequest(
+  { region: REGION, invoker: 'public', timeoutSeconds: 30 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method Not Allowed');
+      return;
+    }
+
+    const {
+      license_key,
+      product_permalink,
+      email,
+      sale_id,
+      full_name,
+    } = req.body as Record<string, string>;
+
+    // 驗證必要欄位
+    if (!license_key || !product_permalink) {
+      console.error('gumroadWebhook: 缺少必要欄位', req.body);
+      res.status(400).send('Bad Request');
+      return;
+    }
+
+    const product = GUMROAD_PRODUCTS[product_permalink];
+    if (!product) {
+      console.warn('gumroadWebhook: 未知產品', product_permalink);
+      res.status(200).send('OK'); // 回 200 避免 Gumroad 重試
+      return;
+    }
+
+    const code = license_key.trim().toUpperCase();
+
+    await db.doc(`redeemCodes/${code}`).set({
+      code,
+      credits: product.credits,
+      productLabel: product.label,
+      productPermalink: product_permalink,
+      buyerEmail: email ?? '',
+      buyerName: full_name ?? '',
+      saleId: sale_id ?? '',
+      used: false,
+      usedBy: null,
+      usedAt: null,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    console.log(`gumroadWebhook: 已建立兌換碼 ${code} (${product.label}, ${product.credits}點)`);
+    res.status(200).send('OK');
+  },
+);
+
+/**
+ * redeemCode — 用戶輸入兌換碼後自動加點數
+ */
+export const redeemCode = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', '請先登入後再兌換');
+
+  const { code } = request.data as { code?: string };
+  if (!code?.trim()) throw new HttpsError('invalid-argument', '請輸入兌換碼');
+
+  const normalizedCode = code.trim().toUpperCase();
+  const codeRef = db.doc(`redeemCodes/${normalizedCode}`);
+  const userRef = db.doc(`users/${uid}`);
+
+  return db.runTransaction(async (tx) => {
+    const codeDoc = await tx.get(codeRef);
+
+    if (!codeDoc.exists) {
+      throw new HttpsError('not-found', '兌換碼不存在，請確認是否輸入正確');
+    }
+
+    const codeData = codeDoc.data()!;
+
+    if (codeData.used) {
+      throw new HttpsError('already-exists', '此兌換碼已使用過');
+    }
+
+    const credits: number = codeData.credits;
+
+    // 加點數
+    tx.update(userRef, {
+      balance: FieldValue.increment(credits),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    // 記錄 transaction
+    tx.create(userRef.collection('creditTransactions').doc(), {
+      amount: credits,
+      type: 'purchase',
+      reason: `Gumroad 兌換：${codeData.productLabel ?? normalizedCode}`,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    // 標記已使用
+    tx.update(codeRef, {
+      used: true,
+      usedBy: uid,
+      usedAt: FieldValue.serverTimestamp(),
+    });
+
+    return {
+      credits,
+      productLabel: codeData.productLabel ?? '',
+    };
+  });
+});

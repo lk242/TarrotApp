@@ -27,5 +27,10 @@ service cloud.firestore {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create, update, delete: if false;
     }
+
+    // 兌換碼：前端不可直接讀寫，全部透過 Cloud Functions 處理
+    match /redeemCodes/{codeId} {
+      allow read, write: if false;
+    }
   }
 }

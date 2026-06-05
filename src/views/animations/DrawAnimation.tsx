@@ -272,13 +272,33 @@ function DesktopFan({
 
   return (
     <div ref={containerRef} className="flex w-full flex-col items-center gap-0 select-none">
-      <div className="mb-1 text-center animate-fade-in">
+      <div className="mb-1 text-center animate-fade-in flex flex-col items-center gap-1">
         <p className="text-base text-[var(--color-text-secondary)]">
           {t.reading.drawDesktopHint.replace('{count}', String(totalNeeded))}
         </p>
-        <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          {t.reading.drawDesktopProgress.replace('{current}', String(revealCount)).replace('{total}', String(totalNeeded))}
-        </p>
+        {/* 進度視覺 */}
+        <div className="flex items-center gap-3 mt-1">
+          <div className="flex gap-1.5">
+            {Array.from({ length: totalNeeded }, (_, i) => (
+              <div
+                key={i}
+                className="h-2 w-2 rounded-full transition-all duration-300"
+                style={{
+                  background: i < revealCount
+                    ? 'var(--color-accent-gold)'
+                    : 'rgba(255,255,255,0.15)',
+                  boxShadow: i < revealCount ? '0 0 6px rgba(201,168,76,0.6)' : 'none',
+                }}
+              />
+            ))}
+          </div>
+          <span
+            className="text-sm font-bold tabular-nums"
+            style={{ color: 'var(--color-accent-gold)' }}
+          >
+            {revealCount} / {totalNeeded}
+          </span>
+        </div>
       </div>
 
       <div
@@ -482,10 +502,11 @@ function DesktopFan({
             >
               <button
                 onClick={(e) => handleConfirm(pendingIndex, e)}
-                className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-xl transition-transform hover:scale-110"
+                className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full shadow-xl transition-transform hover:scale-110"
+                style={{ background: 'linear-gradient(135deg, #b8891e 0%, #f0d060 50%, #c99830 100%)', boxShadow: '0 0 24px rgba(230,190,60,0.6), 0 8px 20px rgba(0,0,0,0.4)' }}
                 title={t.confirm}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1a0f00" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </button>
@@ -712,6 +733,36 @@ function MobileWheelDraw({
         </p>
       </div>
 
+      {/* 中央大型計數器（顯示在畫面左半側空白區） */}
+      <div
+        className="pointer-events-none absolute z-[5] flex flex-col items-center justify-center gap-1"
+        style={{ left: '4%', top: '50%', transform: 'translateY(-50%)' }}
+      >
+        <div
+          className="text-5xl font-bold leading-none tabular-nums"
+          style={{ color: 'var(--color-accent-gold)', textShadow: '0 0 18px rgba(201,168,76,0.5)' }}
+        >
+          {revealCount}
+        </div>
+        <div className="text-xs text-[var(--color-text-muted)] mt-0.5 tracking-widest">
+          / {totalNeeded}
+        </div>
+        {/* 小進度點 */}
+        <div className="flex flex-col gap-1 mt-2">
+          {Array.from({ length: totalNeeded }, (_, i) => (
+            <div
+              key={i}
+              className="h-1.5 w-1.5 rounded-full transition-colors duration-300"
+              style={{
+                background: i < revealCount
+                  ? 'var(--color-accent-gold)'
+                  : 'rgba(255,255,255,0.15)',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
       {/* 教學引導：手指 + 雙向箭頭（上下） */}
       <AnimatePresence>
         {showHint && (
@@ -889,9 +940,10 @@ function MobileWheelDraw({
             >
               <button
                 onClick={(e) => { e.stopPropagation(); handleConfirm(pendingIndex); }}
-                className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-[var(--color-accent-gold)] shadow-xl"
+                className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full"
+                style={{ background: 'linear-gradient(135deg, #b8891e 0%, #f0d060 50%, #c99830 100%)', boxShadow: '0 0 24px rgba(230,190,60,0.6), 0 8px 20px rgba(0,0,0,0.4)' }}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1a0f00" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </button>

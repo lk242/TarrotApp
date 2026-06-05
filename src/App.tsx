@@ -43,9 +43,9 @@ function AppContent() {
   return (
     <BrowserRouter>
       <MysticBackground />
-      <div className="relative z-10 flex min-h-screen flex-col">
+      <div className="relative z-10 flex min-h-screen flex-col overflow-x-hidden">
         <Navbar />
-        <main className="flex flex-1 flex-col pt-16">
+        <main className="flex flex-1 flex-col pt-16 overflow-x-hidden max-w-full">
           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route path="/" element={<HomePage />} />

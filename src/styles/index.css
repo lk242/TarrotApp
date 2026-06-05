@@ -13,6 +13,13 @@
   --font-body: 'Inter', 'Noto Sans TC', 'Helvetica Neue', 'Arial', sans-serif;
 }
 
+html,
+body,
+#root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 html {
   overflow-x: hidden;
 }
